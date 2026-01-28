@@ -3,8 +3,11 @@
 // Types
 export * from "./types/index";
 
-// Auth Contracts
-export * from "./auth/contracts";
+// Auth
+export * from "./auth/index";
+
+// Context
+export * from "./context/index";
 
 // Tenant Contracts
 export * from "./tenant/contracts";

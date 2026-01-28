@@ -111,9 +111,9 @@ Exceções:
 
 Fluxo:
 
-```
+\`\`\`
 request → auth → tenant → plano → módulo → permissão
-```
+\`\`\`
 
 ---
 

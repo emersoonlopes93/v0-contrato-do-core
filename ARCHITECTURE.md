@@ -12,7 +12,7 @@ A arquitetura segue estritamente o **Contrato do Core**. O sistema é organizado
 
 ## 📁 Estrutura de Pastas
 
-```
+\`\`\`
 src/
 ├── core/                                 # Core neutro (imutável)
 │   ├── types/                           # Tipos e contratos fundamentais
@@ -66,7 +66,7 @@ src/
     ├── components/                      # Componentes UI reutilizáveis
     ├── hooks/                           # React hooks
     └── utils/                           # Funções utilitárias
-```
+\`\`\`
 
 ---
 
@@ -96,13 +96,13 @@ src/
 
 ### SaaS Admin Token
 
-```typescript
+\`\`\`typescript
 {
   context: UserContext.SAAS_ADMIN,
   userId: "uuid",
   role: "admin" | "moderator"
 }
-```
+\`\`\`
 
 **Acesso:**
 - Gerenciar tenants
@@ -112,7 +112,7 @@ src/
 
 ### Tenant User Token
 
-```typescript
+\`\`\`typescript
 {
   context: UserContext.TENANT_USER,
   userId: "uuid",
@@ -121,7 +121,7 @@ src/
   permissions: ["permission.id"],
   activeModules: ["module.id"]
 }
-```
+\`\`\`
 
 **Acesso:**
 - Dados do próprio tenant (tenant_id obrigatório)
@@ -136,7 +136,7 @@ src/
 
 Um módulo se registra no Core fornecendo:
 
-```typescript
+\`\`\`typescript
 {
   id: "module.id",
   name: "Module Name",
@@ -150,18 +150,18 @@ Um módulo se registra no Core fornecendo:
   ],
   requiredPlan: "premium" // opcional
 }
-```
+\`\`\`
 
 ### Ciclo de Vida de um Módulo
 
-```
+\`\`\`
 1. Módulo registra no Core
 2. SaaS Admin ativa módulo para um tenant (se no plano)
 3. Core adiciona módulo ao token do tenant
 4. Tenant user pode acessar funcionalidades do módulo
 5. Módulo emite eventos via Core EventBus
 6. Módulo pode ser desativado
-```
+\`\`\`
 
 ### Isolamento entre Módulos
 
@@ -176,9 +176,9 @@ Um módulo se registra no Core fornecendo:
 
 ### Fluxo
 
-```
+\`\`\`
 User → Tenant → Roles → Permissions
-```
+\`\`\`
 
 ### Estrutura
 
@@ -188,10 +188,10 @@ User → Tenant → Roles → Permissions
 
 ### Verificação
 
-```typescript
+\`\`\`typescript
 // Guard verifica: user → tenant → roles → permissions
 const canAccess = await guard.requirePermission(token, "module.write");
-```
+\`\`\`
 
 ---
 
@@ -208,13 +208,13 @@ const canAccess = await guard.requirePermission(token, "module.write");
 
 ### Isolamento
 
-```sql
+\`\`\`sql
 -- Exemplo: SaaS Admin vê todos os tenants
 SELECT * FROM tenants;
 
 -- Exemplo: Tenant user vê APENAS seu tenant
 SELECT * FROM tenants WHERE id = current_tenant_id;
-```
+\`\`\`
 
 ---
 
@@ -222,18 +222,18 @@ SELECT * FROM tenants WHERE id = current_tenant_id;
 
 ### Global (SaaS)
 
-```typescript
+\`\`\`typescript
 {
   systemName: "My SaaS",
   supportEmail: "support@saas.com",
   primaryColor: "#1a1a1a",
   secondaryColor: "#ffffff"
 }
-```
+\`\`\`
 
 ### Por Tenant
 
-```typescript
+\`\`\`typescript
 {
   tenantId: "uuid",
   logo: "https://...",
@@ -241,7 +241,7 @@ SELECT * FROM tenants WHERE id = current_tenant_id;
   secondaryColor: "#custom",
   domain: "custom.domain.com"
 }
-```
+\`\`\`
 
 ---
 
@@ -249,7 +249,7 @@ SELECT * FROM tenants WHERE id = current_tenant_id;
 
 ### Eventos Críticos do Core
 
-```typescript
+\`\`\`typescript
 enum CoreEvents {
   TENANT_CREATED = "core.tenant.created",
   TENANT_USER_CREATED = "core.tenant_user.created",
@@ -259,7 +259,7 @@ enum CoreEvents {
   SAAS_ADMIN_LOGIN = "core.saas_admin.login",
   TENANT_USER_LOGIN = "core.tenant_user.login"
 }
-```
+\`\`\`
 
 ### Audit Log
 

@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+
+    "build": "echo 'no build script'"
+
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
