@@ -22,7 +22,7 @@ Este contexto é responsável pela **experiência do usuário dentro de um tenan
 
 Tenant user usa token completo:
 
-```typescript
+\`\`\`typescript
 {
   context: UserContext.TENANT_USER,
   userId: "uuid",
@@ -31,7 +31,7 @@ Tenant user usa token completo:
   permissions: ["permission.id"],
   activeModules: ["module.id"]
 }
-```
+\`\`\`
 
 Token carrega:
 - `tenantId` - garante isolamento
@@ -40,7 +40,7 @@ Token carrega:
 
 ## 📁 Estrutura
 
-```
+\`\`\`
 tenant/
 ├── pages/
 │   ├── Dashboard.tsx
@@ -54,11 +54,11 @@ tenant/
     ├── tenantUserService.ts
     ├── whiteblrandService.ts
     └── moduleService.ts
-```
+\`\`\`
 
 ## 💡 Padrão de Acesso
 
-```typescript
+\`\`\`typescript
 // pages/Dashboard.tsx
 import { TenantUserToken } from "@/core";
 
@@ -74,13 +74,13 @@ export function Dashboard({ token }: { token: TenantUserToken }) {
     </div>
   );
 }
-```
+\`\`\`
 
 ## 🔒 Segurança
 
 ### Obrigação: tenant_id em queries
 
-```typescript
+\`\`\`typescript
 // ✅ CORRETO - Query com tenant_id
 const data = await supabase
   .from('modules.delivery_orders')
@@ -93,23 +93,23 @@ const data = await supabase
   .from('modules.delivery_orders')
   .select()
   .eq('order_id', orderId); // Pode acessar outro tenant!
-```
+\`\`\`
 
 ### Verificação de RBAC
 
-```typescript
+\`\`\`typescript
 // ✅ CORRETO - Verificar permissão
 const canDelete = token.permissions.includes('delivery.order.delete');
 
 // Depois verificar no Core também
 const verified = await authGuard.requirePermission(token, 'delivery.order.delete');
-```
+\`\`\`
 
 ## 🎨 White-Label
 
 Cada tenant tem sua própria visual identity:
 
-```typescript
+\`\`\`typescript
 // Carregar white-brand do tenant
 const config = await whiteblrandService.getConfig(token.tenantId);
 
@@ -118,7 +118,7 @@ return (
     {config.logo && <img src={config.logo} />}
   </header>
 );
-```
+\`\`\`
 
 ## 📝 Próximos Passos
 

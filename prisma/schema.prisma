@@ -1,0 +1,253 @@
+// Prisma Schema - SaaS Multi-Tenant Core
+// Provider: PostgreSQL (Neon, Supabase, ou outro)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// TABELAS GLOBAIS (SaaS Admin - sem tenant_id)
+// ============================================
+
+model SaaSAdminUser {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  name          String?
+  role          String   @default("admin") // admin, moderator
+  status        String   @default("active") // active, inactive, deleted
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("saas_admin_users")
+}
+
+model Plan {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String
+  price       Float    @default(0)
+  limits      Json     @default("{}")
+  status      String   @default("active") // active, inactive
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  subscriptions TenantSubscription[]
+
+  @@map("plans")
+}
+
+model Module {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  version       String
+  description   String
+  permissions   Json     @default("[]")
+  events        Json     @default("[]")
+  required_plan String?
+  status        String   @default("active") // active, inactive
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  tenantModules TenantModule[]
+  permissions   Permission[]
+
+  @@map("modules")
+}
+
+// ============================================
+// TABELAS POR TENANT (COM tenant_id obrigatório)
+// ============================================
+
+model Tenant {
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  status     String   @default("active") // active, suspended, deleted
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  subscriptions    TenantSubscription[]
+  users            TenantUser[]
+  modules          TenantModule[]
+  roles            Role[]
+  userRoles        UserRole[]
+  whiteBrandConfig WhiteBrandConfig?
+  auditEvents      AuditEvent[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("tenants")
+}
+
+model TenantSubscription {
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  plan_id              String
+  status               String    @default("active") // active, cancelled, expired
+  current_period_start DateTime
+  current_period_end   DateTime
+  cancelled_at         DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  plan   Plan   @relation(fields: [plan_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([plan_id])
+  @@index([status])
+  @@map("tenant_subscriptions")
+}
+
+model TenantUser {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  email         String
+  password_hash String
+  name          String?
+  status        String   @default("active") // active, inactive, deleted
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  tenant     Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  userRoles  UserRole[]
+  auditEvents AuditEvent[]
+
+  @@unique([tenant_id, email])
+  @@index([tenant_id])
+  @@index([email])
+  @@index([status])
+  @@map("tenant_users")
+}
+
+model TenantModule {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  module_id      String
+  status         String    @default("active") // active, inactive
+  activated_at   DateTime  @default(now())
+  deactivated_at DateTime?
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [module_id], references: [id])
+
+  @@unique([tenant_id, module_id])
+  @@index([tenant_id])
+  @@index([module_id])
+  @@map("tenant_modules")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  name        String
+  slug        String
+  description String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([tenant_id, slug])
+  @@index([tenant_id])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  module_id   String
+  name        String
+  slug        String
+  description String
+  created_at  DateTime @default(now())
+
+  module          Module           @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+
+  @@unique([module_id, slug])
+  @@index([module_id])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id            String   @id @default(uuid())
+  role_id       String
+  permission_id String
+  created_at    DateTime @default(now())
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@unique([role_id, permission_id])
+  @@index([role_id])
+  @@index([permission_id])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id          String   @id @default(uuid())
+  user_id     String
+  tenant_id   String
+  role_id     String
+  assigned_at DateTime @default(now())
+
+  user   TenantUser @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tenant Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  role   Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role_id])
+  @@index([user_id])
+  @@index([tenant_id])
+  @@index([role_id])
+  @@map("user_roles")
+}
+
+model WhiteBrandConfig {
+  id              String   @id @default(uuid())
+  tenant_id       String   @unique
+  logo            String?
+  primary_color   String
+  secondary_color String
+  domain          String?
+  custom_metadata Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([domain])
+  @@map("white_brand_configs")
+}
+
+model AuditEvent {
+  id        String   @id @default(uuid())
+  tenant_id String?
+  user_id   String
+  action    String
+  resource  String
+  old_value Json?
+  new_value Json?
+  status    String   @default("success") // success, failure
+  metadata  Json?
+  timestamp DateTime @default(now())
+
+  tenant Tenant?     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user   TenantUser? @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([user_id])
+  @@index([action])
+  @@index([timestamp])
+  @@map("audit_events")
+}
