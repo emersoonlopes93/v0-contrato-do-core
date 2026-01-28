@@ -251,3 +251,24 @@ model AuditEvent {
   @@index([timestamp])
   @@map("audit_events")
 }
+
+// ============================================
+// REFRESH TOKENS (Autenticação)
+// ============================================
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  token_hash String   @unique
+  user_id    String
+  user_type  String   // "saas_admin" | "tenant_user"
+  tenant_id  String?  // NULL para SaaS Admin, preenchido para Tenant User
+  expires_at DateTime
+  revoked    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@index([token_hash])
+  @@index([user_id])
+  @@index([expires_at])
+  @@index([revoked])
+  @@map("refresh_tokens")
+}
