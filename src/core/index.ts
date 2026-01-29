@@ -14,6 +14,7 @@ export * from "./tenant/contracts";
 
 // Modules Contracts
 export * from "./modules/contracts";
+export * from "./modules/activation.contracts";
 export { globalModuleRegistry, globalModuleServiceRegistry } from "./modules/registry";
 
 // RBAC Contracts
