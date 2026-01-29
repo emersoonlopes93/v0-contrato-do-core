@@ -146,7 +146,7 @@ Este documento define **exatamente o que cada camada pode e não pode fazer**. V
 
 ### ✅ Tabelas do Core
 
-```sql
+\`\`\`sql
 -- SEMPRE existem
 tenants
 tenant_users
@@ -160,43 +160,48 @@ role_permissions
 user_roles
 whitebrand_configs
 audit_events
+\`\`\`
 
 ### ✅ Tabelas de Módulos
 
 Cada módulo tem seu próprio schema:
 
-
+\`\`\`sql
 -- Exemplo: módulo delivery
 modules.delivery_orders
 modules.delivery_routes
 modules.delivery_assignments
+...
+\`\`\`
 
 ### ✅ Obrigação: tenant_id
 
-
-### ✅ Obrigação: tenant_id
-
-```sql
+\`\`\`sql
 -- ✅ Correto - Operacional
 INSERT INTO modules.delivery_orders (tenant_id, ...) VALUES (?, ...);
 
 -- ❌ Errado - Sem tenant_id
 INSERT INTO modules.delivery_orders (order_id, ...) VALUES (?, ...);
+\`\`\`
 
 ### Exceções (SEM tenant_id)
 
-```sql
-
+\`\`\`sql
 -- Global
 tenants
 saas_admin_users
 plans
 modules
 audit_events (pode ser NULL para SaaS Admin)
+\`\`\`
+
+---
 
 ## 6️⃣ Authorization - Fluxo Obrigatório
 
 ### Request → Auth → Tenant → Module → Permission
+
+\`\`\`
 1. Request chega com token
 2. Auth verifica token (SaaS Admin ou Tenant User)
 3. Se Tenant User:
@@ -205,11 +210,13 @@ audit_events (pode ser NULL para SaaS Admin)
    c. Verifica se usuário tem permission
 4. Se passa, executa
 5. Se falha, rejeita com 403/401
+\`\`\`
 
 ### Checklist de Verificação
 
 Para TODA ação sensível:
 
+\`\`\`typescript
 // 1. Verificar se user é SaaS Admin ou Tenant User
 const { context } = token;
 
@@ -233,6 +240,9 @@ if (context === UserContext.TENANT_USER) {
     throw new Error("Permission denied");
   }
 }
+\`\`\`
+
+---
 
 ## 7️⃣ Eventos - Quem Emite O Quê
 
@@ -249,7 +259,7 @@ if (context === UserContext.TENANT_USER) {
 
 ### Módulo Emite
 
-
+\`\`\`typescript
 // Registra seus eventTypes
 {
   id: "delivery.order.created",
@@ -264,6 +274,7 @@ await eventBus.publish({
   userId,
   data: { orderId, ... }
 });
+\`\`\`
 
 ### Ninguém Emite
 
@@ -277,40 +288,31 @@ await eventBus.publish({
 
 ### SaaS Admin Pode
 
+\`\`\`typescript
 // Configurar global
 await globalWhiteBrandService.updateConfig({
   systemName: "My SaaS",
   primaryColor: "#..."
 });
+\`\`\`
 
 ### Tenant User Recebe
 
-
+\`\`\`typescript
 // Do seu tenant
 const config = await tenantWhiteBrandService.getConfig(tenantId);
 // Ou fallback para global se não houver custom
-
-
-### Nunca Hardcoded
-
-
-### Tenant User Recebe
-
-
-// Do seu tenant
-const config = await tenantWhiteBrandService.getConfig(tenantId);
-// Ou fallback para global se não houver custom
-
+\`\`\`
 
 ### Nunca Hardcoded
 
-```typescript
-
+\`\`\`typescript
 // ❌ ERRADO - Hardcoded
 const logo = "https://mycompany.com/logo.png";
 
 // ✅ CORRETO - De config
 const { logo } = await whiteBrandService.getConfig(tenantId);
+\`\`\`
 
 ---
 
@@ -318,7 +320,7 @@ const { logo } = await whiteBrandService.getConfig(tenantId);
 
 ### ❌ Proibido
 
-
+\`\`\`typescript
 // ❌ Core acessando dados de módulo
 const orders = await supabase
   .from('modules.delivery_orders')
@@ -335,10 +337,11 @@ const orders = await supabase
   .from('modules.delivery_orders')
   .select()
   .eq('tenant_id', tenantId); // Bypassaria RLS
+\`\`\`
 
 ### ✅ Correto
 
-```typescript
+\`\`\`typescript
 // ✅ Módulo lê dados do próprio tenant
 const orders = await supabase
   .from('modules.delivery_orders')
@@ -348,6 +351,7 @@ const orders = await supabase
 
 // ✅ Core verifica permissão via AuthGuard
 const canAccess = await authGuard.requirePermission(token, 'module.read');
+\`\`\`
 
 ---
 
@@ -355,6 +359,7 @@ const canAccess = await authGuard.requirePermission(token, 'module.read');
 
 ### Tabelas do Core
 
+\`\`\`sql
 -- tenant_users: Apenas SaaS Admin ou próprio tenant
 ALTER TABLE tenant_users ENABLE ROW LEVEL SECURITY;
 
@@ -369,9 +374,11 @@ CREATE POLICY "Users can view own data"
   ON tenant_users FOR SELECT
   TO authenticated
   USING (id = auth.uid());
+\`\`\`
 
 ### Tabelas de Módulo
 
+\`\`\`sql
 -- Exemplo: delivery_orders
 ALTER TABLE modules.delivery_orders ENABLE ROW LEVEL SECURITY;
 
@@ -379,6 +386,7 @@ CREATE POLICY "Tenants can only see own orders"
   ON modules.delivery_orders FOR SELECT
   TO authenticated
   USING (tenant_id = auth.jwt() ->> 'tenant_id');
+\`\`\`
 
 ---
 

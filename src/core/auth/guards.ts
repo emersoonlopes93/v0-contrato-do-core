@@ -1,6 +1,8 @@
 import { JWTService } from './jwt';
 import type { SaaSAdminToken, TenantUserToken } from './contracts';
 import { TenantContextResolver } from '../context/tenant-context';
+import { tenantModuleService } from '../../adapters/prisma/modules/tenant-module.service';
+import type { ModuleId } from '../types/index';
 
 export interface GuardContext {
   token?: string;
@@ -160,6 +162,81 @@ export class AuthGuards {
 
     if (!requiredRoles.includes(result.token.role)) {
       throw new Error(`Role denied: one of [${requiredRoles.join(', ')}] required`);
+    }
+
+    return result;
+  }
+
+  // ==========================================
+  // MODULE GUARD
+  // ==========================================
+
+  /**
+   * Require module to be enabled for tenant
+   * 
+   * Resolves tenant_id from context and checks if module is active.
+   * Composable with other guards.
+   */
+  async requireModule(
+    context: GuardContext,
+    moduleId: ModuleId
+  ): Promise<TenantUserGuardResult> {
+    const result = await this.requireTenantUser(context);
+
+    // Check if module is enabled for this tenant
+    const isEnabled = await tenantModuleService.isEnabled(result.tenantId, moduleId);
+
+    if (!isEnabled) {
+      throw new Error(`Module ${moduleId} is not enabled for this tenant`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Require any of the specified modules to be enabled
+   */
+  async requireAnyModule(
+    context: GuardContext,
+    moduleIds: ModuleId[]
+  ): Promise<TenantUserGuardResult> {
+    const result = await this.requireTenantUser(context);
+
+    const checks = await Promise.all(
+      moduleIds.map((moduleId) =>
+        tenantModuleService.isEnabled(result.tenantId, moduleId)
+      )
+    );
+
+    const hasAnyModule = checks.some((enabled) => enabled);
+
+    if (!hasAnyModule) {
+      throw new Error(`One of modules [${moduleIds.join(', ')}] must be enabled for this tenant`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Require all specified modules to be enabled
+   */
+  async requireAllModules(
+    context: GuardContext,
+    moduleIds: ModuleId[]
+  ): Promise<TenantUserGuardResult> {
+    const result = await this.requireTenantUser(context);
+
+    const checks = await Promise.all(
+      moduleIds.map(async (moduleId) => ({
+        moduleId,
+        enabled: await tenantModuleService.isEnabled(result.tenantId, moduleId),
+      }))
+    );
+
+    const disabledModules = checks.filter((check) => !check.enabled).map((check) => check.moduleId);
+
+    if (disabledModules.length > 0) {
+      throw new Error(`Modules [${disabledModules.join(', ')}] must be enabled for this tenant`);
     }
 
     return result;
