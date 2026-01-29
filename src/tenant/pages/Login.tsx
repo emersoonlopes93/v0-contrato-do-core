@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useTenantAuth } from '../hooks/use-tenant-auth';
+import { useSession } from '../context/SessionContext';
 
 /**
  * Login Page - Mobile First
@@ -20,7 +20,7 @@ import { useTenantAuth } from '../hooks/use-tenant-auth';
  */
 
 export function LoginPage() {
-  const { login, isLoading } = useTenantAuth();
+  const { login, isLoading } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

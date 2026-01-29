@@ -1,12 +1,12 @@
 'use client';
 
 import React from "react"
-
-import { Menu, Home, User, LogOut } from 'lucide-react';
+import { useTenantAuth } from '../context/TenantAuthContext'; 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useTenantAuth } from '../hooks/use-tenant-auth';
+import { useSession } from '../context/SessionContext';
 import { useState } from 'react';
+import { Home, User, MessageCircle, Menu, LogOut } from 'lucide-react'; // Added imports
 
 /**
  * Tenant Layout - Mobile First
@@ -24,7 +24,7 @@ interface NavItem {
 }
 
 export function TenantLayout({ children }: { children: React.ReactNode }) {
-  const { token, logout } = useTenantAuth();
+  const { user, isModuleEnabled, logout } = useSession();
   const [isOpen, setIsOpen] = useState(false);
 
   // Base navigation - sempre disponível
@@ -33,11 +33,15 @@ export function TenantLayout({ children }: { children: React.ReactNode }) {
     { label: 'Perfil', href: '/tenant/profile', icon: <User className="h-5 w-5" /> },
   ];
 
-  // TODO: Add module-specific nav items based on token.activeModules
-  // Example:
-  // if (token?.activeModules?.includes('hello-module')) {
-  //   navItems.push({ label: 'Hello', href: '/tenant/hello', icon: <MessageCircle /> });
-  // }
+  // Module-specific navigation (runtime, from API)
+  if (isModuleEnabled('hello-module')) {
+    navItems.push({
+      label: 'Hello',
+      href: '/tenant/hello',
+      icon: <MessageCircle className="h-5 w-5" />,
+      moduleId: 'hello-module',
+    });
+  }
 
   return (
     <div className="flex h-screen flex-col">
@@ -76,13 +80,13 @@ export function TenantLayout({ children }: { children: React.ReactNode }) {
             </nav>
           </SheetContent>
         </Sheet>
-        <h1 className="text-sm font-semibold">{token?.email}</h1>
+        <h1 className="text-sm font-semibold">{user?.email}</h1>
       </header>
 
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 border-r bg-background md:block">
         <div className="flex h-14 items-center border-b px-4">
-          <h2 className="text-sm font-semibold">{token?.email}</h2>
+          <h2 className="text-sm font-semibold">{user?.email}</h2>
         </div>
         <nav className="flex flex-col gap-1 p-4">
           {navItems.map((item) => (

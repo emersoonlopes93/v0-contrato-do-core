@@ -1,21 +1,22 @@
 import React from "react"
-import { TenantAuthProvider, useTenantAuth } from './hooks/use-tenant-auth';
+import { SessionProvider, useSession } from './context/SessionContext';
 import { TenantLayout } from './components/TenantLayout';
 import { LoginPage } from './pages/Login';
 import { HomePage } from './pages/Home';
 import { HelloModulePage } from './pages/HelloModule';
+import { TenantAuthProvider } from './context/TenantAuthContext'; // Import TenantAuthProvider
 
 /**
  * Tenant App - Entry Point
  * 
  * - Simple client-side routing
- * - Auth protection
+ * - Auth protection via SessionContext
  * - Module-aware routing
  * - Capacitor-ready (no Next.js router)
  */
 
 function TenantRouter() {
-  const { token, isLoading } = useTenantAuth();
+  const { isAuthenticated, isLoading, token } = useSession(); // Declare token
 
   // Loading state
   if (isLoading) {
@@ -27,7 +28,7 @@ function TenantRouter() {
   }
 
   // Not authenticated
-  if (!token) {
+  if (!isAuthenticated) {
     return <LoginPage />;
   }
 
@@ -54,8 +55,8 @@ function TenantRouter() {
 
 export function TenantApp() {
   return (
-    <TenantAuthProvider>
+    <SessionProvider>
       <TenantRouter />
-    </TenantAuthProvider>
+    </SessionProvider>
   );
 }

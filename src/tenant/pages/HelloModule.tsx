@@ -1,6 +1,9 @@
 'use client';
 
 import React from "react"
+import { useTenantAuth } from '../context/TenantAuthContext'; // Import useTenantAuth
+import { useSession } from 'next-auth/react'; // Import useSession
+import { useUser } from '../context/UserContext'; // Import useUser
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
-import { useTenantAuth } from '../hooks/use-tenant-auth';
+import { ModuleGuard } from '../components/ModuleGuard';
 
 /**
  * Hello Module Page - Example
@@ -28,12 +31,15 @@ interface HelloMessage {
 }
 
 export function HelloModulePage() {
+  const { data: session } = useSession();
   const { token } = useTenantAuth();
+  const { user } = useUser(); // Declare user variable
   const [messages, setMessages] = useState<HelloMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState('');
+  const accessToken = token; // Declare accessToken variable
 
   // Load messages on mount
   useEffect(() => {
@@ -47,7 +53,7 @@ export function HelloModulePage() {
       // TODO: Call /api/v1/tenant/hello with Authorization header
       const response = await fetch('/api/v1/tenant/hello', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -76,7 +82,7 @@ export function HelloModulePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ message: newMessage }),
       });
@@ -95,78 +101,80 @@ export function HelloModulePage() {
     }
   };
 
-  if (!token) {
+  if (!user) {
     return null;
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Hello Module</h1>
-        <p className="text-muted-foreground">Exemplo de módulo plugável</p>
-      </div>
+    <ModuleGuard moduleId="hello-module">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Hello Module</h1>
+          <p className="text-muted-foreground">Exemplo de módulo plugável</p>
+        </div>
 
-      {/* Send Message Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Enviar Mensagem</CardTitle>
-          <CardDescription>Envie uma mensagem via hello-module</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSendMessage} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="message">Mensagem</Label>
-              <Input
-                id="message"
-                placeholder="Digite sua mensagem..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="h-11"
-              />
+        {/* Send Message Form */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Enviar Mensagem</CardTitle>
+            <CardDescription>Envie uma mensagem via hello-module</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSendMessage} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="message">Mensagem</Label>
+                <Input
+                  id="message"
+                  placeholder="Digite sua mensagem..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="h-11"
+                />
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" className="h-11 w-full" disabled={isSending}>
+                {isSending ? 'Enviando...' : 'Enviar'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Messages List */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Mensagens</h2>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Spinner className="h-8 w-8" />
             </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button type="submit" className="h-11 w-full" disabled={isSending}>
-              {isSending ? 'Enviando...' : 'Enviar'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Messages List */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Mensagens</h2>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Spinner className="h-8 w-8" />
-          </div>
-        ) : messages.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              Nenhuma mensagem ainda
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {messages.map((msg) => (
-              <Card key={msg.id}>
-                <CardContent className="pt-6">
-                  <p className="text-sm">{msg.message}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {new Date(msg.createdAt).toLocaleString('pt-BR')}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+          ) : messages.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Nenhuma mensagem ainda
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {messages.map((msg) => (
+                <Card key={msg.id}>
+                  <CardContent className="pt-6">
+                    <p className="text-sm">{msg.message}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {new Date(msg.createdAt).toLocaleString('pt-BR')}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </ModuleGuard>
   );
 }
