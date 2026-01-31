@@ -1,0 +1,7 @@
+- Este projeto segue um Contrato do Core imutável.
+- O Core é neutro e não contém regras de negócio.
+- SaaS Admin é separado de tenants.
+- Multi-tenant com tenant_id obrigatório.
+- Funcionalidades só via módulos.
+- Foco: governança, segurança e operação
+- Sempre responder em Portugues BR

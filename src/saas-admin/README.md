@@ -23,19 +23,19 @@ Este contexto é responsável por **administração da plataforma inteira**. Est
 
 SaaS Admin usa token diferente:
 
-```typescript
+\`\`\`typescript
 {
   context: UserContext.SAAS_ADMIN,
   userId: "uuid",
   role: "admin" | "moderator"
 }
-```
+\`\`\`
 
 Sem `tenantId` - isso é a separação.
 
 ## 📁 Estrutura
 
-```
+\`\`\`
 saas-admin/
 ├── pages/
 │   ├── TenantManagement.tsx
@@ -50,11 +50,11 @@ saas-admin/
     ├── tenantService.ts
     ├── moduleService.ts
     └── auditService.ts
-```
+\`\`\`
 
 ## 💡 Padrão de Serviço
 
-```typescript
+\`\`\`typescript
 // services/tenantService.ts
 import { TenantService } from "@/core";
 
@@ -73,11 +73,11 @@ export async function createTenant(name: string, planId: string) {
 
   return tenant;
 }
-```
+\`\`\`
 
 ## 🔑 Nunca Compartilhe Dados
 
-```typescript
+\`\`\`typescript
 // ❌ ERRADO - Expor tenant data ao SaaS Admin
 export async function getTenantOrders(tenantId: string) {
   return supabase
@@ -90,7 +90,7 @@ export async function getTenantOrders(tenantId: string) {
 export async function activateModuleForTenant(tenantId: string, moduleId: string) {
   return moduleRegistry.activateModuleForTenant(moduleId, tenantId);
 }
-```
+\`\`\`
 
 ## 📝 Próximos Passos
 

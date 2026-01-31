@@ -5,7 +5,7 @@ Este diretório contém todos os módulos da aplicação. Cada módulo é **comp
 ## 📋 Regras Obrigatórias
 
 1. **Cada módulo tem seu próprio diretório**
-   ```
+   \`\`\`
    modules/
    ├── [module-name]/
    │   ├── types/
@@ -13,20 +13,20 @@ Este diretório contém todos os módulos da aplicação. Cada módulo é **comp
    │   ├── permissions/
    │   ├── events/
    │   └── index.ts
-   ```
+   \`\`\`
 
 2. **Cada módulo tem seu próprio schema no banco**
-   ```sql
+   \`\`\`sql
    -- Não usar core.*
    -- Usar modules.[module-name].*
    CREATE TABLE modules.[module-name]_items (
      tenant_id UUID NOT NULL,
      ...
    );
-   ```
+   \`\`\`
 
 3. **Cada módulo registra suas permissões**
-   ```typescript
+   \`\`\`typescript
    const module = {
      id: "module.name",
      permissions: [
@@ -37,7 +37,7 @@ Este diretório contém todos os módulos da aplicação. Cada módulo é **comp
        { id: "module.item.created", name: "Item Created" }
      ]
    };
-   ```
+   \`\`\`
 
 4. **Comunicação apenas via EventBus**
    - Módulos NÃO acessam dados de outros módulos diretamente
@@ -45,13 +45,13 @@ Este diretório contém todos os módulos da aplicação. Cada módulo é **comp
    - Outros módulos se inscrevem no EventBus
 
 5. **Obrigação: tenant_id em toda tabela operacional**
-   ```sql
+   \`\`\`sql
    -- ✅ Correto
    INSERT INTO modules.delivery_orders (tenant_id, ...) VALUES (?);
 
    -- ❌ Errado
    INSERT INTO modules.delivery_orders (order_id, ...) VALUES (?);
-   ```
+   \`\`\`
 
 ## 🚫 Proibições Absolutas
 
@@ -64,7 +64,7 @@ Este diretório contém todos os módulos da aplicação. Cada módulo é **comp
 
 ## ✅ Exemplo de Estrutura
 
-```typescript
+\`\`\`typescript
 // modules/delivery/index.ts
 import { asModuleId } from "@/core";
 
@@ -107,7 +107,7 @@ export async function handleCreateOrder(request: Request, token: TenantUserToken
 
   return order;
 }
-```
+\`\`\`
 
 ## 🔄 Fluxo de Inicialização
 

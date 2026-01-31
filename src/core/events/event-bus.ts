@@ -1,4 +1,5 @@
-import type { DomainEvent, EventBus, EventHandler, AuditLogger, AuditEvent } from "./contracts";
+import type { DomainEvent, EventBus, EventHandler, AuditLogger } from "./contracts";
+import type { AuditEvent } from "../types";
 
 class InMemoryEventBus implements EventBus {
   private handlers: Map<string, Set<EventHandler>> = new Map();

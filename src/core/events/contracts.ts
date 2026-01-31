@@ -1,4 +1,4 @@
-import type { TenantId, UserId, ModuleId, AuditEvent } from "../types/index";
+import type { TenantId, UserId, AuditEvent } from "../types/index";
 
 export interface DomainEvent {
   id: string;

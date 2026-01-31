@@ -1,12 +1,21 @@
 import type { ModuleId, TenantId } from "../types/index";
+import type { IDatabaseAdapter } from "../db/contracts";
+import type { EventBus } from "../events/contracts";
 
 export interface ModuleRegisterPayload {
   id: ModuleId;
   name: string;
+  description?: string;
   version: string;
   permissions: ModulePermission[];
   eventTypes: ModuleEventType[];
   requiredPlan?: string;
+  uiEntry?: {
+    tenantBasePath: string;
+    homeLabel: string;
+    icon: string;
+    category: string;
+  };
 }
 
 export interface ModulePermission {
@@ -41,4 +50,10 @@ export interface ModuleRegistry {
 export interface ModuleServiceRegistry {
   register<T>(moduleId: ModuleId, serviceKey: string, service: T): void;
   get<T>(moduleId: ModuleId, serviceKey: string): T | null;
+}
+
+export interface ModuleContext {
+  database: IDatabaseAdapter;
+  eventBus: EventBus;
+  registerService<T>(moduleId: ModuleId, serviceKey: string, service: T): void;
 }

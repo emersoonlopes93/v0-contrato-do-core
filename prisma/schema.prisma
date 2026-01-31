@@ -1,0 +1,601 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MenuCouponType {
+  percent
+  fixed
+}
+
+enum MenuComboPricingType {
+  fixed_price
+  discount_percent
+  discount_amount
+}
+
+model SaaSAdminUser {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  name          String?
+  role          String   @default("admin")
+  status        String   @default("active")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("saas_admin_users")
+}
+
+model Plan {
+  id            String               @id @default(uuid())
+  name          String
+  slug          String               @unique
+  description   String
+  price         Float                @default(0)
+  limits        Json                 @default("{}")
+  status        String               @default("active")
+  created_at    DateTime             @default(now())
+  updated_at    DateTime             @updatedAt
+  subscriptions TenantSubscription[]
+
+  @@map("plans")
+}
+
+model Module {
+  id                String         @id @default(uuid())
+  name              String
+  slug              String         @unique
+  version           String
+  description       String
+  permissions       Json           @default("[]")
+  events            Json           @default("[]")
+  required_plan     String?
+  status            String         @default("active")
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+  modulePermissions Permission[]
+  tenantModules     TenantModule[]
+
+  @@map("modules")
+}
+
+model Tenant {
+  id               String               @id @default(uuid())
+  name             String
+  slug             String               @unique
+  status           String               @default("active")
+  onboarded        Boolean              @default(false)
+  onboarded_at     DateTime?
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+  auditEvents      AuditEvent[]
+  roles            Role[]
+  modules          TenantModule[]
+  subscriptions    TenantSubscription[]
+  users            TenantUser[]
+  userRoles        UserRole[]
+  menuOnlineCategories       Category[]
+  menuOnlineProducts         Product[]
+  menuOnlineProductImages    ProductImage[]
+  menuOnlinePriceVariations  PriceVariation[]
+  menuOnlineModifierGroups   ModifierGroup[]
+  menuOnlineModifierOptions  ModifierOption[]
+  menuOnlineProductModifiers ProductModifier[]
+  menuOnlineSettings         MenuSettings?
+  menuOnlineUpsellSuggestions MenuUpsellSuggestion[]
+  menuOnlineCombos            MenuCombo[]
+  menuOnlineComboItems        MenuComboItem[]
+  menuOnlineCoupons           MenuCoupon[]
+  menuOnlineCouponRedemptions MenuCouponRedemption[]
+  menuOnlineLoyaltyConfig     MenuLoyaltyConfig?
+  menuOnlineCashbackConfig    MenuCashbackConfig?
+  menuOnlineCustomerBalances  MenuCustomerBalance[]
+  whiteBrandConfig WhiteBrandConfig?
+
+  @@index([slug])
+  @@index([status])
+  @@map("tenants")
+}
+
+model TenantSubscription {
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  plan_id              String
+  status               String    @default("active")
+  current_period_start DateTime
+  current_period_end   DateTime
+  cancelled_at         DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  plan                 Plan      @relation(fields: [plan_id], references: [id])
+  tenant               Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([plan_id])
+  @@index([status])
+  @@map("tenant_subscriptions")
+}
+
+model TenantUser {
+  id            String       @id @default(uuid())
+  tenant_id     String
+  email         String
+  password_hash String
+  name          String?
+  status        String       @default("active")
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+  auditEvents   AuditEvent[]
+  tenant        Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  userRoles     UserRole[]
+
+  @@unique([tenant_id, email])
+  @@index([tenant_id])
+  @@index([email])
+  @@index([status])
+  @@map("tenant_users")
+}
+
+model TenantModule {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  module_id      String
+  status         String    @default("active")
+  activated_at   DateTime  @default(now())
+  deactivated_at DateTime?
+  module         Module    @relation(fields: [module_id], references: [id])
+  tenant         Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, module_id])
+  @@index([tenant_id])
+  @@index([module_id])
+  @@map("tenant_modules")
+}
+
+model Role {
+  id              String           @id @default(uuid())
+  tenant_id       String
+  name            String
+  slug            String
+  description     String
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+  rolePermissions RolePermission[]
+  tenant          Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+
+  @@unique([tenant_id, slug])
+  @@index([tenant_id])
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  module_id       String
+  name            String
+  slug            String
+  description     String
+  created_at      DateTime         @default(now())
+  module          Module           @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+
+  @@unique([module_id, slug])
+  @@index([module_id])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id            String     @id @default(uuid())
+  role_id       String
+  permission_id String
+  created_at    DateTime   @default(now())
+  permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+  role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@unique([role_id, permission_id])
+  @@index([role_id])
+  @@index([permission_id])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id          String     @id @default(uuid())
+  user_id     String
+  tenant_id   String
+  role_id     String
+  assigned_at DateTime   @default(now())
+  role        Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  tenant      Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user        TenantUser @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role_id])
+  @@index([user_id])
+  @@index([tenant_id])
+  @@index([role_id])
+  @@map("user_roles")
+}
+
+model WhiteBrandConfig {
+  id              String   @id @default(uuid())
+  tenant_id       String   @unique
+  logo            String?
+  primary_color   String
+  secondary_color String
+  domain          String?
+  custom_metadata Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([domain])
+  @@map("white_brand_configs")
+}
+
+model AuditEvent {
+  id        String     @id @default(uuid())
+  tenant_id String?
+  user_id   String?
+  action    String
+  resource  String
+  old_value Json?
+  new_value Json?
+  status    String     @default("success")
+  metadata  Json?
+  timestamp DateTime   @default(now())
+  tenant    Tenant?    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user      TenantUser? @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([user_id])
+  @@index([action])
+  @@index([timestamp])
+  @@map("audit_events")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  token_hash String   @unique
+  user_id    String
+  user_type  String
+  tenant_id  String?
+  expires_at DateTime
+  revoked    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@index([token_hash])
+  @@index([user_id])
+  @@index([expires_at])
+  @@index([revoked])
+  @@map("refresh_tokens")
+}
+
+model Category {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  name         String
+  description  String?
+  sort_order   Int      @default(0)
+  status       String   @default("active")
+  availability Json?
+  visible_delivery Boolean @default(true)
+  visible_counter  Boolean @default(true)
+  visible_table    Boolean @default(true)
+  deleted_at   DateTime?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@index([tenant_id])
+  @@map("menu_online_categories")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  category_id String
+  sku         String?
+  name        String
+  description String?
+  status      String   @default("active")
+  sort_order  Int      @default(0)
+  base_price  Float    @default(0)
+  promo_price     Float?
+  promo_starts_at DateTime?
+  promo_ends_at   DateTime?
+  deleted_at      DateTime?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant           Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  category         Category          @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  images           ProductImage[]
+  priceVariations  PriceVariation[]
+  productModifiers ProductModifier[]
+  upsellFromSuggestions      MenuUpsellSuggestion[] @relation("UpsellFromProduct")
+  upsellSuggestedSuggestions MenuUpsellSuggestion[] @relation("UpsellSuggestedProduct")
+  comboItems                 MenuComboItem[]
+
+  @@index([tenant_id])
+  @@index([category_id])
+  @@map("menu_online_products")
+}
+
+model ProductImage {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  product_id String
+  url        String
+  alt_text   String?
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([product_id])
+  @@map("menu_online_product_images")
+}
+
+model PriceVariation {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  product_id String
+  name       String
+  price      Float
+  price_delta Float?  @default(0)
+  is_default Boolean  @default(false)
+  sort_order Int      @default(0)
+  status     String   @default("active")
+  deleted_at DateTime?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([product_id])
+  @@map("menu_online_price_variations")
+}
+
+model ModifierGroup {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  name        String
+  description String?
+  min_select  Int      @default(0)
+  max_select  Int      @default(1)
+  is_required Boolean  @default(false)
+  sort_order  Int      @default(0)
+  status      String   @default("active")
+  deleted_at  DateTime?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant           Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  options          ModifierOption[]
+  productModifiers ProductModifier[]
+
+  @@index([tenant_id])
+  @@map("menu_online_modifier_groups")
+}
+
+model ModifierOption {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  group_id    String
+  name        String
+  price_delta Float    @default(0)
+  sort_order  Int      @default(0)
+  status      String   @default("active")
+  deleted_at  DateTime?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  group  ModifierGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([group_id])
+  @@map("menu_online_modifier_options")
+}
+
+model ProductModifier {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  product_id String
+  group_id   String
+  sort_order Int      @default(0)
+  deleted_at DateTime?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant  Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  group   ModifierGroup @relation(fields: [group_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, product_id, group_id])
+  @@index([tenant_id])
+  @@index([product_id])
+  @@index([group_id])
+  @@map("menu_online_product_modifiers")
+}
+
+model MenuSettings {
+  id                String   @id @default(uuid())
+  tenant_id         String   @unique
+  currency          String   @default("BRL")
+  show_out_of_stock Boolean  @default(false)
+  show_images       Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("menu_online_settings")
+}
+
+model MenuUpsellSuggestion {
+  id                   String   @id @default(uuid())
+  tenant_id             String
+  from_product_id       String?
+  suggested_product_id  String
+  sort_order            Int      @default(0)
+  status                String   @default("active")
+  deleted_at            DateTime?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  tenant            Tenant  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  fromProduct       Product? @relation("UpsellFromProduct", fields: [from_product_id], references: [id], onDelete: Cascade)
+  suggestedProduct  Product  @relation("UpsellSuggestedProduct", fields: [suggested_product_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, from_product_id, suggested_product_id])
+  @@index([tenant_id])
+  @@index([from_product_id])
+  @@index([suggested_product_id])
+  @@map("menu_online_upsell_suggestions")
+}
+
+model MenuCombo {
+  id              String             @id @default(uuid())
+  tenant_id       String
+  name            String
+  description     String?
+  pricing_type    MenuComboPricingType
+  fixed_price     Float?
+  discount_percent Float?
+  discount_amount Float?
+  status          String             @default("active")
+  deleted_at      DateTime?
+  created_at      DateTime           @default(now())
+  updated_at      DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  items  MenuComboItem[]
+
+  @@index([tenant_id])
+  @@map("menu_online_combos")
+}
+
+model MenuComboItem {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  combo_id   String
+  product_id String
+  min_qty    Int      @default(1)
+  max_qty    Int      @default(1)
+  sort_order Int      @default(0)
+  status     String   @default("active")
+  deleted_at DateTime?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  combo   MenuCombo @relation(fields: [combo_id], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, combo_id, product_id])
+  @@index([tenant_id])
+  @@index([combo_id])
+  @@index([product_id])
+  @@map("menu_online_combo_items")
+}
+
+model MenuCoupon {
+  id                   String        @id @default(uuid())
+  tenant_id             String
+  code                  String
+  type                  MenuCouponType
+  value                 Float
+  starts_at             DateTime?
+  ends_at               DateTime?
+  max_uses_total         Int?
+  max_uses_per_customer  Int?
+  status                String        @default("active")
+  deleted_at            DateTime?
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+
+  tenant       Tenant                @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  redemptions  MenuCouponRedemption[]
+
+  @@unique([tenant_id, code])
+  @@index([tenant_id])
+  @@index([code])
+  @@map("menu_online_coupons")
+}
+
+model MenuCouponRedemption {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  coupon_id    String
+  customer_key String
+  redeemed_at  DateTime @default(now())
+
+  tenant Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  coupon MenuCoupon @relation(fields: [coupon_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([coupon_id])
+  @@index([customer_key])
+  @@map("menu_online_coupon_redemptions")
+}
+
+model MenuLoyaltyConfig {
+  id                 String   @id @default(uuid())
+  tenant_id           String   @unique
+  enabled             Boolean  @default(false)
+  points_per_currency Float    @default(0)
+  currency_per_point  Float    @default(0)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("menu_online_loyalty_config")
+}
+
+model MenuCashbackConfig {
+  id            String   @id @default(uuid())
+  tenant_id      String   @unique
+  enabled        Boolean  @default(false)
+  percent        Float    @default(0)
+  expires_days   Int?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("menu_online_cashback_config")
+}
+
+model MenuCustomerBalance {
+  id             String   @id @default(uuid())
+  tenant_id       String
+  customer_key    String
+  loyalty_points  Float    @default(0)
+  cashback_balance Float   @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, customer_key])
+  @@index([tenant_id])
+  @@index([customer_key])
+  @@map("menu_online_customer_balances")
+}

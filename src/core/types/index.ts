@@ -73,6 +73,7 @@ export interface ModuleDefinition {
 
 export interface Plan {
   id: string;
+  slug: string;
   name: string;
   description: string;
   modules: ModuleId[];

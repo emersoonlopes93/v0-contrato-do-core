@@ -1,19 +1,38 @@
-import { createClient } from "@supabase/supabase-js";
+/**
+ * Database - Factory Pattern
+ * 
+ * Core expõe apenas interfaces e factory.
+ * Implementações específicas ficam em /adapters
+ */
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+import type {
+  IDatabaseAdapter,
+  IDatabaseAdapterFactory,
+  IRepository,
+  ITransaction,
+  ITenantContext,
+  IQueryFilter,
+  IQueryOptions,
+} from './contracts';
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Missing Supabase credentials in environment");
-}
+// Re-export interfaces
+export type {
+  IDatabaseAdapter,
+  IDatabaseAdapterFactory,
+  IRepository,
+  ITransaction,
+  ITenantContext,
+  IQueryFilter,
+  IQueryOptions,
+};
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
-
+// Database Entity Types
 export interface Database {
   tenants: TenantTable;
   tenantUsers: TenantUserTable;
   saasAdminUsers: SaaSAdminUserTable;
   plans: PlanTable;
+  tenantSubscriptions: TenantSubscriptionTable;
   modules: ModuleTable;
   tenantModules: TenantModuleTable;
   roles: RoleTable;
@@ -27,52 +46,70 @@ export interface Database {
 export interface TenantTable {
   id: string;
   name: string;
-  plan_id: string;
+  slug: string;
   status: "active" | "suspended" | "deleted";
-  created_at: string;
-  updated_at: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface TenantSubscriptionTable {
+  id: string;
+  tenant_id: string;
+  plan_id: string;
+  status: "active" | "cancelled" | "expired";
+  current_period_start: Date;
+  current_period_end: Date;
+  cancelled_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface TenantUserTable {
   id: string;
   tenant_id: string;
   email: string;
-  role: string;
+  password_hash: string;
+  name: string | null;
   status: "active" | "inactive" | "deleted";
-  created_at: string;
-  updated_at: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface SaaSAdminUserTable {
   id: string;
   email: string;
+  password_hash: string;
+  name: string | null;
   role: "admin" | "moderator";
   status: "active" | "inactive" | "deleted";
-  created_at: string;
-  updated_at: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface PlanTable {
   id: string;
   name: string;
+  slug: string;
   description: string;
-  modules: string[];
+  price: number;
   limits: Record<string, number>;
   status: "active" | "inactive";
-  created_at: string;
-  updated_at: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface ModuleTable {
   id: string;
   name: string;
+  slug: string;
   version: string;
+  description: string;
   permissions: string[];
   events: string[];
   required_plan: string | null;
   status: "active" | "inactive";
-  created_at: string;
-  updated_at: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface TenantModuleTable {
@@ -80,31 +117,34 @@ export interface TenantModuleTable {
   tenant_id: string;
   module_id: string;
   status: "active" | "inactive";
-  activated_at: string;
-  deactivated_at: string | null;
+  activated_at: Date;
+  deactivated_at: Date | null;
 }
 
 export interface RoleTable {
   id: string;
   tenant_id: string;
   name: string;
+  slug: string;
   description: string;
-  created_at: string;
-  updated_at: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface PermissionTable {
   id: string;
   module_id: string;
   name: string;
+  slug: string;
   description: string;
-  created_at: string;
+  created_at: Date;
 }
 
 export interface RolePermissionTable {
   id: string;
   role_id: string;
   permission_id: string;
+  created_at: Date;
 }
 
 export interface UserRoleTable {
@@ -112,19 +152,19 @@ export interface UserRoleTable {
   user_id: string;
   tenant_id: string;
   role_id: string;
-  assigned_at: string;
+  assigned_at: Date;
 }
 
 export interface WhiteBrandTable {
   id: string;
-  tenant_id: string | null;
+  tenant_id: string;
   logo: string | null;
   primary_color: string;
   secondary_color: string;
   domain: string | null;
   custom_metadata: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface AuditEventTable {
@@ -137,5 +177,29 @@ export interface AuditEventTable {
   new_value: unknown | null;
   status: "success" | "failure";
   metadata: Record<string, unknown> | null;
-  timestamp: string;
+  timestamp: Date;
+}
+
+// Database Adapter Factory
+let databaseAdapterFactory: IDatabaseAdapterFactory | null = null;
+
+export function registerDatabaseAdapterFactory(factory: IDatabaseAdapterFactory) {
+  databaseAdapterFactory = factory;
+}
+
+export async function createDatabaseAdapter(
+  connectionString?: string
+): Promise<IDatabaseAdapter> {
+  if (!databaseAdapterFactory) {
+    throw new Error(
+      'Database adapter factory not registered. Call registerDatabaseAdapterFactory() first.'
+    );
+  }
+
+  const dbUrl = connectionString || process.env.DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL not provided');
+  }
+
+  return await databaseAdapterFactory.create(dbUrl);
 }

@@ -1,31 +1,45 @@
+/**
+ * Auth Contracts
+ * 
+ * Interfaces para autenticação do Core
+ */
+
 import type { AuthToken, SaaSAdminToken, TenantUserToken, UserContext } from "../types/index";
 
-export interface AuthService {
-  generateSaaSAdminToken(userId: string, role: "admin" | "moderator"): Promise<SaaSAdminToken>;
-  generateTenantUserToken(
-    userId: string,
-    tenantId: string,
-    role: string,
-    permissions: string[],
-    activeModules: string[]
-  ): Promise<TenantUserToken>;
+// Re-export types
+export type { AuthToken, SaaSAdminToken, TenantUserToken, UserContext };
 
-  verifySaaSAdminToken(token: SaaSAdminToken): Promise<boolean>;
-  verifyTenantUserToken(token: TenantUserToken): Promise<boolean>;
-
-  extractContext(token: AuthToken): UserContext;
+/**
+ * Auth Service Interface
+ * Implementado em /src/core/auth/saas-admin e /src/core/auth/tenant
+ */
+export interface IAuthService {
+  login(credentials: unknown): Promise<unknown>;
+  register(data: unknown): Promise<unknown>;
+  refreshToken(refreshToken: string): Promise<{ accessToken: string }>;
+  logout(refreshToken: string): Promise<void>;
 }
 
-export interface AuthGuard {
-  requireSaaSAdmin(token: AuthToken): Promise<SaaSAdminToken>;
-  requireTenantUser(token: AuthToken): Promise<TenantUserToken>;
-  requirePermission(token: TenantUserToken, permission: string): Promise<boolean>;
-  requireModule(token: TenantUserToken, moduleId: string): Promise<boolean>;
+/**
+ * Auth Guard Interface
+ * Implementado em /src/core/auth/guards.ts
+ */
+export interface IAuthGuard {
+  requireSaaSAdmin(context: unknown): Promise<unknown>;
+  requireTenantUser(context: unknown): Promise<unknown>;
+  requirePermission(context: unknown, permission: string): Promise<unknown>;
+  requireRole(context: unknown, role: string): Promise<unknown>;
 }
 
-export interface AuthRepository {
-  saveSaaSAdminUser(userId: string, email: string, role: "admin" | "moderator"): Promise<void>;
-  saveTenantUser(userId: string, tenantId: string, email: string, role: string): Promise<void>;
+/**
+ * Auth Repository Interface
+ * Implementado em /src/adapters/prisma/repositories/auth-repository.ts
+ */
+export interface IAuthRepository {
+  findSaaSAdminByEmail(email: string): Promise<unknown>;
+  findTenantUserByEmail(tenantId: string, email: string): Promise<unknown>;
   getTenantUserPermissions(userId: string, tenantId: string): Promise<string[]>;
-  getTenantUserActiveModules(userId: string, tenantId: string): Promise<string[]>;
+  getTenantActiveModules(tenantId: string): Promise<string[]>;
+  saveRefreshToken(data: unknown): Promise<unknown>;
+  revokeRefreshToken(token: string): Promise<unknown>;
 }
