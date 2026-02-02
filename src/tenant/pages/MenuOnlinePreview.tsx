@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { withModuleGuard, PermissionGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ProductCard } from '@/src/tenant/components/cards';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type {
   ApiErrorResponse,
@@ -165,54 +166,29 @@ function MenuOnlinePreviewPageContent() {
                     {list.length === 0 ? (
                       <div className="text-sm text-muted-foreground">Nenhum produto nesta categoria</div>
                     ) : (
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {list.map((p) => {
                           const defaultVariation = p.priceVariations.find((v) => v.isDefault) ?? p.priceVariations[0] ?? null;
                           const mainPrice = defaultVariation ? defaultVariation.price : p.basePrice;
-                          const mainPriceLabel = defaultVariation ? defaultVariation.name : 'Padrão';
-                          const firstImage = p.images[0];
-                          const modifierLabels = p.modifierGroupIds
-                            .map((id) => modifierGroupNameById.get(id))
-                            .filter((name): name is string => typeof name === 'string' && name.trim() !== '');
+                          const mainPriceLabel = defaultVariation ? defaultVariation.name : null;
+                          const firstImage = showImages ? p.images[0]?.url : null;
                           return (
-                            <Card key={p.id}>
-                              <CardHeader>
-                                <CardTitle className="text-base">{p.name}</CardTitle>
-                                <CardDescription>
-                                  {formatPrice(mainPrice, currency)} · {mainPriceLabel}
-                                </CardDescription>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
-                                {p.description && <div className="text-sm text-muted-foreground">{p.description}</div>}
-
-                                {showImages && firstImage?.url && (
-                                  <img
-                                    src={firstImage.url}
-                                    alt={firstImage.altText ?? p.name}
-                                    className="h-40 w-full rounded-md object-cover"
-                                  />
-                                )}
-
-                                {p.priceVariations.length > 1 && (
-                                  <div className="space-y-1 text-sm">
-                                    <div className="font-medium">Variações</div>
-                                    <div className="text-muted-foreground">
-                                      {p.priceVariations
-                                        .filter((v) => v.status === 'active')
-                                        .map((v) => `${v.name}: ${formatPrice(v.price, currency)}`)
-                                        .join(' · ')}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {modifierLabels.length > 0 && (
-                                  <div className="space-y-1 text-sm">
-                                    <div className="font-medium">Complementos</div>
-                                    <div className="text-muted-foreground">{modifierLabels.join(' · ')}</div>
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
+                            <ProductCard
+                              key={p.id}
+                              variant="preview"
+                              name={p.name}
+                              description={p.description}
+                              price={mainPrice}
+                              imageUrl={firstImage}
+                              status={p.status}
+                              currency={currency}
+                              priceLabel={mainPriceLabel ?? undefined}
+                              promoPrice={p.promoPrice}
+                              onClick={() => {
+                                // Poderia abrir modal com detalhes
+                                console.log('[v0] Ver detalhes do produto:', p.id);
+                              }}
+                            />
                           );
                         })}
                       </div>

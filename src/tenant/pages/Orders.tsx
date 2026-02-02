@@ -5,6 +5,7 @@ import { withModuleGuard, PermissionGuard } from '@/src/tenant/components/Module
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { OrderCard } from '@/src/tenant/components/cards';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { TenantSettingsDTO } from '@/src/types/tenant-settings';
@@ -237,18 +238,19 @@ function OrdersPageContent() {
         ) : (
           <div className="grid gap-3">
             {ordered.map((o) => (
-              <Card key={o.id} className="cursor-pointer" onClick={() => (window.location.href = `${basePath}/orders/${o.id}`)}>
-                <CardHeader>
-                  <CardTitle className="text-base">#{o.orderNumber}</CardTitle>
-                  <CardDescription>
-                    {o.status} · {o.source} · {formatDateTime(o.createdAt, effectiveTimezone)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between text-sm">
-                  <div className="text-muted-foreground">{o.itemsCount} item(ns)</div>
-                  <div className="font-medium">{formatCurrency(o.total, tenantSettings?.currency ?? null)}</div>
-                </CardContent>
-              </Card>
+              <OrderCard
+                key={o.id}
+                variant="full"
+                orderNumber={o.orderNumber}
+                status={o.status}
+                total={o.total}
+                itemsCount={o.itemsCount}
+                createdAt={o.createdAt}
+                source={o.source}
+                currency={tenantSettings?.currency ?? 'BRL'}
+                timezone={effectiveTimezone}
+                onClick={() => (window.location.href = `${basePath}/orders/${o.id}`)}
+              />
             ))}
           </div>
         )}

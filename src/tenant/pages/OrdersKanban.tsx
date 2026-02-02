@@ -5,6 +5,7 @@ import { withModuleGuard, PermissionGuard } from '@/src/tenant/components/Module
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { OrderCard, StatusBadge } from '@/src/tenant/components/cards';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { TenantSettingsDTO } from '@/src/types/tenant-settings';
@@ -232,26 +233,30 @@ function OrdersKanbanPageContent() {
               const list = byStatus.get(c.key) ?? [];
               return (
                 <div key={c.key} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium">{c.title}</div>
-                    <div className="text-xs text-muted-foreground">{list.length}</div>
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-semibold">{c.title}</div>
+                      <StatusBadge status={c.key} label="" className="h-2 w-2 p-0" />
+                    </div>
+                    <div className="rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {list.length}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     {list.map((o) => (
-                      <Card
+                      <OrderCard
                         key={o.id}
-                        className="cursor-pointer"
+                        variant="compact"
+                        orderNumber={o.orderNumber}
+                        status={o.status}
+                        total={o.total}
+                        itemsCount={o.itemsCount}
+                        createdAt={o.createdAt}
+                        source={o.source}
+                        currency={tenantSettings?.currency ?? 'BRL'}
+                        timezone={effectiveTimezone}
                         onClick={() => (window.location.href = `${basePath}/orders/${o.id}`)}
-                      >
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm">#{o.orderNumber}</CardTitle>
-                          <CardDescription className="text-xs">{o.source}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex items-center justify-between text-xs">
-                          <div className="text-muted-foreground">{o.itemsCount} item(ns)</div>
-                          <div className="font-medium">{formatCurrency(o.total, tenantSettings?.currency ?? null)}</div>
-                        </CardContent>
-                      </Card>
+                      />
                     ))}
                   </div>
                 </div>
