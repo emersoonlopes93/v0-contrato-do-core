@@ -3,213 +3,89 @@
 import React, { useState } from "react"
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useSession } from '../context/SessionContext';
-import { Home, User, MessageCircle, Menu, LogOut, BookOpen, ShoppingCart, BellRing, Settings, CreditCard } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
-import { useTenant } from '@/src/contexts/TenantContext';
-
+import { Menu } from 'lucide-react';
+import { TenantHeader } from './TenantHeader';
+import { TenantSidebar } from './TenantSidebar';
+import { TenantFooter } from './TenantFooter';
 import { PlanUsageIndicator } from './PlanUsageIndicator';
 
 /**
- * Tenant Layout - Mobile First
+ * Tenant Layout - Layout Base Oficial
  * 
- * - Mobile: Bottom navigation
- * - Tablet/Desktop: Collapsible sidebar
- * - Capacitor-ready (no browser-only APIs)
+ * HIERARQUIA (de cima para baixo):
+ * 1. Nome do SaaS
+ * 2. Logo ou Nome do Restaurante (Tenant)
+ * 3. Status da Loja: Aberta | Fechada
+ * 4. Link: Ver Cardápio Público
+ * ────────────────────────
+ * 5. Menu do Sistema (módulos)
+ * ────────────────────────
+ * 6. Rodapé: Nome do usuário + Cargo (RBAC)
+ * 
+ * - Mobile-first com sidebar colapsável
+ * - Desktop com sidebar fixa
+ * - Sem lógica de negócio, apenas estrutura
  */
 
-type NavItem = {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-  moduleId?: string;
-};
-
 export function TenantLayout({ children }: { children: React.ReactNode }) {
-  const { tenantSlug } = useTenant();
-  const { user, isModuleEnabled, logout } = useSession();
-  const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
-  const basePath = `/tenant/${tenantSlug}`;
-
-  // Base navigation - sempre disponível
-  const navItems: NavItem[] = [
-    { label: 'Home', href: `${basePath}/dashboard`, icon: <Home className="h-5 w-5" /> },
-    { label: 'Perfil', href: `${basePath}/profile`, icon: <User className="h-5 w-5" /> },
-  ];
-
-  // Module-specific navigation (runtime, from API)
-  if (isModuleEnabled('hello-module')) {
-    navItems.push({
-      label: 'Hello',
-      href: `${basePath}/hello`,
-      icon: <MessageCircle className="h-5 w-5" />,
-      moduleId: 'hello-module',
-    });
-  }
-
-  if (isModuleEnabled('menu-online')) {
-    navItems.push({
-      label: 'Cardápio',
-      href: `${basePath}/menu-online`,
-      icon: <BookOpen className="h-5 w-5" />,
-      moduleId: 'menu-online',
-    });
-  }
-
-  if (isModuleEnabled('orders-module')) {
-    navItems.push({
-      label: 'Pedidos',
-      href: `${basePath}/orders`,
-      icon: <ShoppingCart className="h-5 w-5" />,
-      moduleId: 'orders-module',
-    });
-  }
-
-  if (isModuleEnabled('sound-notifications')) {
-    navItems.push({
-      label: 'Sons',
-      href: `${basePath}/sound-notifications/settings`,
-      icon: <BellRing className="h-5 w-5" />,
-      moduleId: 'sound-notifications',
-    });
-  }
-
-  if (isModuleEnabled('settings')) {
-    navItems.push({
-      label: 'Configurações',
-      href: `${basePath}/settings`,
-      icon: <Settings className="h-5 w-5" />,
-      moduleId: 'settings',
-    });
-  }
-
-  if (isModuleEnabled('checkout')) {
-    navItems.push({
-      label: 'Checkout',
-      href: `${basePath}/checkout`,
-      icon: <CreditCard className="h-5 w-5" />,
-      moduleId: 'checkout',
-    });
-  }
-
-  if (isModuleEnabled('financial')) {
-    navItems.push({
-      label: 'Financeiro',
-      href: `${basePath}/financial`,
-      icon: <CreditCard className="h-5 w-5" />,
-      moduleId: 'financial',
-    });
-  }
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Header - Mobile */}
-      <header className="flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 flex flex-col">
-             <div className="flex h-14 items-center border-b px-4 mb-4">
-                 {theme.logo ? (
-                     <img src={theme.logo} alt="Logo" className="h-8 max-w-full object-contain" />
-                 ) : (
-                     <span className="font-bold">Tenant App</span>
-                 )}
-            </div>
-            <nav className="flex-1 flex flex-col gap-2 overflow-y-auto">
-              {navItems.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-accent"
-                  onClick={() => setIsOpen(false)}
-                >
-                  {item.icon}
-                  {item.label}
-                </a>
-              ))}
-            </nav>
-            
-            <div className="border-t pt-4">
-               <PlanUsageIndicator />
-            </div>
+      {/* Mobile: Toggle Button + Sheet */}
+      <div className="md:hidden">
+        <div className="flex h-14 items-center border-b bg-background px-4">
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 flex flex-col p-0">
+              {/* Header institucional no mobile */}
+              <TenantHeader />
+              
+              {/* Menu de navegação */}
+              <div className="flex-1 overflow-y-auto p-4">
+                <TenantSidebar />
+              </div>
 
-            <div className="mt-2 border-t pt-4">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3"
-                    onClick={() => {
-                      logout();
-                      setIsOpen(false);
-                    }}
-                  >
-                    <LogOut className="h-5 w-5" />
-                    Sair
-                  </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
-        
-         {/* Mobile Header Logo */}
-        <div className="flex items-center">
-             {theme.logo ? (
-                 <img src={theme.logo} alt="Logo" className="h-8 max-w-[150px] object-contain" />
-             ) : (
-                 <span className="font-bold text-lg">Tenant App</span>
-             )}
+              {/* Indicador de plano */}
+              <div className="border-t p-4">
+                <PlanUsageIndicator />
+              </div>
+
+              {/* Rodapé com usuário */}
+              <TenantFooter />
+            </SheetContent>
+          </Sheet>
+          <span className="ml-3 font-semibold">Menu</span>
         </div>
-        <div className="w-9" /> {/* Spacer for alignment */}
-      </header>
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar */}
-        <aside className="hidden w-64 border-r bg-background md:flex md:flex-col">
-            <div className="flex h-14 items-center border-b px-4">
-                {theme.logo ? (
-                    <img src={theme.logo} alt="Logo" className="h-8 max-w-full object-contain" />
-                ) : (
-                    <h2 className="text-sm font-semibold truncate">{user?.email}</h2>
-                )}
-            </div>
-            <nav className="flex flex-col gap-1 p-4 flex-1">
-            {navItems.map((item) => (
-                <a
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-accent"
-                >
-                {item.icon}
-                {item.label}
-                </a>
-            ))}
-            </nav>
-            <div className="border-t p-4">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-4 w-4" />
-                    </div>
-                    <div className="overflow-hidden">
-                        <p className="text-sm font-medium truncate">{user?.email}</p>
-                    </div>
-                </div>
-                <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3"
-                    onClick={() => logout()}
-                >
-                    <LogOut className="h-5 w-5" />
-                    Sair
-                </Button>
-            </div>
+        {/* Desktop: Sidebar Fixa */}
+        <aside className="hidden w-72 border-r bg-background md:flex md:flex-col">
+          {/* Header institucional */}
+          <TenantHeader />
+          
+          {/* Menu de navegação */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <TenantSidebar />
+          </div>
+
+          {/* Indicador de plano */}
+          <div className="border-t p-4">
+            <PlanUsageIndicator />
+          </div>
+
+          {/* Rodapé com usuário */}
+          <TenantFooter />
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto bg-muted/10 p-4 md:p-6">
-            {children}
+          {children}
         </main>
       </div>
     </div>
