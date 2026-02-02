@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTenant } from '@/src/contexts/TenantContext';
 
 type OperationType = 'delivery' | 'balcao' | 'mesa';
 
 export function OnboardPage() {
+  const { tenantSlug } = useTenant();
   const { user, tenantId, refreshSession } = useSession();
   const [step, setStep] = useState(1);
   const [restaurantName, setRestaurantName] = useState('');
@@ -63,7 +65,7 @@ export function OnboardPage() {
       }
 
       await refreshSession();
-      window.location.replace('/tenant');
+      window.location.replace(`/tenant/${tenantSlug}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao concluir onboarding');
       setSaving(false);
@@ -176,7 +178,7 @@ export function OnboardPage() {
               </Button>
             )}
             {step === 5 && (
-              <Button type="button" disabled={saving} onClick={() => window.location.replace('/tenant')}>
+              <Button type="button" disabled={saving} onClick={() => window.location.replace(`/tenant/${tenantSlug}`)}>
                 Ir para o sistema
               </Button>
             )}
@@ -186,4 +188,3 @@ export function OnboardPage() {
     </div>
   );
 }
-

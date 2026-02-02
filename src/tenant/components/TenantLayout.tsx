@@ -4,8 +4,9 @@ import React, { useState } from "react"
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useSession } from '../context/SessionContext';
-import { Home, User, MessageCircle, Menu, LogOut, BookOpen } from 'lucide-react';
+import { Home, User, MessageCircle, Menu, LogOut, BookOpen, ShoppingCart, BellRing, Settings, CreditCard } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 
 import { PlanUsageIndicator } from './PlanUsageIndicator';
 
@@ -17,29 +18,31 @@ import { PlanUsageIndicator } from './PlanUsageIndicator';
  * - Capacitor-ready (no browser-only APIs)
  */
 
-interface NavItem {
+type NavItem = {
   label: string;
   href: string;
   icon: React.ReactNode;
   moduleId?: string;
-}
+};
 
 export function TenantLayout({ children }: { children: React.ReactNode }) {
+  const { tenantSlug } = useTenant();
   const { user, isModuleEnabled, logout } = useSession();
   const { theme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const basePath = `/tenant/${tenantSlug}`;
 
   // Base navigation - sempre disponível
   const navItems: NavItem[] = [
-    { label: 'Home', href: '/tenant', icon: <Home className="h-5 w-5" /> },
-    { label: 'Perfil', href: '/tenant/profile', icon: <User className="h-5 w-5" /> },
+    { label: 'Home', href: `${basePath}/dashboard`, icon: <Home className="h-5 w-5" /> },
+    { label: 'Perfil', href: `${basePath}/profile`, icon: <User className="h-5 w-5" /> },
   ];
 
   // Module-specific navigation (runtime, from API)
   if (isModuleEnabled('hello-module')) {
     navItems.push({
       label: 'Hello',
-      href: '/tenant/hello',
+      href: `${basePath}/hello`,
       icon: <MessageCircle className="h-5 w-5" />,
       moduleId: 'hello-module',
     });
@@ -48,9 +51,54 @@ export function TenantLayout({ children }: { children: React.ReactNode }) {
   if (isModuleEnabled('menu-online')) {
     navItems.push({
       label: 'Cardápio',
-      href: '/tenant/menu-online',
+      href: `${basePath}/menu-online`,
       icon: <BookOpen className="h-5 w-5" />,
       moduleId: 'menu-online',
+    });
+  }
+
+  if (isModuleEnabled('orders-module')) {
+    navItems.push({
+      label: 'Pedidos',
+      href: `${basePath}/orders`,
+      icon: <ShoppingCart className="h-5 w-5" />,
+      moduleId: 'orders-module',
+    });
+  }
+
+  if (isModuleEnabled('sound-notifications')) {
+    navItems.push({
+      label: 'Sons',
+      href: `${basePath}/sound-notifications/settings`,
+      icon: <BellRing className="h-5 w-5" />,
+      moduleId: 'sound-notifications',
+    });
+  }
+
+  if (isModuleEnabled('settings')) {
+    navItems.push({
+      label: 'Configurações',
+      href: `${basePath}/settings`,
+      icon: <Settings className="h-5 w-5" />,
+      moduleId: 'settings',
+    });
+  }
+
+  if (isModuleEnabled('checkout')) {
+    navItems.push({
+      label: 'Checkout',
+      href: `${basePath}/checkout`,
+      icon: <CreditCard className="h-5 w-5" />,
+      moduleId: 'checkout',
+    });
+  }
+
+  if (isModuleEnabled('financial')) {
+    navItems.push({
+      label: 'Financeiro',
+      href: `${basePath}/financial`,
+      icon: <CreditCard className="h-5 w-5" />,
+      moduleId: 'financial',
     });
   }
 

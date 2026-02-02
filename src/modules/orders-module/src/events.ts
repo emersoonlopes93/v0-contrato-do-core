@@ -8,7 +8,10 @@ export interface OrderCreatedPayload {
   tenantId: string;
   userId: string;
   orderId: string;
-  totalAmount: number;
-  items: number;
+  orderNumber: number;
+  source: string;
+  status: string;
+  total: number;
+  itemsCount: number;
   timestamp: Date;
 }

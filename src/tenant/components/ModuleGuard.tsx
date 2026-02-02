@@ -2,9 +2,11 @@
 
 import type { ReactNode } from 'react';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import type { ModuleGuardProps, PermissionGuardProps } from '@/src/types/tenant';
 
 /**
  * Module Guard - Route-level Protection
@@ -21,14 +23,8 @@ import { AlertCircle } from 'lucide-react';
  * - Graceful degradation
  */
 
-interface ModuleGuardProps {
-  moduleId: string;
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
 export function ModuleGuard({ moduleId, children, fallback }: ModuleGuardProps) {
-  const { isModuleEnabled, isLoading, isRefreshing } = useSession();
+  const { activeModules, isLoading } = useSession();
 
   // Loading state
   if (isLoading) {
@@ -40,7 +36,7 @@ export function ModuleGuard({ moduleId, children, fallback }: ModuleGuardProps) 
   }
 
   // Module not enabled
-  if (!isModuleEnabled(moduleId)) {
+  if (!activeModules.includes(moduleId)) {
     if (fallback) {
       return <>{fallback}</>;
     }
@@ -48,20 +44,12 @@ export function ModuleGuard({ moduleId, children, fallback }: ModuleGuardProps) 
     return <ModuleDisabledFallback moduleId={moduleId} />;
   }
 
-  // Module enabled - render children
-  return (
-    <>
-      {isRefreshing && (
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-          Atualizando módulos...
-        </div>
-      )}
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
 
 function ModuleDisabledFallback({ moduleId }: { moduleId: string }) {
+  const { tenantSlug } = useTenant();
+  const basePath = `/tenant/${tenantSlug}/dashboard`;
   return (
     <div className="flex min-h-[400px] items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -81,7 +69,7 @@ function ModuleDisabledFallback({ moduleId }: { moduleId: string }) {
           <Button
             variant="outline"
             className="w-full bg-transparent"
-            onClick={() => (window.location.href = '/tenant')}
+            onClick={() => (window.location.href = basePath)}
           >
             Voltar para Home
           </Button>
@@ -99,12 +87,6 @@ function ModuleDisabledFallback({ moduleId }: { moduleId: string }) {
  * - No client-side logic to infer permissions
  * - Permissions come from API (in token/session)
  */
-
-interface PermissionGuardProps {
-  permission: string;
-  children: ReactNode;
-  fallback?: ReactNode;
-}
 
 export function PermissionGuard({ permission, children, fallback }: PermissionGuardProps) {
   const { hasPermission, isLoading } = useSession();
@@ -151,10 +133,10 @@ export function withModuleGuard<P extends object>(
  * Checks if a module is enabled and returns status
  */
 export function useModuleGuard(moduleId: string) {
-  const { isModuleEnabled, isLoading } = useSession();
+  const { activeModules, isLoading } = useSession();
   
   return {
-    isAllowed: isModuleEnabled(moduleId),
-    isLoading
+    isAllowed: activeModules.includes(moduleId),
+    isLoading,
   };
 }

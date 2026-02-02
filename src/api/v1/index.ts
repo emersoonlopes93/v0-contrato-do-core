@@ -28,6 +28,11 @@ import type { ModuleContext } from '@/src/core/modules/contracts';
 import { HelloService } from '@/src/modules/hello-module/src/services/hello.service';
 import ordersModule from '@/src/modules/orders-module/src';
 import menuOnlineModule from '@/src/modules/menu-online/src';
+import soundNotificationsModule from '@/src/modules/sound-notifications/src';
+import settingsModule from '@/src/modules/settings/src';
+import checkoutModule from '@/src/modules/checkout/src';
+import paymentsModule from '@/src/modules/payments/src';
+import financialModule from '@/src/modules/financial/src';
 
 // Tenant Controllers
 import * as helloController from './tenant/hello/hello.controller';
@@ -45,6 +50,9 @@ import * as auditController from './saas-admin/audit.controller';
 import { authRoutes } from './auth';
 import { tenantRoutes } from './tenant';
 import { menuOnlinePublicRoutes } from '@/src/api/v1/tenant/menu-online.routes';
+import { checkoutRoutes } from '@/src/modules/checkout/src/checkout.routes';
+import { paymentsRoutes } from '@/src/modules/payments/src/payments.routes';
+import { financialRoutes } from '@/src/modules/financial/src/financial.routes';
 
 /**
  * API Routes Configuration
@@ -58,6 +66,10 @@ export const routes: Route[] = [
   ...menuOnlinePublicRoutes,
 
   ...tenantRoutes,
+
+  ...checkoutRoutes,
+  ...paymentsRoutes,
+  ...financialRoutes,
 
   // ==========================================
   // TENANT ROUTES - Hello Module
@@ -288,6 +300,21 @@ void ordersModule.register(moduleContext);
 void globalModuleRegistry.register(menuOnlineModule.manifest);
 void menuOnlineModule.register(moduleContext);
 
+void globalModuleRegistry.register(soundNotificationsModule.manifest);
+void soundNotificationsModule.register(moduleContext);
+
+void globalModuleRegistry.register(settingsModule.manifest);
+void settingsModule.register(moduleContext);
+
+void globalModuleRegistry.register(checkoutModule.manifest);
+void checkoutModule.register(moduleContext);
+
+void globalModuleRegistry.register(paymentsModule.manifest);
+void paymentsModule.register(moduleContext);
+
+void globalModuleRegistry.register(financialModule.manifest);
+void financialModule.register(moduleContext);
+
 /**
  * Execute middleware chain
  */
@@ -316,6 +343,9 @@ async function executeMiddlewares(
  * Handle API request
  */
 export async function handleRequest(req: Request): Promise<Response> {
+  const requestPath =
+    req.url.length > 1 ? req.url.replace(/\/+$/, '') : req.url;
+
   // Find matching route
   const route = routes.find((r) => {
     if (r.method !== req.method) return false;
@@ -323,7 +353,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     // Simple path matching (can be improved with path-to-regexp)
     const pathPattern = r.path.replace(/:[^/]+/g, '([^/]+)');
     const regex = new RegExp(`^${pathPattern}$`);
-    const match = req.url.match(regex);
+    const match = requestPath.match(regex);
     
     if (match) {
       // Extract path params

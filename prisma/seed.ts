@@ -3,6 +3,7 @@ const require = createRequire(import.meta.url);
 const { PrismaClient } = require('@prisma/client');
 import { hash } from 'bcryptjs';
 import menuOnlineModule from '@/src/modules/menu-online/src';
+import soundNotificationsModule from '@/src/modules/sound-notifications/src';
 
 const prisma = new PrismaClient();
 
@@ -179,6 +180,54 @@ async function main() {
   }
   console.log(`✅ Permissions created for: ${menuOnlineDbModule.slug}`);
 
+  const soundNotificationsDbModule = await prisma.module.upsert({
+    where: { slug: 'sound-notifications' },
+    update: {
+      name: soundNotificationsModule.manifest.name,
+      slug: 'sound-notifications',
+      version: soundNotificationsModule.manifest.version,
+      description: soundNotificationsModule.manifest.description ?? '',
+      permissions: soundNotificationsModule.manifest.permissions.map((p) => p.id),
+      events: soundNotificationsModule.manifest.eventTypes.map((e) => e.id),
+      required_plan: soundNotificationsModule.manifest.requiredPlan ?? null,
+      status: 'active',
+    },
+    create: {
+      id: 'sound-notifications',
+      name: soundNotificationsModule.manifest.name,
+      slug: 'sound-notifications',
+      version: soundNotificationsModule.manifest.version,
+      description: soundNotificationsModule.manifest.description ?? '',
+      permissions: soundNotificationsModule.manifest.permissions.map((p) => p.id),
+      events: soundNotificationsModule.manifest.eventTypes.map((e) => e.id),
+      required_plan: soundNotificationsModule.manifest.requiredPlan ?? null,
+      status: 'active',
+    },
+  });
+  console.log(`✅ Module: ${soundNotificationsDbModule.name} (${soundNotificationsDbModule.slug})`);
+
+  for (const perm of soundNotificationsModule.manifest.permissions) {
+    await prisma.permission.upsert({
+      where: {
+        module_id_slug: {
+          module_id: soundNotificationsDbModule.id,
+          slug: perm.id,
+        },
+      },
+      update: {
+        name: perm.name,
+        description: perm.description,
+      },
+      create: {
+        module_id: soundNotificationsDbModule.id,
+        slug: perm.id,
+        name: perm.name,
+        description: perm.description,
+      },
+    });
+  }
+  console.log(`✅ Permissions created for: ${soundNotificationsDbModule.slug}`);
+
   // 4️⃣ TENANT DEMO
   console.log('Creating/Updating Demo Tenant...');
   const tenant = await prisma.tenant.upsert({
@@ -242,6 +291,23 @@ async function main() {
   });
   console.log(`✅ Module activated: ${helloModule.slug}`);
 
+  await prisma.tenantModule.upsert({
+    where: {
+      tenant_id_module_id: {
+        tenant_id: tenant.id,
+        module_id: soundNotificationsDbModule.id,
+      },
+    },
+    update: { status: 'active' },
+    create: {
+      tenant_id: tenant.id,
+      module_id: soundNotificationsDbModule.id,
+      status: 'active',
+      activated_at: new Date(),
+    },
+  });
+  console.log(`✅ Module activated: ${soundNotificationsDbModule.slug}`);
+
   // 7️⃣ TENANT USER (ADMIN)
   console.log('Creating/Updating Tenant User...');
   const tenantUserPassword = await hash('demo123', 10);
@@ -303,7 +369,7 @@ async function main() {
   const rolePerms = await prisma.permission.findMany({
     where: {
       module_id: {
-        in: [helloModule.id, ordersModule.id, menuOnlineDbModule.id],
+        in: [helloModule.id, ordersModule.id, menuOnlineDbModule.id, soundNotificationsDbModule.id],
       },
     },
     select: {

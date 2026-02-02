@@ -34,6 +34,14 @@ const TENANT_TABLES = [
   'ModifierOption',
   'ProductModifier',
   'MenuSettings',
+  'StoreSettings',
+  'Order',
+  'OrderItem',
+  'OrderItemModifier',
+  'OrderTimelineEvent',
+  'CheckoutOrder',
+  'CheckoutOrderItem',
+  'Payment',
 ];
 
 export function createTenantMiddleware(

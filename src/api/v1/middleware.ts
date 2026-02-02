@@ -7,6 +7,7 @@
 
 import { AuthGuards, type GuardContext } from '../../core/auth/guards';
 import { asModuleId } from '@/core/types';
+import { AuthRepository } from '@/src/adapters/prisma/repositories/auth-repository';
 
 export interface Request {
   headers: Record<string, string>;
@@ -31,6 +32,7 @@ interface AuthContext {
   role: string;
   tenantId?: string;
   permissions?: string[];
+  activeModules?: string[];
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -45,6 +47,7 @@ export interface Route {
 }
 
 const guards = new AuthGuards();
+const authRepo = new AuthRepository();
 
 /**
  * Extract Bearer token from Authorization header
@@ -89,6 +92,7 @@ export const requireTenantAuth: Middleware = async (req, res, next) => {
       tenantId: result.tenantId,
       role: result.token.role,
       permissions: result.token.permissions,
+      activeModules: result.token.activeModules.map((m) => m.toString()),
     };
     
     await next();
@@ -143,6 +147,7 @@ export function requireModule(moduleId: string): Middleware {
         tenantId: result.tenantId,
         role: result.token.role,
         permissions: result.token.permissions,
+        activeModules: result.token.activeModules.map((m) => m.toString()),
       };
       
       await next();
@@ -163,14 +168,20 @@ export function requirePermission(permission: string): Middleware {
   return async (req, res, next) => {
     try {
       const context = buildGuardContext(req);
-      const result = await guards.requirePermission(context, permission);
+      const result = await guards.requireTenantUser(context);
+      const permissions = await authRepo.getTenantUserPermissions(result.token.userId, result.tenantId);
+
+      if (!permissions.includes(permission)) {
+        throw new Error(`Permission denied: ${permission} required`);
+      }
       
       // Update request auth
       (req as AuthenticatedRequest).auth = {
         userId: result.token.userId,
         tenantId: result.tenantId,
         role: result.token.role,
-        permissions: result.token.permissions,
+        permissions,
+        activeModules: result.token.activeModules.map((m) => m.toString()),
       };
       
       await next();

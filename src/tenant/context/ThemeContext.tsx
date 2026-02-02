@@ -18,14 +18,14 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<WhiteBrandConfig>(defaultTheme);
-  const { accessToken, isAuthenticated } = useSession();
+  const { accessToken, user } = useSession();
 
   const updateTheme = (newTheme: Partial<WhiteBrandConfig>) => {
     setTheme((prev) => ({ ...prev, ...newTheme }));
   };
 
   useEffect(() => {
-    if (!isAuthenticated || !accessToken) {
+    if (!user || !accessToken) {
       return;
     }
 
@@ -87,7 +87,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isCancelled = true;
     };
-  }, [isAuthenticated, accessToken]);
+  }, [user, accessToken]);
 
   useEffect(() => {
     const root = document.documentElement;

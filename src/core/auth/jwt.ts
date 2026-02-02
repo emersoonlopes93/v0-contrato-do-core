@@ -23,6 +23,7 @@ export class JWTService {
       expiresIn: JWT_EXPIRES_IN,
       issuer: 'saas-core',
       audience: 'tenant-user',
+      subject: payload.userId,
     });
   }
 

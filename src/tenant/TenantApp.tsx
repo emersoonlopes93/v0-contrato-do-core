@@ -1,21 +1,34 @@
 import React, { useEffect } from "react"
-import { SessionProvider, useSession } from './context/SessionContext';
-import { TenantLayout } from './components/TenantLayout';
-import { LoginPage } from './pages/Login';
-import { HomePage } from './pages/Home';
-import { HelloModulePage } from './pages/HelloModule';
-import { OnboardPage } from './pages/Onboard';
-import { MenuOnlinePage } from './pages/MenuOnline';
-import { MenuOnlineCategoriesPage } from './pages/MenuOnlineCategories';
-import { MenuOnlineProductsPage } from './pages/MenuOnlineProducts';
-import { MenuOnlineModifiersPage } from './pages/MenuOnlineModifiers';
-import { MenuOnlineSettingsPage } from './pages/MenuOnlineSettings';
-import { MenuOnlinePreviewPage } from './pages/MenuOnlinePreview';
-import { ThemeProvider } from './context/ThemeContext';
-import { PlanProvider } from './context/PlanContext';
-import { PlanGuard } from './components/PlanGuard';
-import { TenantAuthGuard } from './guards/TenantAuthGuard';
-import { NoModulesPage } from './pages/NoModules';
+import { SessionProvider, useSession } from '@/src/tenant/context/SessionContext';
+import { TenantProvider, useTenant } from '@/src/contexts/TenantContext';
+import { TenantLayout } from '@/src/tenant/components/TenantLayout';
+import { HomePage } from '@/src/tenant/pages/Home';
+import { HelloModulePage } from '@/src/tenant/pages/HelloModule';
+import { OnboardPage } from '@/src/tenant/pages/Onboard';
+import { MenuOnlinePage } from '@/src/tenant/pages/MenuOnline';
+import { MenuOnlineCategoriesPage } from '@/src/tenant/pages/MenuOnlineCategories';
+import { MenuOnlineProductsPage } from '@/src/tenant/pages/MenuOnlineProducts';
+import { MenuOnlineModifiersPage } from '@/src/tenant/pages/MenuOnlineModifiers';
+import { MenuOnlineSettingsPage } from '@/src/tenant/pages/MenuOnlineSettings';
+import { MenuOnlinePreviewPage } from '@/src/tenant/pages/MenuOnlinePreview';
+import { OrdersPage } from '@/src/tenant/pages/Orders';
+import { OrdersKanbanPage } from '@/src/tenant/pages/OrdersKanban';
+import { OrderDetailsPage } from '@/src/tenant/pages/OrderDetails';
+import { SoundNotificationsSettingsPage } from '@/src/tenant/pages/SoundNotificationsSettings';
+import { TenantSettingsPage } from '@/src/tenant/pages/TenantSettings';
+import { CheckoutPage } from '@/src/tenant/pages/Checkout';
+import { OrderSuccessPage } from '@/src/tenant/pages/OrderSuccess';
+import { PaymentPage } from '@/src/tenant/pages/PaymentPage';
+import { PaymentStatusPage } from '@/src/tenant/pages/PaymentStatus';
+import { FinancialDashboardPage, FinancialOrdersPage } from '@/src/tenant/pages/Financial';
+import { ThemeProvider } from '@/src/tenant/context/ThemeContext';
+import { PlanProvider } from '@/src/tenant/context/PlanContext';
+import { PlanGuard } from '@/src/tenant/components/PlanGuard';
+import { TenantAuthGuard } from '@/src/tenant/guards/TenantAuthGuard';
+import { TenantSlugGuard } from '@/src/tenant/guards/TenantSlugGuard';
+import { NoModulesPage } from '@/src/tenant/pages/NoModules';
+import { SoundNotificationsProvider } from '@/src/tenant/context/SoundNotificationsContext';
+import { RealtimeProvider } from '@/src/realtime/realtime-context';
 
 /**
  * Tenant App - Entry Point
@@ -25,9 +38,22 @@ import { NoModulesPage } from './pages/NoModules';
  * - Module-aware routing
  * - Capacitor-ready (no Next.js router)
  */
+
+function getTenantSlugFromPath(pathname: string): string | null {
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length < 2) return null;
+  if (segments[0] !== 'tenant') return null;
+  const slug = segments[1]?.trim() ?? '';
+  return slug.length > 0 ? slug : null;
+}
+
 function TenantRouter() {
-  const { isAuthenticated, isLoading, user, tenantOnboarded, activeModules } = useSession();
-  const path = window.location.pathname;
+  const { tenantSlug } = useTenant();
+  const { isLoading, user, tenantOnboarded, activeModules } = useSession();
+  const pathname = window.location.pathname;
+  const segments = pathname.split('/').filter(Boolean);
+  const rest = segments.slice(2);
+  const restPath = rest.length > 0 ? `/${rest.join('/')}` : '';
 
   // 1. Loading inicial global (opcional, mas evita flashes)
   // O TenantAuthGuard também tem loading, mas aqui pegamos antes de decidir a rota
@@ -48,119 +74,211 @@ function TenantRouter() {
     return null;
   }
 
-  if (path === '/tenant/login') {
-    if (isAuthenticated) {
-      window.location.replace('/tenant');
-      return null;
-    }
-    return <LoginPage />;
+  if (restPath === '/login') {
+    window.location.replace('/login');
+    return null;
   }
 
   let page: React.ReactNode;
 
-  if (path === '/tenant') {
+  if (restPath === '') {
     page = (
       <TenantAuthGuard>
-        <TenantLayout>
-          <TenantHomeEntry
-            tenantOnboarded={tenantOnboarded}
-            activeModules={activeModules}
-          />
-        </TenantLayout>
+        <TenantSlugGuard>
+          <TenantLayout>
+            <TenantHomeEntry
+              tenantSlug={tenantSlug}
+              tenantOnboarded={tenantOnboarded}
+              activeModules={activeModules}
+            />
+          </TenantLayout>
+        </TenantSlugGuard>
       </TenantAuthGuard>
     );
-  } else if (path === '/tenant/onboard') {
+  } else if (restPath === '/onboard') {
     page = (
       <TenantAuthGuard>
-        <TenantLayout>
-          <OnboardPage />
-        </TenantLayout>
+        <TenantSlugGuard>
+          <TenantLayout>
+            <OnboardPage />
+          </TenantLayout>
+        </TenantSlugGuard>
       </TenantAuthGuard>
     );
-  } else if (path === '/tenant/hello' || path === '/tenant/hello-module') {
+  } else if (restPath === '/dashboard' || restPath === '/home') {
+    page = <HomePage />;
+  } else if (restPath === '/hello' || restPath === '/hello-module') {
     page = (
       <PlanGuard moduleId="hello-module">
         <HelloModulePage />
       </PlanGuard>
     );
-  } else if (path === '/tenant/menu-online') {
+  } else if (restPath === '/menu-online') {
     page = (
       <PlanGuard moduleId="menu-online">
         <MenuOnlinePage />
       </PlanGuard>
     );
-  } else if (path === '/tenant/menu-online/categories') {
+  } else if (restPath === '/menu-online/categories') {
     page = (
       <PlanGuard moduleId="menu-online">
         <MenuOnlineCategoriesPage />
       </PlanGuard>
     );
-  } else if (path === '/tenant/menu-online/products') {
+  } else if (restPath === '/menu-online/products') {
     page = (
       <PlanGuard moduleId="menu-online">
         <MenuOnlineProductsPage />
       </PlanGuard>
     );
-  } else if (path === '/tenant/menu-online/modifiers') {
+  } else if (restPath === '/menu-online/modifiers') {
     page = (
       <PlanGuard moduleId="menu-online">
         <MenuOnlineModifiersPage />
       </PlanGuard>
     );
-  } else if (path === '/tenant/menu-online/settings') {
+  } else if (restPath === '/menu-online/settings') {
     page = (
       <PlanGuard moduleId="menu-online">
         <MenuOnlineSettingsPage />
       </PlanGuard>
     );
-  } else if (path === '/tenant/menu-online/preview') {
+  } else if (restPath === '/menu-online/preview') {
     page = (
       <PlanGuard moduleId="menu-online">
         <MenuOnlinePreviewPage />
       </PlanGuard>
     );
-  } else if (path === '/tenant/profile') {
+  } else if (restPath === '/financial') {
+    page = (
+      <PlanGuard moduleId="financial">
+        <FinancialDashboardPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/financial/orders') {
+    page = (
+      <PlanGuard moduleId="financial">
+        <FinancialOrdersPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/orders' || restPath === '/orders-module') {
+    page = (
+      <PlanGuard moduleId="orders-module">
+        <OrdersPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/orders/kanban') {
+    page = (
+      <PlanGuard moduleId="orders-module">
+        <OrdersKanbanPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/sound-notifications/settings') {
+    page = (
+      <PlanGuard moduleId="sound-notifications">
+        <SoundNotificationsSettingsPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/checkout') {
+    page = (
+      <PlanGuard moduleId="checkout">
+        <CheckoutPage />
+      </PlanGuard>
+    );
+  } else if (rest[0] === 'payments' && rest.length >= 2) {
+    const orderId = rest[1]?.trim() ?? '';
+    page = orderId ? (
+      <PlanGuard moduleId="payments">
+        <PaymentPage orderId={orderId} />
+      </PlanGuard>
+    ) : (
+      <PlanGuard moduleId="payments">
+        <div />
+      </PlanGuard>
+    );
+  } else if (rest[0] === 'payment-status' && rest.length >= 2) {
+    const paymentId = rest[1]?.trim() ?? '';
+    page = paymentId ? (
+      <PlanGuard moduleId="payments">
+        <PaymentStatusPage paymentId={paymentId} />
+      </PlanGuard>
+    ) : (
+      <PlanGuard moduleId="payments">
+        <div />
+      </PlanGuard>
+    );
+  } else if (rest[0] === 'order-success' && rest.length >= 2) {
+    const orderId = rest[1]?.trim() ?? '';
+    page = orderId ? (
+      <PlanGuard moduleId="checkout">
+        <OrderSuccessPage orderId={orderId} />
+      </PlanGuard>
+    ) : (
+      <PlanGuard moduleId="checkout">
+        <CheckoutPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/settings') {
+    page = <TenantSettingsPage />;
+  } else if (rest[0] === 'orders' && rest.length >= 2) {
+    const orderId = rest[1]?.trim() ?? '';
+    page = orderId ? (
+      <PlanGuard moduleId="orders-module">
+        <OrderDetailsPage orderId={orderId} />
+      </PlanGuard>
+    ) : (
+      <PlanGuard moduleId="orders-module">
+        <OrdersPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/profile') {
     page = (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">Perfil</h1>
         <p className="text-muted-foreground">Em construção</p>
       </div>
     );
-  } else if (path === '/tenant/no-modules') {
+  } else if (restPath === '/no-modules') {
     page = <NoModulesPage />;
   } else {
     page = <HomePage />;
   }
 
   // 5. Renderização Protegida
-  if (path === '/tenant' || path === '/tenant/onboard') {
-    return page;
+  if (restPath === '' || restPath === '/onboard') {
+    return <RealtimeProvider>{page}</RealtimeProvider>;
   }
 
   return (
     <TenantAuthGuard>
-      <TenantLayout>{page}</TenantLayout>
+      <TenantSlugGuard>
+        <TenantLayout>
+          <RealtimeProvider>{page}</RealtimeProvider>
+        </TenantLayout>
+      </TenantSlugGuard>
     </TenantAuthGuard>
   );
 }
 
-interface TenantHomeEntryProps {
+type TenantHomeEntryProps = {
+  tenantSlug: string;
   tenantOnboarded: boolean;
   activeModules: string[];
-}
+};
 
-function TenantHomeEntry({ tenantOnboarded, activeModules }: TenantHomeEntryProps) {
+function TenantHomeEntry({ tenantSlug, tenantOnboarded, activeModules }: TenantHomeEntryProps) {
   useEffect(() => {
     if (!tenantOnboarded) {
-      if (window.location.pathname !== '/tenant/onboard') {
-        window.location.replace('/tenant/onboard');
+      const target = `/tenant/${tenantSlug}/onboard`;
+      if (window.location.pathname !== target) {
+        window.location.replace(target);
       }
       return;
     }
 
     if (activeModules.length === 1) {
       const onlyModule = activeModules[0];
-      const target = `/tenant/${onlyModule}`;
+      const target = `/tenant/${tenantSlug}/${onlyModule}`;
       if (window.location.pathname !== target) {
         window.location.replace(target);
       }
@@ -168,28 +286,40 @@ function TenantHomeEntry({ tenantOnboarded, activeModules }: TenantHomeEntryProp
     }
 
     if (activeModules.length === 0) {
-      if (window.location.pathname !== '/tenant/no-modules') {
-        window.location.replace('/tenant/no-modules');
+      const target = `/tenant/${tenantSlug}/no-modules`;
+      if (window.location.pathname !== target) {
+        window.location.replace(target);
       }
       return;
     }
 
-    if (window.location.pathname !== '/tenant/home') {
-      window.location.replace('/tenant/home');
+    const target = `/tenant/${tenantSlug}/dashboard`;
+    if (window.location.pathname !== target) {
+      window.location.replace(target);
     }
-  }, [tenantOnboarded, activeModules]);
+  }, [tenantSlug, tenantOnboarded, activeModules]);
 
   return null;
 }
 
 export function TenantApp() {
+  const tenantSlug = getTenantSlugFromPath(window.location.pathname);
+  if (!tenantSlug) {
+    window.location.replace('/login');
+    return null;
+  }
+
   return (
-    <SessionProvider>
-      <PlanProvider>
-        <ThemeProvider>
-          <TenantRouter />
-        </ThemeProvider>
-      </PlanProvider>
-    </SessionProvider>
+    <TenantProvider tenantSlug={tenantSlug}>
+      <SessionProvider>
+        <PlanProvider>
+          <ThemeProvider>
+            <SoundNotificationsProvider>
+              <TenantRouter />
+            </SoundNotificationsProvider>
+          </ThemeProvider>
+        </PlanProvider>
+      </SessionProvider>
+    </TenantProvider>
   );
 }

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { withModuleGuard, PermissionGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -85,6 +86,7 @@ async function apiRequest<T>(
 }
 
 function MenuOnlineCategoriesPageContent() {
+  const { tenantSlug } = useTenant();
   const { accessToken } = useSession();
   const [items, setItems] = useState<MenuOnlineCategoryDTO[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -210,6 +212,7 @@ function MenuOnlineCategoriesPageContent() {
 
   if (!accessToken) return null;
 
+  const basePath = `/tenant/${tenantSlug}`;
   return (
     <PermissionGuard permission="categories.manage">
       <div className="space-y-6">
@@ -218,7 +221,7 @@ function MenuOnlineCategoriesPageContent() {
             <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Categorias</h1>
             <p className="text-muted-foreground">Gestão de categorias do cardápio</p>
           </div>
-          <a href="/tenant/menu-online" className="text-sm text-primary underline-offset-4 hover:underline">
+          <a href={`${basePath}/menu-online`} className="text-sm text-primary underline-offset-4 hover:underline">
             Voltar
           </a>
         </div>
@@ -350,4 +353,3 @@ function MenuOnlineCategoriesPageContent() {
 }
 
 export const MenuOnlineCategoriesPage = withModuleGuard(MenuOnlineCategoriesPageContent, 'menu-online');
-

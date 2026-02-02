@@ -129,6 +129,11 @@ export function AdminTenantSignupPage() {
           modules: requestedModules,
           adminEmail,
         });
+        try {
+          localStorage.setItem('tenant_slug', tenantSlug);
+        } catch {
+          void 0;
+        }
         setStep(5);
       }
     } catch (error: unknown) {

@@ -11,12 +11,14 @@ import { prisma } from '../../../adapters/prisma/client';
 import { CorePlanService } from '../../../core/plan/plan.service';
 import { MemoryPlanRepository } from '../../../core/plan/memory-plan.repository';
 import { OnboardingService } from '../../../saas-admin/services/OnboardingService';
+import { TenantModulePermissionService } from '../../../saas-admin/services/TenantModulePermissionService';
 import { prismaAuditLogger } from '../../../adapters/prisma/audit-logger';
 import { asUUID, asModuleId, type TenantId, type UserId, type ModuleId } from '../../../core/types';
 
 const planRepo = new MemoryPlanRepository();
 const planService = new CorePlanService(planRepo);
 const onboardingService = new OnboardingService();
+const tenantModulePermissionService = new TenantModulePermissionService();
 
 /**
  * GET /api/v1/saas-admin/tenants
@@ -378,6 +380,7 @@ export async function updateTenantModules(req: Request, res: Response): Promise<
     for (const mod of requested) {
       if (allowed.has(mod)) {
         await tenantModuleService.enable(asUUID(tenantId), mod);
+        await tenantModulePermissionService.grantModulePermissionsToAdminRole(tenantId, mod);
       }
     }
 
@@ -436,6 +439,7 @@ export async function activateModule(req: Request, res: Response): Promise<void>
   
   try {
     await tenantModuleService.enable(asUUID(tenantId), asModuleId(moduleId));
+    await tenantModulePermissionService.grantModulePermissionsToAdminRole(tenantId, moduleId);
     
     res.status = 200;
     res.body = {

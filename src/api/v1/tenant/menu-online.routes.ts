@@ -32,9 +32,18 @@ import type {
   MenuOnlineUpdateProductRequest,
   MenuOnlineUpdateSettingsRequest,
 } from '@/src/types/menu-online';
+import type { OrdersCreateOrderRequest, OrdersServiceContract } from '@/src/types/orders';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && !Number.isNaN(value);
 }
 
 function getAuthOrFail(req: Request, res: Response): { tenantId: string; userId: string } | null {
@@ -53,6 +62,55 @@ function getMenuOnlineService(): MenuOnlineService | null {
     asModuleId('menu-online'),
     'MenuOnlineService',
   );
+}
+
+function getOrdersService(): OrdersServiceContract | null {
+  return globalModuleServiceRegistry.get<OrdersServiceContract>(
+    asModuleId('orders-module'),
+    'OrdersService',
+  );
+}
+
+function isOrdersCreateOrderRequest(value: unknown): value is OrdersCreateOrderRequest {
+  if (!isRecord(value)) return false;
+
+  const status = value.status;
+  const total = value.total;
+  const paymentMethod = value.paymentMethod;
+  const customerName = value.customerName;
+  const customerPhone = value.customerPhone;
+  const deliveryType = value.deliveryType;
+  const items = value.items;
+
+  if (status !== undefined && !isString(status)) return false;
+  if (!isNumber(total)) return false;
+
+  if (paymentMethod !== undefined && paymentMethod !== null && !isString(paymentMethod)) return false;
+  if (customerName !== undefined && customerName !== null && !isString(customerName)) return false;
+  if (customerPhone !== undefined && customerPhone !== null && !isString(customerPhone)) return false;
+  if (deliveryType !== undefined && deliveryType !== null && !isString(deliveryType)) return false;
+
+  if (!Array.isArray(items)) return false;
+
+  for (const item of items) {
+    if (!isRecord(item)) return false;
+    if (!isString(item.name)) return false;
+    if (!isNumber(item.quantity)) return false;
+    if (!isNumber(item.unitPrice)) return false;
+    if (!isNumber(item.totalPrice)) return false;
+    if (item.notes !== undefined && item.notes !== null && !isString(item.notes)) return false;
+
+    if (item.modifiers !== undefined) {
+      if (!Array.isArray(item.modifiers)) return false;
+      for (const mod of item.modifiers) {
+        if (!isRecord(mod)) return false;
+        if (!isString(mod.name)) return false;
+        if (mod.priceDelta !== undefined && !isNumber(mod.priceDelta)) return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 function parseAvailability(value: unknown): MenuOnlineAvailabilityWindow[] | null | undefined {
@@ -1702,6 +1760,22 @@ async function handleGetPublicMenu(req: Request, res: Response): Promise<void> {
       res.body = { error: 'Not Found', message: 'Menu not available' };
       return;
     }
+    const tenantSettingsRow = await prisma.tenantSettings.findUnique({
+      where: { tenant_id: tenant.id },
+      select: {
+        trade_name: true,
+        address_street: true,
+        address_number: true,
+        address_complement: true,
+        address_neighborhood: true,
+        address_city: true,
+        address_state: true,
+        address_zip: true,
+        latitude: true,
+        longitude: true,
+        is_open: true,
+      },
+    });
 
     const [settings, categories, products, modifierGroups, combos] = await Promise.all([
       service.getSettings(tenant.id),
@@ -1717,7 +1791,23 @@ async function handleGetPublicMenu(req: Request, res: Response): Promise<void> {
     const modifierOptions = modifierOptionsNested.flat();
 
     const data: MenuOnlinePublicMenuDTO = {
-      tenant: { id: tenant.id, slug: tenant.slug, name: tenant.name },
+      tenant: {
+        id: tenant.id,
+        slug: tenant.slug,
+        tradeName: tenantSettingsRow?.trade_name ?? null,
+        address: {
+          street: tenantSettingsRow?.address_street ?? null,
+          number: tenantSettingsRow?.address_number ?? null,
+          complement: tenantSettingsRow?.address_complement ?? null,
+          neighborhood: tenantSettingsRow?.address_neighborhood ?? null,
+          city: tenantSettingsRow?.address_city ?? null,
+          state: tenantSettingsRow?.address_state ?? null,
+          zip: tenantSettingsRow?.address_zip ?? null,
+          latitude: tenantSettingsRow?.latitude ?? null,
+          longitude: tenantSettingsRow?.longitude ?? null,
+        },
+        isOpen: tenantSettingsRow?.is_open ?? false,
+      },
       settings,
       categories,
       products,
@@ -1734,6 +1824,106 @@ async function handleGetPublicMenu(req: Request, res: Response): Promise<void> {
   }
 }
 
+async function handlePublicCheckout(req: Request, res: Response): Promise<void> {
+  const tenantSlug = req.params?.tenantSlug;
+  if (!tenantSlug) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Missing tenantSlug' };
+    return;
+  }
+
+  const body: unknown = req.body;
+  if (!isOrdersCreateOrderRequest(body)) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Body inválido' };
+    return;
+  }
+
+  const ordersService = getOrdersService();
+  if (!ordersService) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Orders module service not found' };
+    return;
+  }
+
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+      select: { id: true, status: true },
+    });
+
+    if (!tenant) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Tenant not found' };
+      return;
+    }
+
+    if (tenant.status !== 'active') {
+      res.status = 403;
+      res.body = { error: 'Forbidden', message: 'Tenant is not active' };
+      return;
+    }
+
+    const [menuEnabled, ordersEnabled] = await Promise.all([
+      tenantModuleService.isEnabled(asUUID(tenant.id), asModuleId('menu-online')),
+      tenantModuleService.isEnabled(asUUID(tenant.id), asModuleId('orders-module')),
+    ]);
+
+    if (!menuEnabled || !ordersEnabled) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Checkout not available' };
+      return;
+    }
+
+    const input: OrdersCreateOrderRequest = { ...body, source: 'menu-online' };
+    const created = await ordersService.createOrder({
+      tenantId: tenant.id,
+      userId: null,
+      input,
+    });
+
+    res.status = 201;
+    res.body = { success: true, data: created };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to checkout' };
+  }
+}
+
+async function handleCheckout(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+
+  const body: unknown = req.body;
+  if (!isOrdersCreateOrderRequest(body)) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Body inválido' };
+    return;
+  }
+
+  const ordersService = getOrdersService();
+  if (!ordersService) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Orders module service not found' };
+    return;
+  }
+
+  try {
+    const input: OrdersCreateOrderRequest = { ...body, source: 'menu-online' };
+    const created = await ordersService.createOrder({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      input,
+    });
+
+    res.status = 201;
+    res.body = { success: true, data: created };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to checkout' };
+  }
+}
+
 export const menuOnlinePublicRoutes: Route[] = [
   {
     method: 'GET',
@@ -1741,9 +1931,28 @@ export const menuOnlinePublicRoutes: Route[] = [
     middlewares: [requestLogger, errorHandler],
     handler: handleGetPublicMenu,
   },
+  {
+    method: 'POST',
+    path: '/menu/:tenantSlug/checkout',
+    middlewares: [requestLogger, errorHandler],
+    handler: handlePublicCheckout,
+  },
 ];
 
 export const menuOnlineTenantRoutes: Route[] = [
+  {
+    method: 'POST',
+    path: '/api/v1/tenant/menu-online/checkout',
+    middlewares: [
+      requestLogger,
+      errorHandler,
+      requireTenantAuth,
+      requireModule('menu-online'),
+      requireModule('orders-module'),
+      requirePermission('orders.create'),
+    ],
+    handler: handleCheckout,
+  },
   {
     method: 'GET',
     path: '/api/v1/tenant/menu-online/categories',

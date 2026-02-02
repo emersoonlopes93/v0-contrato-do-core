@@ -79,6 +79,9 @@ model Tenant {
   subscriptions    TenantSubscription[]
   users            TenantUser[]
   userRoles        UserRole[]
+  storeSettings    StoreSettings?
+  tenantSettings   TenantSettings?
+  tenantFinancialSummary TenantFinancialSummary?
   menuOnlineCategories       Category[]
   menuOnlineProducts         Product[]
   menuOnlineProductImages    ProductImage[]
@@ -95,11 +98,96 @@ model Tenant {
   menuOnlineLoyaltyConfig     MenuLoyaltyConfig?
   menuOnlineCashbackConfig    MenuCashbackConfig?
   menuOnlineCustomerBalances  MenuCustomerBalance[]
+  orders                    Order[]
+  orderItems                OrderItem[]
+  orderItemModifiers        OrderItemModifier[]
+  orderTimelineEvents       OrderTimelineEvent[]
+  checkoutOrders            CheckoutOrder[]
+  checkoutOrderItems        CheckoutOrderItem[]
+  payments                  Payment[]
+  soundNotificationSettings SoundNotificationSettings[]
   whiteBrandConfig WhiteBrandConfig?
 
   @@index([slug])
   @@index([status])
   @@map("tenants")
+}
+
+model StoreSettings {
+  id                     String   @id @default(uuid())
+  tenant_id              String   @unique
+  name                   String
+  slug                   String
+  logo_url               String?
+  primary_color          String?
+  address                Json
+  opening_hours          Json
+  delivery_enabled       Boolean  @default(false)
+  pickup_enabled         Boolean  @default(false)
+  dine_in_enabled        Boolean  @default(false)
+  minimum_order          Float    @default(0)
+  delivery_fee           Float    @default(0)
+  average_prep_time_min  Int      @default(0)
+  payment_methods        Json
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([slug])
+  @@map("store_settings")
+}
+
+model TenantSettings {
+  id                   String   @id @default(uuid())
+  tenant_id            String   @unique
+  trade_name           String?
+  legal_name           String?
+  document             String?
+  phone                String?
+  whatsapp             String?
+  email                String?
+  address_street       String?
+  address_number       String?
+  address_complement   String?
+  address_neighborhood String?
+  address_city         String?
+  address_state        String?
+  address_zip          String?
+  latitude             Float?
+  longitude            Float?
+  timezone             String?
+  currency             String?
+  payment_provider_default String?
+  payment_public_key       String?
+  payment_private_key      String?
+  is_open              Boolean  @default(false)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("tenant_settings")
+}
+
+model TenantFinancialSummary {
+  id             String   @id @default(uuid())
+  tenant_id      String   @unique
+  total_orders   Int      @default(0)
+  total_paid     Float    @default(0)
+  total_pending  Float    @default(0)
+  total_cancelled Float   @default(0)
+  total_refunded Float    @default(0)
+  total_fees     Float    @default(0)
+  net_amount     Float    @default(0)
+  updated_at     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("tenant_financial_summary")
 }
 
 model TenantSubscription {
@@ -131,6 +219,7 @@ model TenantUser {
   created_at    DateTime     @default(now())
   updated_at    DateTime     @updatedAt
   auditEvents   AuditEvent[]
+  orderTimelineEvents OrderTimelineEvent[]
   tenant        Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   userRoles     UserRole[]
 
@@ -598,4 +687,177 @@ model MenuCustomerBalance {
   @@index([tenant_id])
   @@index([customer_key])
   @@map("menu_online_customer_balances")
+}
+
+model Order {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  order_number   Int
+  source         String
+  status         String
+  total          Float
+  payment_method String?
+  customer_name  String?
+  customer_phone String?
+  delivery_type  String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  tenant         Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  items          OrderItem[]
+  timelineEvents OrderTimelineEvent[]
+
+  @@unique([tenant_id, order_number])
+  @@index([tenant_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("order_manager_orders")
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  order_id     String
+  name         String
+  quantity     Int
+  unit_price   Float
+  total_price  Float
+  notes        String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order      Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  modifiers  OrderItemModifier[]
+
+  @@index([tenant_id])
+  @@index([order_id])
+  @@map("order_manager_order_items")
+}
+
+model OrderItemModifier {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  order_item_id String
+  name          String
+  price_delta   Float    @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [order_item_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([order_item_id])
+  @@map("order_manager_order_item_modifiers")
+}
+
+model OrderTimelineEvent {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  order_id    String
+  from_status String?
+  to_status   String
+  user_id     String?
+  timestamp   DateTime @default(now())
+
+  tenant Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order  Order       @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  user   TenantUser? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([order_id])
+  @@index([timestamp])
+  @@map("order_manager_order_timeline_events")
+}
+
+model CheckoutOrder {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  order_number   Int
+  status         String
+  subtotal       Float
+  delivery_fee   Float
+  total          Float
+  payment_method String
+  customer_name  String
+  customer_phone String
+  tenant_timezone String
+  created_at     DateTime
+  updated_at     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  items  CheckoutOrderItem[]
+  payments Payment[]
+
+  @@unique([tenant_id, order_number])
+  @@index([tenant_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("orders")
+}
+
+model CheckoutOrderItem {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  order_id      String
+  product_id    String
+  quantity      Int
+  unit_price    Float
+  total_price   Float
+  snapshot      Json
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  tenant Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order  CheckoutOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([order_id])
+  @@index([product_id])
+  @@map("order_items")
+}
+
+model Payment {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  order_id     String
+  provider     String
+  method       String
+  amount       Float
+  status       String
+  external_id  String
+  qr_code      String?
+  qr_code_text String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  tenant Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order  CheckoutOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, external_id])
+  @@index([tenant_id])
+  @@index([order_id])
+  @@index([status])
+  @@map("payments")
+}
+
+model SoundNotificationSettings {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  user_role  String
+  event      String
+  enabled    Boolean  @default(true)
+  sound_key  String
+  volume     Float    @default(1)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, user_role, event])
+  @@index([tenant_id])
+  @@index([user_role])
+  @@index([event])
+  @@map("sound_notification_settings")
 }

@@ -8,9 +8,14 @@ import { Request, Response } from '../middleware';
 import { JWTService } from '../../../core/auth/jwt';
 import { AuthRepository } from '../../../adapters/prisma/repositories/auth-repository';
 import { getPrismaClient } from '../../../adapters/prisma/client';
+import type { AuthSessionResponse } from '@/src/types/auth';
 
 const authRepo = new AuthRepository();
 const prisma = getPrismaClient();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
 export async function getSession(req: Request, res: Response) {
   const authHeader = req.headers['authorization'];
@@ -21,25 +26,33 @@ export async function getSession(req: Request, res: Response) {
   }
 
   const token = authHeader.split(' ')[1];
+  if (!token) {
+    res.status = 401;
+    res.body = { error: 'Missing authorization header' };
+    return;
+  }
 
   try {
     const decoded = JWTService.decode(token);
 
-    if (!decoded || typeof decoded !== 'object') {
+    if (!isRecord(decoded)) {
       throw new Error('Invalid token');
     }
 
-    const decodedWithContext = decoded as { context?: string };
+    const context = decoded.context;
+    if (context !== 'saas_admin' && context !== 'tenant_user') {
+      throw new Error('Invalid token context');
+    }
 
     // Check token type based on context field in payload
-    if (decodedWithContext.context === 'saas_admin') {
+    if (context === 'saas_admin') {
        const payload = JWTService.verifySaaSAdminToken(token);
        const user = await authRepo.findSaaSAdminById(payload.userId);
        
        if (!user) throw new Error('User not found');
 
        res.status = 200;
-       res.body = {
+       const body: AuthSessionResponse = {
          user: {
            id: user.id,
            email: user.email,
@@ -51,65 +64,120 @@ export async function getSession(req: Request, res: Response) {
          plan: null,
          theme: null
        };
+       res.body = body;
        return;
     }
 
-    if (decodedWithContext.context === 'tenant_user') {
+    if (context === 'tenant_user') {
        const payload = JWTService.verifyTenantUserToken(token);
-       
-       const tenantUser = await prisma.tenantUser.findUnique({
-         where: { id: payload.userId },
+
+       if (typeof payload.userId !== 'string' || payload.userId.length === 0) {
+         throw new Error('Invalid token');
+       }
+       if (typeof payload.tenantId !== 'string' || payload.tenantId.length === 0) {
+         throw new Error('Invalid token');
+       }
+
+       const tenantId = payload.tenantId;
+
+       const tenant = await prisma.tenant.findUnique({
+         where: { id: tenantId },
+         select: { id: true, name: true, slug: true, status: true, onboarded: true },
+       });
+
+       if (!tenant) {
+         throw new Error('Tenant not found');
+       }
+
+       if (tenant.status !== 'active') {
+         throw new Error('Tenant is not active');
+       }
+
+       const tenantUser = await prisma.tenantUser.findFirst({
+         where: { id: payload.userId, tenant_id: tenantId },
          include: {
            userRoles: {
-             include: { role: true }
+             include: { role: true },
            },
-           tenant: {
-             include: {
-               subscriptions: {
-                 where: { status: 'active' },
-                 include: { plan: true },
-                 take: 1
-               }
-             }
-           }
-         }
+         },
        });
 
        if (!tenantUser) {
          throw new Error('User not found');
        }
 
-       const subscription = tenantUser.tenant.subscriptions[0];
+       const subscription = await prisma.tenantSubscription.findFirst({
+         where: { tenant_id: tenantId, status: 'active' },
+         include: { plan: true },
+         orderBy: { created_at: 'desc' },
+       });
        const plan = subscription ? subscription.plan : null;
+       const subscriptionPayload = subscription
+         ? {
+             id: subscription.id,
+             status: subscription.status,
+             plan: subscription.plan
+               ? {
+                   id: subscription.plan.id,
+                   name: subscription.plan.name,
+                 }
+               : null,
+           }
+         : null;
 
-       const permissions = await authRepo.getTenantUserPermissions(tenantUser.id, payload.tenantId);
-       const activeModules = await authRepo.getTenantActiveModules(payload.tenantId);
-       const tenantWithOnboardFlag = tenantUser.tenant as unknown as { onboarded?: boolean };
-       const isOnboarded = tenantWithOnboardFlag.onboarded === true;
-       const tenantStatus = tenantUser.tenant.status;
+       const permissions = await authRepo.getTenantUserPermissions(tenantUser.id, tenantId);
+       const activeModules = await authRepo.getTenantActiveModules(tenantId);
+       const tenantSettingsRow = await prisma.tenantSettings.findUnique({
+         where: { tenant_id: tenantId },
+         select: {
+           trade_name: true,
+           is_open: true,
+           address_city: true,
+           address_state: true,
+           timezone: true,
+           payment_provider_default: true,
+           payment_public_key: true,
+           payment_private_key: true,
+         },
+       });
+       const tenantSettings = tenantSettingsRow
+         ? {
+             tradeName: tenantSettingsRow.trade_name,
+             isOpen: tenantSettingsRow.is_open,
+             city: tenantSettingsRow.address_city,
+             state: tenantSettingsRow.address_state,
+             timezone: tenantSettingsRow.timezone,
+             paymentProviderDefault: tenantSettingsRow.payment_provider_default,
+             paymentPublicKey: tenantSettingsRow.payment_public_key,
+             paymentPrivateKey: tenantSettingsRow.payment_private_key,
+           }
+         : null;
 
        res.status = 200;
-       res.body = {
+       const body: AuthSessionResponse = {
          user: {
            id: tenantUser.id,
            email: tenantUser.email,
            role: tenantUser.userRoles[0]?.role.slug || 'user'
          },
          tenant: {
-            id: tenantUser.tenant.id,
-            name: tenantUser.tenant.name,
-            slug: tenantUser.tenant.slug,
-            status: tenantStatus,
-            onboarded: isOnboarded,
+            id: tenant.id,
+            name: tenant.name,
+            slug: tenant.slug,
+            status: tenant.status,
+            onboarded: tenant.onboarded,
           },
          activeModules,
          permissions,
+         subscription: subscriptionPayload,
          plan: plan ? {
             id: plan.id,
             name: plan.name
          } : null,
+         tenantSettings,
          theme: null
        };
+       res.body = body;
        return;
     }
 

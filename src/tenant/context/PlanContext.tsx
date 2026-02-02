@@ -1,6 +1,7 @@
 import React, { createContext, useContext } from 'react';
-import { useSession, SessionPlan } from './SessionContext';
-import { unlimited } from '../../core/types';
+import { useSession } from './SessionContext';
+import type { SessionPlan } from '@/src/types/tenant';
+import { unlimited } from '@/src/core/types';
 
 interface PlanContextType {
   plan: SessionPlan | null;

@@ -70,7 +70,7 @@ export class TenantAuthService {
     const tokenPayload: TenantUserToken = {
       context: UserContext.TENANT_USER,
       userId: asUUID(user.id),
-      tenantId: asUUID(user.tenant_id),
+      tenantId: asUUID(tenantId),
       role: primaryRole,
       permissions,
       activeModules: activeModules.map(asModuleId),
@@ -83,7 +83,7 @@ export class TenantAuthService {
     await this.authRepo.saveRefreshToken({
       userId: user.id,
       userType: 'tenant_user',
-      tenantId: user.tenant_id,
+      tenantId,
       token: refreshToken,
       expiresAt: JWTService.getRefreshTokenExpiration(),
     });
@@ -96,7 +96,7 @@ export class TenantAuthService {
         id: user.id,
         email: user.email,
         name: user.name,
-        tenantId: user.tenant_id,
+        tenantId,
         role: primaryRole,
         permissions,
       },

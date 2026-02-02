@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 
 /**
  * Login Page - Mobile First
@@ -20,7 +21,8 @@ import { useSession } from '../context/SessionContext';
  */
 
 export function LoginPage() {
-  const { loginTenant, isLoading } = useSession();
+  const { tenantSlug } = useTenant();
+  const { loginTenant, refreshSession, isLoading, authError, clearAuthError } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -28,10 +30,12 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    clearAuthError();
 
     try {
       await loginTenant(email, password);
-      window.location.replace('/tenant');
+      await refreshSession();
+      window.location.replace(`/tenant/${tenantSlug}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login');
     }
@@ -53,7 +57,10 @@ export function LoginPage() {
                 type="email"
                 placeholder="seu@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  clearAuthError();
+                  setEmail(e.target.value);
+                }}
                 required
                 className="h-11"
               />
@@ -65,7 +72,10 @@ export function LoginPage() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  clearAuthError();
+                  setPassword(e.target.value);
+                }}
                 required
                 className="h-11"
               />
@@ -74,6 +84,11 @@ export function LoginPage() {
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {!error && authError && (
+              <Alert variant="destructive">
+                <AlertDescription>{authError}</AlertDescription>
               </Alert>
             )}
 

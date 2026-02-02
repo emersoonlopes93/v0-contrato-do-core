@@ -1,18 +1,22 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { ModuleGuard, withModuleGuard } from './ModuleGuard';
-import { SessionContext, SessionContextValue } from '../context/SessionContext';
+import { ModuleGuard, withModuleGuard } from '@/src/tenant/components/ModuleGuard';
+import { SessionContext } from '@/src/tenant/context/SessionContext';
+import { TenantProvider } from '@/src/contexts/TenantContext';
+import type { SessionContextValue } from '@/src/types/tenant';
 
 // Mock SessionContext
 const mockSession = (activeModules: string[] = []): SessionContextValue => ({
   user: null,
   accessToken: null,
-  isAuthenticated: true,
+  authError: null,
   tenantId: 'tenant-1',
+  tenantSlug: 'xeque-mate',
   tenantOnboarded: true,
   tenantStatus: 'active',
   plan: null,
+  tenantSettings: null,
   activeModules,
   isModuleEnabled: (moduleId: string) => activeModules.includes(moduleId),
   permissions: [],
@@ -20,15 +24,18 @@ const mockSession = (activeModules: string[] = []): SessionContextValue => ({
   loginTenant: vi.fn(),
   logout: vi.fn(),
   refreshSession: vi.fn(),
+  clearAuthError: vi.fn(),
   isLoading: false,
   isRefreshing: false,
 });
 
 const renderWithSession = (ui: React.ReactNode, activeModules: string[] = []) => {
   return render(
-    <SessionContext.Provider value={mockSession(activeModules)}>
-      {ui}
-    </SessionContext.Provider>
+    <TenantProvider tenantSlug="xeque-mate">
+      <SessionContext.Provider value={mockSession(activeModules)}>
+        {ui}
+      </SessionContext.Provider>
+    </TenantProvider>
   );
 };
 

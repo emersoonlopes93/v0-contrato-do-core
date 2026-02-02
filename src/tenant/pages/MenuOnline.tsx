@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { withModuleGuard, PermissionGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
@@ -48,7 +50,8 @@ async function apiGet<T>(url: string, accessToken: string): Promise<T> {
 }
 
 function MenuOnlinePageContent() {
-  const { accessToken } = useSession();
+  const { tenantSlug } = useTenant();
+  const { accessToken, tenantSettings } = useSession();
   const [error, setError] = useState<string>('');
   const [stats, setStats] = useState<{ categories: number; products: number; modifierGroups: number } | null>(null);
 
@@ -83,6 +86,12 @@ function MenuOnlinePageContent() {
 
   if (!accessToken) return null;
 
+  const basePath = `/tenant/${tenantSlug}`;
+  const showSettingsWarning =
+    tenantSettings === null ||
+    tenantSettings.tradeName === null ||
+    tenantSettings.city === null ||
+    tenantSettings.state === null;
   return (
     <PermissionGuard permission="menu.view">
       <div className="space-y-6">
@@ -90,6 +99,18 @@ function MenuOnlinePageContent() {
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Cardápio Online</h1>
           <p className="text-muted-foreground">Gestão de cardápio digital do tenant</p>
         </div>
+
+        {showSettingsWarning && (
+          <Alert>
+            <AlertDescription>
+              Configurações da loja incompletas. Preencha em{' '}
+              <a href={`${basePath}/settings`} className="underline underline-offset-4">
+                Configurações
+              </a>
+              .
+            </AlertDescription>
+          </Alert>
+        )}
 
         {stats && (
           <div className="flex flex-wrap gap-2">
@@ -112,7 +133,7 @@ function MenuOnlinePageContent() {
               <CardDescription>Organize o cardápio por seções</CardDescription>
             </CardHeader>
             <CardContent>
-              <a href="/tenant/menu-online/categories" className="text-sm text-primary underline-offset-4 hover:underline">
+              <a href={`${basePath}/menu-online/categories`} className="text-sm text-primary underline-offset-4 hover:underline">
                 Gerenciar →
               </a>
             </CardContent>
@@ -124,7 +145,7 @@ function MenuOnlinePageContent() {
               <CardDescription>Cadastre itens e preços</CardDescription>
             </CardHeader>
             <CardContent>
-              <a href="/tenant/menu-online/products" className="text-sm text-primary underline-offset-4 hover:underline">
+              <a href={`${basePath}/menu-online/products`} className="text-sm text-primary underline-offset-4 hover:underline">
                 Gerenciar →
               </a>
             </CardContent>
@@ -136,7 +157,7 @@ function MenuOnlinePageContent() {
               <CardDescription>Grupos e opções (extras, adicionais)</CardDescription>
             </CardHeader>
             <CardContent>
-              <a href="/tenant/menu-online/modifiers" className="text-sm text-primary underline-offset-4 hover:underline">
+              <a href={`${basePath}/menu-online/modifiers`} className="text-sm text-primary underline-offset-4 hover:underline">
                 Gerenciar →
               </a>
             </CardContent>
@@ -148,7 +169,7 @@ function MenuOnlinePageContent() {
               <CardDescription>Preferências do cardápio por tenant</CardDescription>
             </CardHeader>
             <CardContent>
-              <a href="/tenant/menu-online/settings" className="text-sm text-primary underline-offset-4 hover:underline">
+              <a href={`${basePath}/menu-online/settings`} className="text-sm text-primary underline-offset-4 hover:underline">
                 Abrir →
               </a>
             </CardContent>
@@ -160,7 +181,7 @@ function MenuOnlinePageContent() {
               <CardDescription>Visualização interna do cardápio público</CardDescription>
             </CardHeader>
             <CardContent>
-              <a href="/tenant/menu-online/preview" className="text-sm text-primary underline-offset-4 hover:underline">
+              <a href={`${basePath}/menu-online/preview`} className="text-sm text-primary underline-offset-4 hover:underline">
                 Abrir →
               </a>
             </CardContent>

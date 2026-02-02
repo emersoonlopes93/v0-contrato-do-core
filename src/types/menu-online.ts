@@ -88,11 +88,25 @@ export type MenuOnlineSettingsDTO = {
   showImages: boolean;
 };
 
+export type MenuOnlinePublicTenantAddressDTO = {
+  street: string | null;
+  number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
 export type MenuOnlinePublicMenuDTO = {
   tenant: {
     id: string;
     slug: string;
-    name: string;
+    tradeName: string | null;
+    address: MenuOnlinePublicTenantAddressDTO;
+    isOpen: boolean;
   };
   settings: MenuOnlineSettingsDTO;
   categories: MenuOnlineCategoryDTO[];

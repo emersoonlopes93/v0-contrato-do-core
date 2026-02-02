@@ -39,11 +39,18 @@ export async function tenantLogin(req: Request, res: Response) {
   const { email, password } = body;
 
   try {
-    // Resolve tenant via slug (header) or subdomain or default to 'demo' (legacy/dev fallback)
+    const rawSlug = req.headers['x-tenant-slug'];
+    const rawSubdomain = req.headers['x-tenant-subdomain'];
+
     const slug =
-      (req.headers['x-tenant-slug'] as string) ||
-      (req.headers['x-tenant-subdomain'] as string) ||
-      'demo';
+      (typeof rawSlug === 'string' && rawSlug.trim() !== '' ? rawSlug.trim() : null) ??
+      (typeof rawSubdomain === 'string' && rawSubdomain.trim() !== '' ? rawSubdomain.trim() : null);
+
+    if (!slug) {
+      res.status = 400;
+      res.body = { error: 'Tenant não resolvido' };
+      return;
+    }
 
     const tenant = await prisma.tenant.findUnique({
       where: { slug },

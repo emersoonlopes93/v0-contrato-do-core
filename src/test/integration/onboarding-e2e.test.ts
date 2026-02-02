@@ -120,7 +120,17 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
     console.log('✅ Tenant Onboarded');
   });
 
-  it('5. Should Login as Tenant User', async () => {
+  it('5. Should Fail Tenant Login Without Tenant Context', async () => {
+    const res = await request('POST', '/api/v1/auth/tenant/login', {
+      email: tenantEmail,
+      password: tenantPassword,
+    });
+
+    expect(res.status).toBe(400);
+    expect((res.body as { error?: string }).error).toBe('Tenant não resolvido');
+  });
+
+  it('6. Should Login as Tenant User', async () => {
     // Need X-Tenant-ID header usually? Or the login endpoint takes tenantId in body?
     // Looking at auth controller (not visible in detail, but standard is body)
     // Let's check api/v1/auth/tenant-auth.controller.ts if possible, but standard is body.
@@ -143,7 +153,7 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
     console.log('✅ Tenant Logged In');
   });
 
-  it('6. Should Verify Session and Active Modules', async () => {
+  it('7. Should Verify Session and Active Modules', async () => {
     const res = await request('GET', '/api/v1/auth/session', undefined, tenantToken, {
       'X-Tenant-ID': tenantId
     });
@@ -157,7 +167,7 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
     console.log('✅ Session Verified');
   });
 
-  it('7. Should Access Protected Hello Module Route (RBAC & Module Guard)', async () => {
+  it('8. Should Access Protected Hello Module Route (RBAC & Module Guard)', async () => {
     // Try to create a hello message
     const res = await request('POST', '/api/v1/tenant/hello/create', {
       message: 'Hello Integration Test'
@@ -175,7 +185,7 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
     console.log('✅ Protected Route Accessed (Module & Permission OK)');
   });
 
-  it('8. Should Verify Admin Dashboard visibility', async () => {
+  it('9. Should Verify Admin Dashboard visibility', async () => {
     const res = await request('GET', '/api/v1/admin/tenants', undefined, adminToken);
     expect(res.status).toBe(200);
 
@@ -189,7 +199,7 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
     console.log('✅ Tenant visible in Admin Dashboard');
   });
   
-  it('9. Should Fail Access when Module is Deactivated', async () => {
+  it('10. Should Fail Access when Module is Deactivated', async () => {
      // 1. Deactivate module via Admin
      // We need to know module ID. Let's list modules first.
      const modRes = await request('GET', '/api/v1/admin/modules', undefined, adminToken);

@@ -18,7 +18,7 @@ interface SessionGuardProps {
 }
 
 export function SessionGuard({ children }: SessionGuardProps) {
-  const { isAuthenticated, isLoading } = useSession();
+  const { isLoading, user } = useSession();
 
   if (isLoading) {
     return (
@@ -28,7 +28,7 @@ export function SessionGuard({ children }: SessionGuardProps) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <LoginPage />;
   }
 

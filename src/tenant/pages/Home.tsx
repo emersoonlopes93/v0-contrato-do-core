@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 
 type ModuleCard = {
   title: string;
@@ -9,17 +10,19 @@ type ModuleCard = {
 };
 
 export function HomePage() {
+  const { tenantSlug } = useTenant();
   const { user, permissions, tenantId, activeModules } = useSession();
 
   if (!user) {
     return null;
   }
 
+  const basePath = `/tenant/${tenantSlug}`;
   const moduleRouteMap: Record<string, ModuleCard> = {
     'hello-module': {
       title: 'Hello Module',
       description: 'Exemplo de módulo plugável',
-      href: '/tenant/hello',
+      href: `${basePath}/hello`,
     },
   };
 

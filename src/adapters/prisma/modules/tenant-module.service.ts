@@ -8,11 +8,46 @@
 import { getPrismaClient } from '../client';
 import { globalModuleRegistry } from '../../../core/modules/registry';
 import type { ITenantModuleService } from '../../../core/modules/activation.contracts';
+import type { ModuleRegisterPayload } from '../../../core/modules/contracts';
 import type { ModuleId, TenantId } from '../../../core/types/index';
 import { asModuleId } from '../../../core/types';
 
 export class PrismaTenantModuleService implements ITenantModuleService {
   private prisma = getPrismaClient();
+
+  private async resolveDbModuleIdOrNull(moduleId: ModuleId): Promise<string | null> {
+    const moduleRecord = await this.prisma.module.findFirst({
+      where: {
+        OR: [{ id: moduleId }, { slug: moduleId }],
+      },
+      select: { id: true },
+    });
+
+    return moduleRecord?.id ?? null;
+  }
+
+  private async resolveDbModuleId(moduleId: ModuleId, definition: ModuleRegisterPayload): Promise<string> {
+    const existingId = await this.resolveDbModuleIdOrNull(moduleId);
+    if (existingId) {
+      return existingId;
+    }
+
+    const created = await this.prisma.module.create({
+      data: {
+        slug: moduleId,
+        name: definition.name,
+        version: definition.version,
+        description: definition.description ?? definition.name,
+        required_plan: definition.requiredPlan ?? null,
+        permissions: definition.permissions.map((p) => p.id),
+        events: definition.eventTypes.map((e) => e.id),
+        status: 'active',
+      },
+      select: { id: true },
+    });
+
+    return created.id;
+  }
 
   /**
    * Enable a module for a tenant
@@ -25,12 +60,14 @@ export class PrismaTenantModuleService implements ITenantModuleService {
       throw new Error(`Module ${moduleId} not registered in ModuleRegistry`);
     }
 
+    const dbModuleId = await this.resolveDbModuleId(moduleId, moduleDefinition);
+
     // Check if module is already enabled
     const existing = await this.prisma.tenantModule.findUnique({
       where: {
         tenant_id_module_id: {
           tenant_id: tenantId,
-          module_id: moduleId,
+          module_id: dbModuleId,
         },
       },
     });
@@ -42,7 +79,7 @@ export class PrismaTenantModuleService implements ITenantModuleService {
           where: {
             tenant_id_module_id: {
               tenant_id: tenantId,
-              module_id: moduleId,
+              module_id: dbModuleId,
             },
           },
           data: {
@@ -59,7 +96,7 @@ export class PrismaTenantModuleService implements ITenantModuleService {
     await this.prisma.tenantModule.create({
       data: {
         tenant_id: tenantId,
-        module_id: moduleId,
+        module_id: dbModuleId,
         status: 'active',
         activated_at: new Date(),
       },
@@ -70,11 +107,16 @@ export class PrismaTenantModuleService implements ITenantModuleService {
    * Disable a module for a tenant (soft delete)
    */
   async disable(tenantId: TenantId, moduleId: ModuleId): Promise<void> {
+    const dbModuleId = await this.resolveDbModuleIdOrNull(moduleId);
+    if (!dbModuleId) {
+      return;
+    }
+
     const existing = await this.prisma.tenantModule.findUnique({
       where: {
         tenant_id_module_id: {
           tenant_id: tenantId,
-          module_id: moduleId,
+          module_id: dbModuleId,
         },
       },
     });
@@ -89,7 +131,7 @@ export class PrismaTenantModuleService implements ITenantModuleService {
       where: {
         tenant_id_module_id: {
           tenant_id: tenantId,
-          module_id: moduleId,
+          module_id: dbModuleId,
         },
       },
       data: {
@@ -103,11 +145,16 @@ export class PrismaTenantModuleService implements ITenantModuleService {
    * Check if a module is enabled for a tenant
    */
   async isEnabled(tenantId: TenantId, moduleId: ModuleId): Promise<boolean> {
+    const dbModuleId = await this.resolveDbModuleIdOrNull(moduleId);
+    if (!dbModuleId) {
+      return false;
+    }
+
     const tenantModule = await this.prisma.tenantModule.findUnique({
       where: {
         tenant_id_module_id: {
           tenant_id: tenantId,
-          module_id: moduleId,
+          module_id: dbModuleId,
         },
       },
     });
@@ -131,11 +178,15 @@ export class PrismaTenantModuleService implements ITenantModuleService {
         deactivated_at: null,
       },
       select: {
-        module_id: true,
+        module: {
+          select: {
+            slug: true,
+          },
+        },
       },
     });
 
-    return tenantModules.map((tm) => asModuleId(tm.module_id));
+    return tenantModules.map((tm) => asModuleId(tm.module.slug));
   }
 
   /**
@@ -158,7 +209,11 @@ export class PrismaTenantModuleService implements ITenantModuleService {
         deactivated_at: null,
       },
       select: {
-        module_id: true,
+        module: {
+          select: {
+            slug: true,
+          },
+        },
         status: true,
         activated_at: true,
         deactivated_at: true,
@@ -166,7 +221,7 @@ export class PrismaTenantModuleService implements ITenantModuleService {
     });
 
     return tenantModules.map((tm) => ({
-      moduleId: asModuleId(tm.module_id),
+      moduleId: asModuleId(tm.module.slug),
       status: tm.status,
       activatedAt: tm.activated_at,
       deactivatedAt: tm.deactivated_at,

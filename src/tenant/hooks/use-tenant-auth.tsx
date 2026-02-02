@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { useTenant } from '@/src/contexts/TenantContext';
 
 /**
  * Tenant Auth Context
@@ -26,6 +27,7 @@ export interface TenantAuthContextValue {
 const TenantAuthContext = createContext<TenantAuthContextValue | undefined>(undefined);
 
 export function TenantAuthProvider({ children }: { children: ReactNode }) {
+  const { tenantSlug } = useTenant();
   const [token, setToken] = useState<TenantUserToken | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,9 +47,15 @@ export function TenantAuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      if (tenantSlug.trim().length === 0) {
+        throw new Error('Tenant não resolvido');
+      }
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      headers['X-Tenant-Slug'] = tenantSlug;
+
       const response = await fetch('/api/v1/auth/tenant/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': 'demo' },
+        headers,
         body: JSON.stringify({ email, password }),
       });
 

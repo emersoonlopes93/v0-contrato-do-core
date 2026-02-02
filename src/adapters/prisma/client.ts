@@ -27,9 +27,22 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
 
-// Graceful shutdown
 if (typeof window === 'undefined') {
-  process.on('beforeExit', async () => {
-    await prisma.$disconnect();
+  let disconnecting = false;
+  const disconnect = async (): Promise<void> => {
+    if (disconnecting) return;
+    disconnecting = true;
+    try {
+      await prisma.$disconnect();
+    } catch {
+      void 0;
+    }
+  };
+
+  process.once('SIGINT', () => {
+    void disconnect().finally(() => process.exit(0));
+  });
+  process.once('SIGTERM', () => {
+    void disconnect().finally(() => process.exit(0));
   });
 }

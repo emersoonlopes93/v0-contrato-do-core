@@ -3,6 +3,7 @@ import http from 'http';
 import { pathToFileURL } from 'url';
 import { handleRequest } from './api/v1/index';
 import type { Request } from './api/v1/middleware';
+import { initRealtimeServer } from '@/src/realtime/socketio.server';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
@@ -29,13 +30,16 @@ async function readBody(req: http.IncomingMessage): Promise<unknown> {
 }
 
 export function createApiServer(): http.Server {
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     console.log(`[Server] ${req.method} ${req.url}`);
 
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tenant-ID');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, X-Tenant-ID, X-Tenant-Slug, X-Tenant-Subdomain'
+    );
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -83,6 +87,9 @@ export function createApiServer(): http.Server {
       res.end(JSON.stringify({ error: 'Internal Server Error' }));
     }
   });
+
+  initRealtimeServer(server);
+  return server;
 }
 
 export async function startApiServer(port = PORT): Promise<http.Server> {
