@@ -7,10 +7,11 @@ import { Menu } from 'lucide-react';
 import { TenantHeader } from './TenantHeader';
 import { TenantSidebar } from './TenantSidebar';
 import { TenantFooter } from './TenantFooter';
+import { DesktopHeader } from './DesktopHeader';
 import { PlanUsageIndicator } from './PlanUsageIndicator';
 
 /**
- * Tenant Layout - Layout Base Oficial
+ * Tenant Layout - Layout Base Premium
  * 
  * HIERARQUIA (de cima para baixo):
  * 1. Nome do SaaS
@@ -22,26 +23,49 @@ import { PlanUsageIndicator } from './PlanUsageIndicator';
  * ────────────────────────
  * 6. Rodapé: Nome do usuário + Cargo (RBAC)
  * 
- * - Mobile-first com sidebar colapsável
- * - Desktop com sidebar fixa
- * - Sem lógica de negócio, apenas estrutura
+ * PREMIUM:
+ * - Mobile-first com drawer elegante
+ * - Desktop com sidebar fixa e header
+ * - Transições suaves (150-200ms)
+ * - Visual profissional e vendável
  */
 
-export function TenantLayout({ children }: { children: React.ReactNode }) {
+type TenantLayoutProps = {
+  children: React.ReactNode;
+  pageTitle?: string;
+  headerActions?: React.ReactNode;
+  showBackButton?: boolean;
+  onBack?: () => void;
+};
+
+export function TenantLayout({ 
+  children, 
+  pageTitle,
+  headerActions,
+  showBackButton,
+  onBack
+}: TenantLayoutProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="flex h-screen flex-col">
-      {/* Mobile: Toggle Button + Sheet */}
+    <div className="flex h-screen flex-col bg-background">
+      {/* Mobile: Header com Menu Toggle */}
       <div className="md:hidden">
-        <div className="flex h-14 items-center border-b bg-background px-4">
+        <div className="flex h-14 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 shadow-sm">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="transition-transform duration-200 hover:scale-105"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 flex flex-col p-0">
+            <SheetContent 
+              side="left" 
+              className="w-72 flex flex-col p-0 transition-all duration-300"
+            >
               {/* Header institucional no mobile */}
               <TenantHeader />
               
@@ -51,7 +75,7 @@ export function TenantLayout({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Indicador de plano */}
-              <div className="border-t p-4">
+              <div className="border-t p-4 bg-muted/20">
                 <PlanUsageIndicator />
               </div>
 
@@ -59,23 +83,23 @@ export function TenantLayout({ children }: { children: React.ReactNode }) {
               <TenantFooter />
             </SheetContent>
           </Sheet>
-          <span className="ml-3 font-semibold">Menu</span>
+          <span className="ml-3 font-semibold text-sm">{pageTitle || 'Menu'}</span>
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop: Sidebar Fixa */}
-        <aside className="hidden w-72 border-r bg-background md:flex md:flex-col">
+        {/* Desktop: Sidebar Fixa Premium */}
+        <aside className="hidden w-72 border-r bg-background shadow-sm md:flex md:flex-col">
           {/* Header institucional */}
           <TenantHeader />
           
-          {/* Menu de navegação */}
-          <div className="flex-1 overflow-y-auto p-4">
+          {/* Menu de navegação com scroll suave */}
+          <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
             <TenantSidebar />
           </div>
 
           {/* Indicador de plano */}
-          <div className="border-t p-4">
+          <div className="border-t p-4 bg-muted/20">
             <PlanUsageIndicator />
           </div>
 
@@ -83,10 +107,25 @@ export function TenantLayout({ children }: { children: React.ReactNode }) {
           <TenantFooter />
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-muted/10 p-4 md:p-6">
-          {children}
-        </main>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Desktop Header */}
+          <div className="hidden md:block">
+            <DesktopHeader 
+              title={pageTitle}
+              actions={headerActions}
+              showBack={showBackButton}
+              onBack={onBack}
+            />
+          </div>
+
+          {/* Content com scroll */}
+          <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-muted/5 to-background">
+            <div className="p-4 md:p-6 lg:p-8">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );

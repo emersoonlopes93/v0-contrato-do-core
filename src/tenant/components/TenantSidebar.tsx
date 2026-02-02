@@ -95,17 +95,34 @@ export function TenantSidebar() {
   }
 
   return (
-    <nav className="flex flex-col gap-1">
-      {navItems.map((item) => (
-        <a
-          key={item.href}
-          href={item.href}
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors"
-        >
-          {item.icon}
-          {item.label}
-        </a>
-      ))}
+    <nav className="flex flex-col gap-1.5">
+      {navItems.map((item) => {
+        // Verifica se é a rota ativa
+        const isActive = typeof window !== 'undefined' && window.location.pathname.includes(item.href);
+        
+        return (
+          <a
+            key={item.href}
+            href={item.href}
+            className={`
+              group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
+              transition-all duration-200 ease-in-out
+              ${isActive 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/80'
+              }
+            `}
+          >
+            <span className={`
+              transition-transform duration-200 ease-in-out
+              ${isActive ? 'scale-110' : 'group-hover:scale-110'}
+            `}>
+              {item.icon}
+            </span>
+            <span className="leading-none">{item.label}</span>
+          </a>
+        );
+      })}
     </nav>
   );
 }
