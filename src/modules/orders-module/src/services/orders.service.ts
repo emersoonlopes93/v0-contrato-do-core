@@ -7,6 +7,8 @@ import { ORDERS_EVENTS } from '../events';
 import type { OrderCreatedPayload } from '../events';
 import type {
   OrdersCreateOrderRequest,
+  OrdersKanbanColumnDTO,
+  OrdersKanbanDTO,
   OrdersOrderDTO,
   OrdersOrderSummaryDTO,
 } from '@/src/types/orders';
@@ -15,6 +17,13 @@ export interface CreateOrderRequest {
   tenantId: string;
   userId: string | null;
   input: OrdersCreateOrderRequest;
+}
+
+export interface UpdateOrderStatusRequest {
+  tenantId: string;
+  orderId: string;
+  userId: string | null;
+  status: string;
 }
 
 export class OrdersService {
@@ -82,5 +91,66 @@ export class OrdersService {
 
   async getOrderById(tenantId: string, orderId: string): Promise<OrdersOrderDTO | null> {
     return this.repository.findById(tenantId, orderId);
+  }
+
+  async getKanbanByTenant(tenantId: string): Promise<OrdersKanbanDTO> {
+    const orders = await this.repository.listByTenant(tenantId);
+
+    const columns: OrdersKanbanColumnDTO[] = [
+      { key: 'created', title: 'Criado', orders: [] },
+      { key: 'accepted', title: 'Aceito', orders: [] },
+      { key: 'preparing', title: 'Preparando', orders: [] },
+      { key: 'ready', title: 'Pronto', orders: [] },
+      { key: 'completed', title: 'Concluído', orders: [] },
+      { key: 'cancelled', title: 'Cancelado', orders: [] },
+    ];
+
+    const columnsByKey = new Map<string, OrdersKanbanColumnDTO>();
+    for (const column of columns) {
+      columnsByKey.set(column.key, column);
+    }
+
+    for (const order of orders) {
+      const existingColumn = columnsByKey.get(order.status) ?? columnsByKey.get('created');
+      if (existingColumn) {
+        existingColumn.orders.push(order);
+      }
+    }
+
+    for (const column of columns) {
+      column.orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }
+
+    return { columns };
+  }
+
+  async updateOrderStatus(request: UpdateOrderStatusRequest): Promise<OrdersOrderDTO> {
+    const { tenantId, orderId, userId, status } = request;
+    const systemUserId = '00000000-0000-0000-0000-000000000000';
+    const effectiveUserId = userId ?? systemUserId;
+
+    const order = await this.repository.updateStatus(tenantId, orderId, status, userId);
+
+    globalRealtimeEmitter.emitToTenant(tenantId, REALTIME_ORDER_EVENTS.ORDER_STATUS_CHANGED, {
+      orderId: order.id,
+      status: order.status,
+      userId: effectiveUserId,
+    });
+
+    globalRealtimeEmitter.emitToTenant(tenantId, REALTIME_ORDER_EVENTS.ORDER_UPDATED, {
+      orderId: order.id,
+      status: order.status,
+      order,
+    });
+
+    if (order.status === 'cancelled') {
+      globalRealtimeEmitter.emitToTenant(tenantId, REALTIME_ORDER_EVENTS.ORDER_CANCELLED, {
+        orderId: order.id,
+        status: order.status,
+        order,
+      });
+    }
+
+    return order;
   }
 }

@@ -5,8 +5,6 @@ export type StoreSettingsAddress = {
   city: string;
   state: string;
   zip: string;
-  latitude: number | null;
-  longitude: number | null;
 };
 
 export type StoreSettingsOpeningHoursDay = {
@@ -85,4 +83,3 @@ export type StoreSettingsServiceContract = {
   update(tenantId: string, input: StoreSettingsUpdateRequest): Promise<StoreSettingsDTO | null>;
   isComplete(tenantId: string): Promise<boolean>;
 };
-

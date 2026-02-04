@@ -6,6 +6,7 @@ import { AdminLoginPage } from '@/src/saas-admin/pages/Login';
 import { GlobalTenantLoginPage } from '@/src/pages/Login';
 import { PublicSignupPage } from '@/src/pages/Signup';
 import MenuPublicPage from '@/src/pages/public/MenuPublic';
+import OrderConfirmationPage from '@/src/pages/public/OrderConfirmation';
 
 function LandingPage() {
   return (
@@ -39,6 +40,7 @@ function PublicRouter() {
       <Route path="/login/admin" element={<AdminLoginPage />} />
       <Route path="/signup" element={<PublicSignupPage />} />
       <Route path="/menu/:slug" element={<MenuPublicPage />} />
+      <Route path="/menu/:slug/order/:code" element={<OrderConfirmationPage />} />
       <Route path="/" element={<LandingPage />} />
     </Routes>
   );

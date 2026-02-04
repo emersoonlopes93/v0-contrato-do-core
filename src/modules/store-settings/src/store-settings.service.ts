@@ -34,9 +34,7 @@ function isStoreAddress(value: unknown): value is StoreSettingsAddress {
     isString(value.neighborhood) &&
     isString(value.city) &&
     isString(value.state) &&
-    isString(value.zip) &&
-    (value.latitude === null || isNumber(value.latitude)) &&
-    (value.longitude === null || isNumber(value.longitude))
+    isString(value.zip)
   );
 }
 
@@ -291,4 +289,3 @@ export function parseStoreSettingsUpdateRequest(value: unknown): { data: StoreSe
 
   return { data: next };
 }
-

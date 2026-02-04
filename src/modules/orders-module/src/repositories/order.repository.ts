@@ -1,10 +1,6 @@
 import { getPrismaClient } from '@/src/adapters/prisma/client';
 import { Prisma } from '@prisma/client';
-import type {
-  OrdersCreateOrderRequest,
-  OrdersOrderDTO,
-  OrdersOrderSummaryDTO,
-} from '@/src/types/orders';
+import type { OrdersCreateOrderRequest, OrdersOrderDTO, OrdersOrderSummaryDTO } from '@/src/types/orders';
 
 type OrderRow = Prisma.OrderGetPayload<{
   include: {
@@ -168,5 +164,49 @@ export class OrdersRepository {
 
     if (!row) return null;
     return toOrderDTO(row);
+  }
+
+  async updateStatus(
+    tenantId: string,
+    orderId: string,
+    nextStatus: string,
+    userId: string | null,
+  ): Promise<OrdersOrderDTO> {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.order.findFirst({
+        where: { id: orderId, tenant_id: tenantId },
+        select: {
+          id: true,
+          status: true,
+        },
+      });
+
+      if (!existing) {
+        throw new Error('Pedido não encontrado');
+      }
+
+      const row = await tx.order.update({
+        where: { id: existing.id },
+        data: {
+          status: nextStatus,
+          timelineEvents: {
+            create: {
+              tenant_id: tenantId,
+              from_status: existing.status,
+              to_status: nextStatus,
+              user_id: userId ?? null,
+            },
+          },
+        },
+        include: {
+          items: { include: { modifiers: true } },
+          timelineEvents: true,
+        },
+      });
+
+      return row;
+    });
+
+    return toOrderDTO(updated);
   }
 }

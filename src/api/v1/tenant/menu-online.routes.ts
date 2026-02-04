@@ -10,6 +10,7 @@ import {
   type Route,
 } from '@/src/api/v1/middleware';
 import { prisma } from '@/src/adapters/prisma/client';
+import { Prisma } from '@prisma/client';
 import { tenantModuleService } from '@/src/adapters/prisma/modules/tenant-module.service';
 import { globalModuleServiceRegistry } from '@/src/core';
 import { asModuleId, asUUID } from '@/src/core/types';
@@ -22,6 +23,11 @@ import type {
   MenuOnlineCreateModifierGroupRequest,
   MenuOnlineCreateModifierOptionRequest,
   MenuOnlineCreateProductRequest,
+  MenuOnlineCreateUpsellSuggestionRequest,
+  MenuOnlineCheckoutRequest,
+  MenuOnlineUpdateUpsellSuggestionRequest,
+  MenuOnlineUpdateLoyaltyConfigRequest,
+  MenuOnlineUpdateCashbackConfigRequest,
   MenuOnlinePriceSimulationRequest,
   MenuOnlinePublicMenuDTO,
   MenuOnlineUpdateCategoryRequest,
@@ -33,6 +39,11 @@ import type {
   MenuOnlineUpdateSettingsRequest,
 } from '@/src/types/menu-online';
 import type { OrdersCreateOrderRequest, OrdersServiceContract } from '@/src/types/orders';
+import type { StoreSettingsServiceContract } from '@/src/types/store-settings';
+
+const CHECKOUT_RATE_LIMIT_WINDOW_MS = 60_000;
+const CHECKOUT_RATE_LIMIT_MAX = 8;
+const checkoutRateLimit = new Map<string, { count: number; resetAt: number }>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -68,6 +79,13 @@ function getOrdersService(): OrdersServiceContract | null {
   return globalModuleServiceRegistry.get<OrdersServiceContract>(
     asModuleId('orders-module'),
     'OrdersService',
+  );
+}
+
+function getStoreSettingsService(): StoreSettingsServiceContract | null {
+  return globalModuleServiceRegistry.get<StoreSettingsServiceContract>(
+    asModuleId('store-settings'),
+    'StoreSettingsService',
   );
 }
 
@@ -900,6 +918,112 @@ function parseValidateCoupon(body: unknown): { data: { couponCode: string; custo
   };
 }
 
+function parseCreateUpsellSuggestion(body: unknown): { data: MenuOnlineCreateUpsellSuggestionRequest } | { error: string } {
+  if (!isRecord(body)) return { error: 'Body inválido' };
+  const fromProductId = body.fromProductId;
+  const suggestedProductId = body.suggestedProductId;
+  const sortOrder = body.sortOrder;
+  const status = body.status;
+
+  if (fromProductId !== undefined && fromProductId !== null && typeof fromProductId !== 'string') {
+    return { error: 'Field "fromProductId" deve ser string ou null' };
+  }
+  if (typeof suggestedProductId !== 'string' || suggestedProductId.trim() === '') {
+    return { error: 'Field "suggestedProductId" é obrigatório' };
+  }
+  if (sortOrder !== undefined && !isNumber(sortOrder)) return { error: 'Field "sortOrder" inválido' };
+  if (status !== undefined && status !== 'active' && status !== 'inactive') return { error: 'Field "status" inválido' };
+
+  return {
+    data: {
+      fromProductId: fromProductId === undefined ? undefined : fromProductId === null ? null : fromProductId.trim(),
+      suggestedProductId: suggestedProductId.trim(),
+      sortOrder: sortOrder === undefined ? undefined : sortOrder,
+      status,
+    },
+  };
+}
+
+function parseUpdateUpsellSuggestion(body: unknown): { data: MenuOnlineUpdateUpsellSuggestionRequest } | { error: string } {
+  if (!isRecord(body)) return { error: 'Body inválido' };
+  const fromProductId = body.fromProductId;
+  const suggestedProductId = body.suggestedProductId;
+  const sortOrder = body.sortOrder;
+  const status = body.status;
+
+  if (fromProductId !== undefined && fromProductId !== null && typeof fromProductId !== 'string') {
+    return { error: 'Field "fromProductId" deve ser string ou null' };
+  }
+  if (suggestedProductId !== undefined && typeof suggestedProductId !== 'string') {
+    return { error: 'Field "suggestedProductId" deve ser string' };
+  }
+  if (sortOrder !== undefined && !isNumber(sortOrder)) return { error: 'Field "sortOrder" inválido' };
+  if (status !== undefined && status !== 'active' && status !== 'inactive') return { error: 'Field "status" inválido' };
+
+  return {
+    data: {
+      fromProductId: fromProductId === undefined ? undefined : fromProductId === null ? null : fromProductId.trim(),
+      suggestedProductId: suggestedProductId === undefined ? undefined : suggestedProductId.trim(),
+      sortOrder: sortOrder === undefined ? undefined : sortOrder,
+      status,
+    },
+  };
+}
+
+function parseUpdateLoyaltyConfig(body: unknown): { data: MenuOnlineUpdateLoyaltyConfigRequest } | { error: string } {
+  if (!isRecord(body)) return { error: 'Body inválido' };
+  const enabled = body.enabled;
+  const pointsPerCurrency = body.pointsPerCurrency;
+  const currencyPerPoint = body.currencyPerPoint;
+
+  if (enabled !== undefined && typeof enabled !== 'boolean') return { error: 'Field "enabled" inválido' };
+  if (pointsPerCurrency !== undefined && !isNumber(pointsPerCurrency)) return { error: 'Field "pointsPerCurrency" inválido' };
+  if (currencyPerPoint !== undefined && !isNumber(currencyPerPoint)) return { error: 'Field "currencyPerPoint" inválido' };
+
+  return {
+    data: {
+      enabled: enabled === undefined ? undefined : enabled,
+      pointsPerCurrency: pointsPerCurrency === undefined ? undefined : pointsPerCurrency,
+      currencyPerPoint: currencyPerPoint === undefined ? undefined : currencyPerPoint,
+    },
+  };
+}
+
+function parseUpdateCashbackConfig(body: unknown): { data: MenuOnlineUpdateCashbackConfigRequest } | { error: string } {
+  if (!isRecord(body)) return { error: 'Body inválido' };
+  const enabled = body.enabled;
+  const percent = body.percent;
+  const expiresDays = body.expiresDays;
+
+  if (enabled !== undefined && typeof enabled !== 'boolean') return { error: 'Field "enabled" inválido' };
+  if (percent !== undefined && !isNumber(percent)) return { error: 'Field "percent" inválido' };
+  if (expiresDays !== undefined && expiresDays !== null && !isNumber(expiresDays)) return { error: 'Field "expiresDays" inválido' };
+
+  return {
+    data: {
+      enabled: enabled === undefined ? undefined : enabled,
+      percent: percent === undefined ? undefined : percent,
+      expiresDays: expiresDays === undefined ? undefined : expiresDays === null ? null : expiresDays,
+    },
+  };
+}
+
+function parseUpdateCustomerBalance(body: unknown): { data: { loyaltyPoints?: number; cashbackBalance?: number } } | { error: string } {
+  if (!isRecord(body)) return { error: 'Body inválido' };
+  const loyaltyPoints = body.loyaltyPoints;
+  const cashbackBalance = body.cashbackBalance;
+
+  if (loyaltyPoints !== undefined && !isNumber(loyaltyPoints)) return { error: 'Field "loyaltyPoints" inválido' };
+  if (cashbackBalance !== undefined && !isNumber(cashbackBalance)) return { error: 'Field "cashbackBalance" inválido' };
+
+  return {
+    data: {
+      loyaltyPoints: loyaltyPoints === undefined ? undefined : loyaltyPoints,
+      cashbackBalance: cashbackBalance === undefined ? undefined : cashbackBalance,
+    },
+  };
+}
+
 async function handleListCategories(req: Request, res: Response): Promise<void> {
   const auth = getAuthOrFail(req, res);
   if (!auth) return;
@@ -1716,8 +1840,485 @@ async function handleSimulatePrice(req: Request, res: Response): Promise<void> {
     res.status = 200;
     res.body = { success: true, data };
   } catch (error) {
+    if (error instanceof Error && (error.message === 'INVALID_MODIFIER_SELECTION' || error.message === 'INVALID_VARIATION')) {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Seleção inválida' };
+      return;
+    }
     res.status = 500;
     res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to simulate price' };
+  }
+}
+
+async function handleListUpsellSuggestions(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  try {
+    const data = await service.listUpsellSuggestions(auth.tenantId);
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to list upsell' };
+  }
+}
+
+async function handleCreateUpsellSuggestion(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  const parsed = parseCreateUpsellSuggestion(req.body);
+  if ('error' in parsed) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: parsed.error };
+    return;
+  }
+
+  try {
+    const data = await service.createUpsellSuggestion(auth.tenantId, parsed.data);
+    res.status = 201;
+    res.body = { success: true, data };
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INVALID_UPSELL_SUGGESTION') {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Sugestão inválida' };
+      return;
+    }
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to create upsell' };
+  }
+}
+
+async function handleUpdateUpsellSuggestion(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const id = req.params?.id;
+  if (!id) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Missing upsell id' };
+    return;
+  }
+
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  const parsed = parseUpdateUpsellSuggestion(req.body);
+  if ('error' in parsed) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: parsed.error };
+    return;
+  }
+
+  try {
+    const data = await service.updateUpsellSuggestion(auth.tenantId, id, parsed.data);
+    if (!data) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Upsell not found' };
+      return;
+    }
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to update upsell' };
+  }
+}
+
+async function handleDeleteUpsellSuggestion(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const id = req.params?.id;
+  if (!id) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Missing upsell id' };
+    return;
+  }
+
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  try {
+    const ok = await service.deleteUpsellSuggestion(auth.tenantId, id);
+    if (!ok) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Upsell not found' };
+      return;
+    }
+    res.status = 204;
+    res.body = { success: true };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to delete upsell' };
+  }
+}
+
+async function handleGetLoyaltyConfig(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  try {
+    const data = await service.getLoyaltyConfig(auth.tenantId);
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to get loyalty config' };
+  }
+}
+
+async function handleUpdateLoyaltyConfig(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  const parsed = parseUpdateLoyaltyConfig(req.body);
+  if ('error' in parsed) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: parsed.error };
+    return;
+  }
+
+  try {
+    const data = await service.updateLoyaltyConfig(auth.tenantId, parsed.data);
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INVALID_LOYALTY_CONFIG') {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Configuração inválida' };
+      return;
+    }
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to update loyalty config' };
+  }
+}
+
+async function handleGetCashbackConfig(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  try {
+    const data = await service.getCashbackConfig(auth.tenantId);
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to get cashback config' };
+  }
+}
+
+async function handleUpdateCashbackConfig(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  const parsed = parseUpdateCashbackConfig(req.body);
+  if ('error' in parsed) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: parsed.error };
+    return;
+  }
+
+  try {
+    const data = await service.updateCashbackConfig(auth.tenantId, parsed.data);
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INVALID_CASHBACK_CONFIG') {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Configuração inválida' };
+      return;
+    }
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to update cashback config' };
+  }
+}
+
+async function handleGetCustomerBalance(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const customerKey = req.params?.customerKey?.trim() ?? '';
+  if (!customerKey) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Missing customerKey' };
+    return;
+  }
+
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  try {
+    const data = await service.getCustomerBalance(auth.tenantId, customerKey);
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to get customer balance' };
+  }
+}
+
+async function handleUpdateCustomerBalance(req: Request, res: Response): Promise<void> {
+  const auth = getAuthOrFail(req, res);
+  if (!auth) return;
+  const customerKey = req.params?.customerKey?.trim() ?? '';
+  if (!customerKey) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Missing customerKey' };
+    return;
+  }
+
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  const parsed = parseUpdateCustomerBalance(req.body);
+  if ('error' in parsed) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: parsed.error };
+    return;
+  }
+
+  try {
+    const data = await service.updateCustomerBalance(auth.tenantId, customerKey, parsed.data);
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    if (error instanceof Error && error.message === 'INVALID_CUSTOMER_BALANCE') {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Saldo inválido' };
+      return;
+    }
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to update customer balance' };
+  }
+}
+
+async function handlePublicValidateCoupon(req: Request, res: Response): Promise<void> {
+  const tenantSlug = req.params?.tenantSlug;
+  if (!tenantSlug) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Missing tenantSlug' };
+    return;
+  }
+
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  const parsed = parseValidateCoupon(req.body);
+  if ('error' in parsed) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: parsed.error };
+    return;
+  }
+
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+      select: { id: true, status: true },
+    });
+    if (!tenant) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Tenant not found' };
+      return;
+    }
+    if (tenant.status !== 'active') {
+      res.status = 403;
+      res.body = { error: 'Forbidden', message: 'Tenant is not active' };
+      return;
+    }
+    const enabled = await tenantModuleService.isEnabled(asUUID(tenant.id), asModuleId('menu-online'));
+    if (!enabled) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Menu not available' };
+      return;
+    }
+
+    const valid = await service.validateCoupon(tenant.id, parsed.data.couponCode, parsed.data.customerKey);
+    res.status = 200;
+    res.body = { success: true, data: { valid } };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to validate coupon' };
+  }
+}
+
+async function handlePublicSimulatePrice(req: Request, res: Response): Promise<void> {
+  const tenantSlug = req.params?.tenantSlug;
+  if (!tenantSlug) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Missing tenantSlug' };
+    return;
+  }
+
+  const service = getMenuOnlineService();
+  if (!service) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
+    return;
+  }
+
+  const parsed = parsePriceSimulation(req.body);
+  if ('error' in parsed) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: parsed.error };
+    return;
+  }
+
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+      select: { id: true, status: true },
+    });
+    if (!tenant) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Tenant not found' };
+      return;
+    }
+    if (tenant.status !== 'active') {
+      res.status = 403;
+      res.body = { error: 'Forbidden', message: 'Tenant is not active' };
+      return;
+    }
+    const enabled = await tenantModuleService.isEnabled(asUUID(tenant.id), asModuleId('menu-online'));
+    if (!enabled) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Menu not available' };
+      return;
+    }
+
+    const data = await service.simulatePrice(tenant.id, parsed.data);
+    if (!data) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Product not found' };
+      return;
+    }
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    if (error instanceof Error && (error.message === 'INVALID_MODIFIER_SELECTION' || error.message === 'INVALID_VARIATION')) {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Seleção inválida' };
+      return;
+    }
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to simulate price' };
+  }
+}
+
+async function handlePublicGetOrder(req: Request, res: Response): Promise<void> {
+  const tenantSlug = req.params?.tenantSlug;
+  const code = req.params?.code;
+  if (!tenantSlug || !code) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'Missing tenantSlug or code' };
+    return;
+  }
+
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+      select: { id: true, status: true },
+    });
+    if (!tenant) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Tenant not found' };
+      return;
+    }
+    if (tenant.status !== 'active') {
+      res.status = 403;
+      res.body = { error: 'Forbidden', message: 'Tenant is not active' };
+      return;
+    }
+
+    const order = await prisma.order.findFirst({
+      where: { tenant_id: tenant.id, public_order_code: code },
+      include: { items: { include: { modifiers: true } } },
+    });
+    if (!order) {
+      res.status = 404;
+      res.body = { error: 'Not Found', message: 'Order not found' };
+      return;
+    }
+    const currency =
+      (await prisma.menuSettings.findUnique({
+        where: { tenant_id: tenant.id },
+        select: { currency: true },
+      }))?.currency ?? 'BRL';
+    const data = {
+      orderId: order.id,
+      publicOrderCode: order.public_order_code ?? String(order.order_number),
+      status: order.status === 'confirmed' || order.status === 'cancelled' ? order.status : 'pending',
+      items: order.items.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        total: i.total_price,
+      })),
+      totals: {
+        subtotal: order.subtotal ?? order.total,
+        discount: order.discount ?? 0,
+        total: order.total,
+        currency,
+      },
+    };
+    res.status = 200;
+    res.body = { success: true, data };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to load order' };
   }
 }
 
@@ -1760,6 +2361,21 @@ async function handleGetPublicMenu(req: Request, res: Response): Promise<void> {
       res.body = { error: 'Not Found', message: 'Menu not available' };
       return;
     }
+
+    const storeSettingsService = getStoreSettingsService();
+    if (!storeSettingsService) {
+      res.status = 500;
+      res.body = { error: 'Internal Server Error', message: 'Store Settings service not found' };
+      return;
+    }
+
+    const storeSettingsComplete = await storeSettingsService.isComplete(tenant.id);
+    if (!storeSettingsComplete) {
+      res.status = 403;
+      res.body = { error: 'Forbidden', message: 'StoreSettings incompleto' };
+      return;
+    }
+
     const tenantSettingsRow = await prisma.tenantSettings.findUnique({
       where: { tenant_id: tenant.id },
       select: {
@@ -1777,12 +2393,15 @@ async function handleGetPublicMenu(req: Request, res: Response): Promise<void> {
       },
     });
 
-    const [settings, categories, products, modifierGroups, combos] = await Promise.all([
+    const [settings, categories, products, modifierGroups, combos, upsellSuggestions, loyaltyConfig, cashbackConfig] = await Promise.all([
       service.getSettings(tenant.id),
       service.listCategories(tenant.id),
       service.listProducts(tenant.id),
       service.listModifierGroups(tenant.id),
       service.listCombos(tenant.id),
+      service.listUpsellSuggestions(tenant.id),
+      service.getLoyaltyConfig(tenant.id),
+      service.getCashbackConfig(tenant.id),
     ]);
 
     const modifierOptionsNested = await Promise.all(
@@ -1814,6 +2433,9 @@ async function handleGetPublicMenu(req: Request, res: Response): Promise<void> {
       modifierGroups,
       modifierOptions,
       combos,
+      upsellSuggestions,
+      loyaltyConfig,
+      cashbackConfig,
     };
 
     res.status = 200;
@@ -1832,17 +2454,32 @@ async function handlePublicCheckout(req: Request, res: Response): Promise<void> 
     return;
   }
 
-  const body: unknown = req.body;
-  if (!isOrdersCreateOrderRequest(body)) {
+  const rateKey = `public-checkout:${tenantSlug}`;
+  const now = Date.now();
+  const entry = checkoutRateLimit.get(rateKey);
+  if (!entry || entry.resetAt <= now) {
+    checkoutRateLimit.set(rateKey, { count: 1, resetAt: now + CHECKOUT_RATE_LIMIT_WINDOW_MS });
+  } else {
+    if (entry.count >= CHECKOUT_RATE_LIMIT_MAX) {
+      res.status = 429;
+      res.body = { error: 'Too Many Requests', message: 'Checkout rate limit exceeded' };
+      return;
+    }
+    entry.count++;
+    checkoutRateLimit.set(rateKey, entry);
+  }
+
+  const body = req.body;
+  if (!isRecord(body) || !Array.isArray(body.items)) {
     res.status = 400;
     res.body = { error: 'Bad Request', message: 'Body inválido' };
     return;
   }
 
-  const ordersService = getOrdersService();
-  if (!ordersService) {
+  const service = getMenuOnlineService();
+  if (!service) {
     res.status = 500;
-    res.body = { error: 'Internal Server Error', message: 'Orders module service not found' };
+    res.body = { error: 'Internal Server Error', message: 'Menu Online service not found' };
     return;
   }
 
@@ -1864,27 +2501,209 @@ async function handlePublicCheckout(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const [menuEnabled, ordersEnabled] = await Promise.all([
-      tenantModuleService.isEnabled(asUUID(tenant.id), asModuleId('menu-online')),
-      tenantModuleService.isEnabled(asUUID(tenant.id), asModuleId('orders-module')),
-    ]);
-
-    if (!menuEnabled || !ordersEnabled) {
+    const enabled = await tenantModuleService.isEnabled(asUUID(tenant.id), asModuleId('menu-online'));
+    if (!enabled) {
       res.status = 404;
       res.body = { error: 'Not Found', message: 'Checkout not available' };
       return;
     }
 
-    const input: OrdersCreateOrderRequest = { ...body, source: 'menu-online' };
+    const deliveryTypeValue =
+      body.deliveryType === 'delivery' || body.deliveryType === 'pickup' || body.deliveryType === 'local'
+        ? body.deliveryType
+        : null;
+    const paymentMethodValue =
+      body.paymentMethod === 'cash' || body.paymentMethod === 'pix' || body.paymentMethod === 'card'
+        ? body.paymentMethod
+        : null;
+
+    const input: MenuOnlineCheckoutRequest = {
+      items: body.items,
+      deliveryType: deliveryTypeValue,
+      paymentMethod: paymentMethodValue,
+      customerName: typeof body.customerName === 'string' ? body.customerName : null,
+      customerPhone: typeof body.customerPhone === 'string' ? body.customerPhone : null,
+      customerKey: typeof body.customerKey === 'string' ? body.customerKey : null,
+    };
+
+    if (!input.items || input.items.length === 0) {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Carrinho vazio' };
+      return;
+    }
+
+    const parsedItems = input.items.map((item) => ({
+      productId: typeof item.productId === 'string' ? item.productId.trim() : '',
+      quantity: typeof item.quantity === 'number' ? Math.max(1, Math.round(item.quantity)) : 0,
+      variationId: typeof item.variationId === 'string' ? item.variationId : null,
+      modifierOptionIds: Array.isArray(item.modifierOptionIds)
+        ? item.modifierOptionIds.filter((id) => typeof id === 'string')
+        : [],
+      couponCode: typeof item.couponCode === 'string' ? item.couponCode.trim() : null,
+    }));
+
+    if (parsedItems.some((i) => !i.productId || i.quantity <= 0)) {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Itens inválidos' };
+      return;
+    }
+
+    const productIds = Array.from(new Set(parsedItems.map((i) => i.productId)));
+    const products = await prisma.product.findMany({
+      where: { tenant_id: tenant.id, id: { in: productIds }, deleted_at: null, status: 'active' },
+      include: { priceVariations: true },
+    });
+    if (products.length !== productIds.length) {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Produto inválido' };
+      return;
+    }
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    const allOptionIds = Array.from(new Set(parsedItems.flatMap((i) => i.modifierOptionIds)));
+    const optionRows = allOptionIds.length
+      ? await prisma.modifierOption.findMany({
+          where: { tenant_id: tenant.id, id: { in: allOptionIds }, deleted_at: null },
+          include: { group: { select: { id: true, name: true, status: true, deleted_at: true } } },
+        })
+      : [];
+    const optionMap = new Map(optionRows.map((o) => [o.id, o]));
+
+    let subtotal = 0;
+    let discount = 0;
+    const itemsForOrder: OrdersCreateOrderRequest['items'] = [];
+
+    for (const item of parsedItems) {
+      const product = productMap.get(item.productId);
+      if (!product) {
+        res.status = 400;
+        res.body = { error: 'Bad Request', message: 'Produto inválido' };
+        return;
+      }
+      const simulation = await service.simulatePrice(tenant.id, {
+        productId: item.productId,
+        variationId: item.variationId ?? undefined,
+        modifierOptionIds: item.modifierOptionIds,
+        couponCode: item.couponCode ?? undefined,
+      });
+      if (!simulation) {
+        res.status = 400;
+        res.body = { error: 'Bad Request', message: 'Produto inválido' };
+        return;
+      }
+
+      const variationName = item.variationId
+        ? product.priceVariations.find((v) => v.id === item.variationId)?.name ?? null
+        : null;
+      const displayName = variationName ? `${product.name} (${variationName})` : product.name;
+
+      const modifiers = item.modifierOptionIds.map((id) => {
+        const option = optionMap.get(id);
+        if (!option || option.status !== 'active' || option.group?.deleted_at) {
+          res.status = 400;
+          res.body = { error: 'Bad Request', message: 'Complemento inválido' };
+          throw new Error('INVALID_MODIFIER_SELECTION');
+        }
+        return {
+          name: option.group?.name ?? 'Complemento',
+          optionName: option.name,
+          priceDelta: option.price_delta,
+        };
+      });
+
+      itemsForOrder.push({
+        productId: product.id,
+        name: displayName,
+        basePrice: product.base_price,
+        quantity: item.quantity,
+        unitPrice: simulation.total,
+        totalPrice: simulation.total * item.quantity,
+        notes: null,
+        modifiers,
+      });
+
+      subtotal += simulation.subtotal * item.quantity;
+      discount += simulation.discount * item.quantity;
+    }
+
+    let cashbackUsed = 0;
+    if (input.customerKey) {
+      const cashbackConfig = await service.getCashbackConfig(tenant.id);
+      if (cashbackConfig.enabled) {
+        const balance = await service.getCustomerBalance(tenant.id, input.customerKey);
+        const available = balance.cashbackBalance;
+        const maxUse = Math.max(0, subtotal - discount);
+        cashbackUsed = Math.min(available, maxUse);
+        if (cashbackUsed > 0) {
+          await service.updateCustomerBalance(tenant.id, input.customerKey, {
+            cashbackBalance: Math.max(0, available - cashbackUsed),
+          });
+        }
+      }
+    }
+
+    const total = Math.max(0, subtotal - discount - cashbackUsed);
+
+    const ordersService = getOrdersService();
+    if (!ordersService) {
+      res.status = 500;
+      res.body = { error: 'Internal Server Error', message: 'Orders module service not found' };
+      return;
+    }
+
+    const orderInput: OrdersCreateOrderRequest = {
+      source: 'menu-online',
+      status: 'pending',
+      total,
+      paymentMethod: input.paymentMethod ?? null,
+      customerName: input.customerName ?? null,
+      customerPhone: input.customerPhone ?? null,
+      deliveryType: input.deliveryType ?? null,
+      items: itemsForOrder,
+    };
+
     const created = await ordersService.createOrder({
       tenantId: tenant.id,
       userId: null,
-      input,
+      input: orderInput,
     });
 
+    const publicOrderCode = String(created.orderNumber);
+    await prisma.order.update({
+      where: { id: created.id },
+      data: {
+        public_order_code: publicOrderCode,
+        subtotal,
+        discount,
+        cashback_used: cashbackUsed,
+        customer_snapshot:
+          input.customerName || input.customerPhone
+            ? ({ name: input.customerName, phone: input.customerPhone } as Prisma.JsonObject)
+            : Prisma.JsonNull,
+        delivery_info:
+          input.deliveryType
+            ? ({ type: input.deliveryType } as Prisma.JsonObject)
+            : Prisma.JsonNull,
+      },
+    });
+
+    const data = {
+      orderId: created.id,
+      publicOrderCode,
+      status: created.status === 'confirmed' || created.status === 'cancelled' ? created.status : 'pending',
+    };
     res.status = 201;
-    res.body = { success: true, data: created };
+    res.body = { success: true, data };
   } catch (error) {
+    console.error('menu-online.checkout', {
+      tenantSlug,
+      error: error instanceof Error ? error.message : error,
+    });
+    if (error instanceof Error && (error.message === 'INVALID_MODIFIER_SELECTION' || error.message === 'INVALID_VARIATION' || error.message === 'PRODUCT_NOT_FOUND' || error.message === 'EMPTY_CART')) {
+      res.status = 400;
+      res.body = { error: 'Bad Request', message: 'Dados inválidos' };
+      return;
+    }
     res.status = 500;
     res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to checkout' };
   }
@@ -1933,9 +2752,27 @@ export const menuOnlinePublicRoutes: Route[] = [
   },
   {
     method: 'POST',
+    path: '/menu/:tenantSlug/price/simulate',
+    middlewares: [requestLogger, errorHandler],
+    handler: handlePublicSimulatePrice,
+  },
+  {
+    method: 'POST',
+    path: '/menu/:tenantSlug/coupons/validate',
+    middlewares: [requestLogger, errorHandler],
+    handler: handlePublicValidateCoupon,
+  },
+  {
+    method: 'POST',
     path: '/menu/:tenantSlug/checkout',
     middlewares: [requestLogger, errorHandler],
     handler: handlePublicCheckout,
+  },
+  {
+    method: 'GET',
+    path: '/menu/:tenantSlug/order/:code',
+    middlewares: [requestLogger, errorHandler],
+    handler: handlePublicGetOrder,
   },
   {
     method: 'GET',
@@ -1945,9 +2782,27 @@ export const menuOnlinePublicRoutes: Route[] = [
   },
   {
     method: 'POST',
+    path: '/api/v1/menu/:tenantSlug/price/simulate',
+    middlewares: [requestLogger, errorHandler],
+    handler: handlePublicSimulatePrice,
+  },
+  {
+    method: 'POST',
+    path: '/api/v1/menu/:tenantSlug/coupons/validate',
+    middlewares: [requestLogger, errorHandler],
+    handler: handlePublicValidateCoupon,
+  },
+  {
+    method: 'POST',
     path: '/api/v1/menu/:tenantSlug/checkout',
     middlewares: [requestLogger, errorHandler],
     handler: handlePublicCheckout,
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/menu/:tenantSlug/order/:code',
+    middlewares: [requestLogger, errorHandler],
+    handler: handlePublicGetOrder,
   },
 ];
 
@@ -2132,5 +2987,65 @@ export const menuOnlineTenantRoutes: Route[] = [
     path: '/api/v1/tenant/menu-online/price/simulate',
     middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('menu.view')],
     handler: handleSimulatePrice,
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/tenant/menu-online/upsell-suggestions',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('menu.view')],
+    handler: handleListUpsellSuggestions,
+  },
+  {
+    method: 'POST',
+    path: '/api/v1/tenant/menu-online/upsell-suggestions',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('pricing.manage')],
+    handler: handleCreateUpsellSuggestion,
+  },
+  {
+    method: 'PATCH',
+    path: '/api/v1/tenant/menu-online/upsell-suggestions/:id',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('pricing.manage')],
+    handler: handleUpdateUpsellSuggestion,
+  },
+  {
+    method: 'DELETE',
+    path: '/api/v1/tenant/menu-online/upsell-suggestions/:id',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('pricing.manage')],
+    handler: handleDeleteUpsellSuggestion,
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/tenant/menu-online/loyalty',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('menu.view')],
+    handler: handleGetLoyaltyConfig,
+  },
+  {
+    method: 'PATCH',
+    path: '/api/v1/tenant/menu-online/loyalty',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('pricing.manage')],
+    handler: handleUpdateLoyaltyConfig,
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/tenant/menu-online/cashback',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('menu.view')],
+    handler: handleGetCashbackConfig,
+  },
+  {
+    method: 'PATCH',
+    path: '/api/v1/tenant/menu-online/cashback',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('pricing.manage')],
+    handler: handleUpdateCashbackConfig,
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/tenant/menu-online/customer-balances/:customerKey',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('menu.view')],
+    handler: handleGetCustomerBalance,
+  },
+  {
+    method: 'PATCH',
+    path: '/api/v1/tenant/menu-online/customer-balances/:customerKey',
+    middlewares: [requestLogger, errorHandler, requireTenantAuth, requireModule('menu-online'), requirePermission('pricing.manage')],
+    handler: handleUpdateCustomerBalance,
   },
 ];

@@ -114,6 +114,9 @@ export type MenuOnlinePublicMenuDTO = {
   modifierGroups: MenuOnlineModifierGroupDTO[];
   modifierOptions: MenuOnlineModifierOptionDTO[];
   combos: MenuOnlineComboDTO[];
+  upsellSuggestions?: MenuOnlineUpsellSuggestionDTO[];
+  loyaltyConfig?: MenuOnlineLoyaltyConfigDTO;
+  cashbackConfig?: MenuOnlineCashbackConfigDTO;
 };
 
 export type MenuOnlineCreateCategoryRequest = {
@@ -357,6 +360,29 @@ export type MenuOnlinePriceSimulationResponse = {
   discount: number;
   total: number;
   appliedCouponCode: string | null;
+};
+
+export type MenuOnlineCheckoutItemRequest = {
+  productId: string;
+  quantity: number;
+  variationId?: string | null;
+  modifierOptionIds?: string[];
+  couponCode?: string | null;
+};
+
+export type MenuOnlineCheckoutRequest = {
+  items: MenuOnlineCheckoutItemRequest[];
+  deliveryType?: 'delivery' | 'pickup' | 'local' | null;
+  paymentMethod?: 'cash' | 'pix' | 'card' | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerKey?: string | null;
+};
+
+export type MenuOnlineCheckoutResponse = {
+  orderId: string;
+  publicOrderCode: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
 };
 
 export type MenuOnlineCreateModifierGroupRequest = {

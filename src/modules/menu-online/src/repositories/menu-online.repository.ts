@@ -5,23 +5,31 @@ import type {
   MenuOnlineCategoryDTO,
   MenuOnlineComboDTO,
   MenuOnlineCouponDTO,
+  MenuOnlineCreateUpsellSuggestionRequest,
   MenuOnlineCreateCategoryRequest,
   MenuOnlineCreateComboRequest,
   MenuOnlineCreateCouponRequest,
   MenuOnlineCreateModifierGroupRequest,
   MenuOnlineCreateModifierOptionRequest,
   MenuOnlineCreateProductRequest,
+  MenuOnlineCashbackConfigDTO,
+  MenuOnlineCustomerBalanceDTO,
+  MenuOnlineLoyaltyConfigDTO,
   MenuOnlineModifierGroupDTO,
   MenuOnlineModifierOptionDTO,
   MenuOnlineProductDTO,
   MenuOnlineSettingsDTO,
+  MenuOnlineUpdateCashbackConfigRequest,
   MenuOnlineUpdateCategoryRequest,
   MenuOnlineUpdateComboRequest,
   MenuOnlineUpdateCouponRequest,
+  MenuOnlineUpdateLoyaltyConfigRequest,
   MenuOnlineUpdateModifierGroupRequest,
   MenuOnlineUpdateModifierOptionRequest,
   MenuOnlineUpdateProductRequest,
   MenuOnlineUpdateSettingsRequest,
+  MenuOnlineUpdateUpsellSuggestionRequest,
+  MenuOnlineUpsellSuggestionDTO,
 } from '@/src/types/menu-online';
 
 export class MenuOnlineRepository {
@@ -1036,6 +1044,265 @@ export class MenuOnlineRepository {
     return rows.reduce((acc, r) => acc + r.price_delta, 0);
   }
 
+  async getProductModifierGroupRules(
+    tenantId: string,
+    productId: string,
+  ): Promise<
+    Array<{
+      groupId: string;
+      minSelect: number;
+      maxSelect: number;
+      isRequired: boolean;
+      status: 'active' | 'inactive';
+    }>
+  > {
+    const rows = await this.prisma.productModifier.findMany({
+      where: { tenant_id: tenantId, product_id: productId, deleted_at: null },
+      select: {
+        group_id: true,
+        group: {
+          select: {
+            min_select: true,
+            max_select: true,
+            is_required: true,
+            status: true,
+            deleted_at: true,
+          },
+        },
+      },
+      orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+    });
+
+    return rows
+      .filter((row) => row.group && row.group.deleted_at === null)
+      .map((row) => ({
+        groupId: row.group_id,
+        minSelect: row.group.min_select,
+        maxSelect: row.group.max_select,
+        isRequired: row.group.is_required,
+        status: row.group.status === 'inactive' ? 'inactive' : 'active',
+      }));
+  }
+
+  async getModifierOptionsByIds(
+    tenantId: string,
+    optionIds: string[],
+  ): Promise<
+    Array<{
+      id: string;
+      groupId: string;
+      priceDelta: number;
+      status: 'active' | 'inactive';
+    }>
+  > {
+    if (optionIds.length === 0) return [];
+    const rows = await this.prisma.modifierOption.findMany({
+      where: { tenant_id: tenantId, id: { in: optionIds }, deleted_at: null },
+      select: { id: true, group_id: true, price_delta: true, status: true },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      groupId: row.group_id,
+      priceDelta: row.price_delta,
+      status: row.status === 'inactive' ? 'inactive' : 'active',
+    }));
+  }
+
+  async listUpsellSuggestions(tenantId: string): Promise<MenuOnlineUpsellSuggestionDTO[]> {
+    const rows = await this.prisma.menuUpsellSuggestion.findMany({
+      where: { tenant_id: tenantId, deleted_at: null },
+      orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+    });
+    return rows.map((s) => ({
+      id: s.id,
+      fromProductId: s.from_product_id ?? null,
+      suggestedProductId: s.suggested_product_id,
+      sortOrder: s.sort_order,
+      status: s.status === 'inactive' ? 'inactive' : 'active',
+    }));
+  }
+
+  async createUpsellSuggestion(
+    tenantId: string,
+    input: MenuOnlineCreateUpsellSuggestionRequest,
+  ): Promise<MenuOnlineUpsellSuggestionDTO> {
+    const row = await this.prisma.menuUpsellSuggestion.create({
+      data: {
+        tenant_id: tenantId,
+        from_product_id: input.fromProductId ?? null,
+        suggested_product_id: input.suggestedProductId,
+        sort_order: input.sortOrder ?? 0,
+        status: input.status ?? 'active',
+      },
+    });
+
+    return {
+      id: row.id,
+      fromProductId: row.from_product_id ?? null,
+      suggestedProductId: row.suggested_product_id,
+      sortOrder: row.sort_order,
+      status: row.status === 'inactive' ? 'inactive' : 'active',
+    };
+  }
+
+  async updateUpsellSuggestion(
+    tenantId: string,
+    id: string,
+    input: MenuOnlineUpdateUpsellSuggestionRequest,
+  ): Promise<MenuOnlineUpsellSuggestionDTO | null> {
+    const existing = await this.prisma.menuUpsellSuggestion.findFirst({
+      where: { id, tenant_id: tenantId, deleted_at: null },
+      select: { id: true },
+    });
+    if (!existing) return null;
+
+    const row = await this.prisma.menuUpsellSuggestion.update({
+      where: { id },
+      data: {
+        from_product_id: input.fromProductId ?? undefined,
+        suggested_product_id: input.suggestedProductId ?? undefined,
+        sort_order: input.sortOrder ?? undefined,
+        status: input.status ?? undefined,
+      },
+    });
+
+    return {
+      id: row.id,
+      fromProductId: row.from_product_id ?? null,
+      suggestedProductId: row.suggested_product_id,
+      sortOrder: row.sort_order,
+      status: row.status === 'inactive' ? 'inactive' : 'active',
+    };
+  }
+
+  async deleteUpsellSuggestion(tenantId: string, id: string): Promise<boolean> {
+    const existing = await this.prisma.menuUpsellSuggestion.findFirst({
+      where: { id, tenant_id: tenantId, deleted_at: null },
+      select: { id: true },
+    });
+    if (!existing) return false;
+
+    await this.prisma.menuUpsellSuggestion.update({ where: { id }, data: { deleted_at: new Date() } });
+    return true;
+  }
+
+  async getLoyaltyConfig(tenantId: string): Promise<MenuOnlineLoyaltyConfigDTO> {
+    const row = await this.prisma.menuLoyaltyConfig.findUnique({
+      where: { tenant_id: tenantId },
+    });
+    if (!row) {
+      return { enabled: false, pointsPerCurrency: 0, currencyPerPoint: 0 };
+    }
+    return {
+      enabled: row.enabled,
+      pointsPerCurrency: row.points_per_currency,
+      currencyPerPoint: row.currency_per_point,
+    };
+  }
+
+  async updateLoyaltyConfig(
+    tenantId: string,
+    input: MenuOnlineUpdateLoyaltyConfigRequest,
+  ): Promise<MenuOnlineLoyaltyConfigDTO> {
+    const row = await this.prisma.menuLoyaltyConfig.upsert({
+      where: { tenant_id: tenantId },
+      update: {
+        enabled: input.enabled ?? undefined,
+        points_per_currency: input.pointsPerCurrency ?? undefined,
+        currency_per_point: input.currencyPerPoint ?? undefined,
+      },
+      create: {
+        tenant_id: tenantId,
+        enabled: input.enabled ?? false,
+        points_per_currency: input.pointsPerCurrency ?? 0,
+        currency_per_point: input.currencyPerPoint ?? 0,
+      },
+    });
+    return {
+      enabled: row.enabled,
+      pointsPerCurrency: row.points_per_currency,
+      currencyPerPoint: row.currency_per_point,
+    };
+  }
+
+  async getCashbackConfig(tenantId: string): Promise<MenuOnlineCashbackConfigDTO> {
+    const row = await this.prisma.menuCashbackConfig.findUnique({
+      where: { tenant_id: tenantId },
+    });
+    if (!row) {
+      return { enabled: false, percent: 0, expiresDays: null };
+    }
+    return {
+      enabled: row.enabled,
+      percent: row.percent,
+      expiresDays: row.expires_days ?? null,
+    };
+  }
+
+  async updateCashbackConfig(
+    tenantId: string,
+    input: MenuOnlineUpdateCashbackConfigRequest,
+  ): Promise<MenuOnlineCashbackConfigDTO> {
+    const row = await this.prisma.menuCashbackConfig.upsert({
+      where: { tenant_id: tenantId },
+      update: {
+        enabled: input.enabled ?? undefined,
+        percent: input.percent ?? undefined,
+        expires_days: input.expiresDays === undefined ? undefined : input.expiresDays,
+      },
+      create: {
+        tenant_id: tenantId,
+        enabled: input.enabled ?? false,
+        percent: input.percent ?? 0,
+        expires_days: input.expiresDays === undefined ? null : input.expiresDays,
+      },
+    });
+    return {
+      enabled: row.enabled,
+      percent: row.percent,
+      expiresDays: row.expires_days ?? null,
+    };
+  }
+
+  async getCustomerBalance(tenantId: string, customerKey: string): Promise<MenuOnlineCustomerBalanceDTO> {
+    const row = await this.prisma.menuCustomerBalance.findUnique({
+      where: { tenant_id_customer_key: { tenant_id: tenantId, customer_key: customerKey } },
+    });
+    if (!row) {
+      return { customerKey, loyaltyPoints: 0, cashbackBalance: 0 };
+    }
+    return {
+      customerKey: row.customer_key,
+      loyaltyPoints: row.loyalty_points,
+      cashbackBalance: row.cashback_balance,
+    };
+  }
+
+  async updateCustomerBalance(
+    tenantId: string,
+    customerKey: string,
+    input: { loyaltyPoints?: number; cashbackBalance?: number },
+  ): Promise<MenuOnlineCustomerBalanceDTO> {
+    const row = await this.prisma.menuCustomerBalance.upsert({
+      where: { tenant_id_customer_key: { tenant_id: tenantId, customer_key: customerKey } },
+      update: {
+        loyalty_points: input.loyaltyPoints ?? undefined,
+        cashback_balance: input.cashbackBalance ?? undefined,
+      },
+      create: {
+        tenant_id: tenantId,
+        customer_key: customerKey,
+        loyalty_points: input.loyaltyPoints ?? 0,
+        cashback_balance: input.cashbackBalance ?? 0,
+      },
+    });
+    return {
+      customerKey: row.customer_key,
+      loyaltyPoints: row.loyalty_points,
+      cashbackBalance: row.cashback_balance,
+    };
+  }
+
   async getSettings(tenantId: string): Promise<MenuOnlineSettingsDTO> {
     const row = await this.prisma.menuSettings.findUnique({
       where: { tenant_id: tenantId },
@@ -1096,4 +1363,6 @@ export class MenuOnlineRepository {
     }
     return windows.length > 0 ? windows : [];
   }
+
+
 }

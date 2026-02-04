@@ -11,6 +11,8 @@ import { MenuOnlineProductsPage } from '@/src/tenant/pages/MenuOnlineProducts';
 import { MenuOnlineModifiersPage } from '@/src/tenant/pages/MenuOnlineModifiers';
 import { MenuOnlineSettingsPage } from '@/src/tenant/pages/MenuOnlineSettings';
 import { MenuOnlinePreviewPage } from '@/src/tenant/pages/MenuOnlinePreview';
+import { MenuOnlinePromotionsPage } from '@/src/tenant/pages/MenuOnlinePromotions';
+import { MenuOnlineRewardsPage } from '@/src/tenant/pages/MenuOnlineRewards';
 import { OrdersPage } from '@/src/tenant/pages/Orders';
 import { OrdersKanbanPage } from '@/src/tenant/pages/OrdersKanban';
 import { OrderDetailsPage } from '@/src/tenant/pages/OrderDetails';
@@ -141,6 +143,18 @@ function TenantRouter() {
     page = (
       <PlanGuard moduleId="menu-online">
         <MenuOnlineSettingsPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/menu-online/promotions') {
+    page = (
+      <PlanGuard moduleId="menu-online">
+        <MenuOnlinePromotionsPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/menu-online/rewards') {
+    page = (
+      <PlanGuard moduleId="menu-online">
+        <MenuOnlineRewardsPage />
       </PlanGuard>
     );
   } else if (restPath === '/menu-online/preview') {

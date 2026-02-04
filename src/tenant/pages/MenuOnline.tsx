@@ -177,6 +177,30 @@ function MenuOnlinePageContent() {
 
           <Card>
             <CardHeader>
+              <CardTitle>Promoções</CardTitle>
+              <CardDescription>Cupons, combos e upsell</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <a href={`${basePath}/menu-online/promotions`} className="text-sm text-primary underline-offset-4 hover:underline">
+                Abrir →
+              </a>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Fidelidade & Cashback</CardTitle>
+              <CardDescription>Configurações simples por tenant</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <a href={`${basePath}/menu-online/rewards`} className="text-sm text-primary underline-offset-4 hover:underline">
+                Abrir →
+              </a>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Preview</CardTitle>
               <CardDescription>Visualização interna do cardápio público</CardDescription>
             </CardHeader>

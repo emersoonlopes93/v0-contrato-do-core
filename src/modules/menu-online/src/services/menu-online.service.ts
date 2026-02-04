@@ -3,25 +3,33 @@ import type {
   MenuOnlineCategoryDTO,
   MenuOnlineComboDTO,
   MenuOnlineCouponDTO,
+  MenuOnlineCreateUpsellSuggestionRequest,
   MenuOnlineCreateCategoryRequest,
   MenuOnlineCreateComboRequest,
   MenuOnlineCreateCouponRequest,
   MenuOnlineCreateModifierGroupRequest,
   MenuOnlineCreateModifierOptionRequest,
   MenuOnlineCreateProductRequest,
+  MenuOnlineCashbackConfigDTO,
+  MenuOnlineCustomerBalanceDTO,
+  MenuOnlineLoyaltyConfigDTO,
   MenuOnlineModifierGroupDTO,
   MenuOnlineModifierOptionDTO,
   MenuOnlinePriceSimulationRequest,
   MenuOnlinePriceSimulationResponse,
   MenuOnlineProductDTO,
   MenuOnlineSettingsDTO,
+  MenuOnlineUpdateCashbackConfigRequest,
   MenuOnlineUpdateCategoryRequest,
   MenuOnlineUpdateComboRequest,
   MenuOnlineUpdateCouponRequest,
+  MenuOnlineUpdateLoyaltyConfigRequest,
   MenuOnlineUpdateModifierGroupRequest,
   MenuOnlineUpdateModifierOptionRequest,
   MenuOnlineUpdateProductRequest,
   MenuOnlineUpdateSettingsRequest,
+  MenuOnlineUpdateUpsellSuggestionRequest,
+  MenuOnlineUpsellSuggestionDTO,
 } from '@/src/types/menu-online';
 import { MenuOnlineRepository } from '../repositories/menu-online.repository';
 
@@ -190,6 +198,30 @@ export class MenuOnlineService {
     const pricing = await this.repository.getProductPricingInputs(tenantId, input.productId);
     if (!pricing) return null;
 
+    const groupRules = await this.repository.getProductModifierGroupRules(tenantId, input.productId);
+    const allowedGroupIds = new Set(groupRules.map((g) => g.groupId));
+
+    const modifierOptionIds = input.modifierOptionIds ?? [];
+    const optionDetails = await this.repository.getModifierOptionsByIds(tenantId, modifierOptionIds);
+    if (modifierOptionIds.length !== optionDetails.length) {
+      throw new Error('INVALID_MODIFIER_SELECTION');
+    }
+
+    const selectedCounts = new Map<string, number>();
+    for (const option of optionDetails) {
+      if (option.status !== 'active') throw new Error('INVALID_MODIFIER_SELECTION');
+      if (!allowedGroupIds.has(option.groupId)) throw new Error('INVALID_MODIFIER_SELECTION');
+      selectedCounts.set(option.groupId, (selectedCounts.get(option.groupId) ?? 0) + 1);
+    }
+
+    for (const group of groupRules) {
+      if (group.status !== 'active') continue;
+      const selected = selectedCounts.get(group.groupId) ?? 0;
+      const minRequired = group.isRequired ? Math.max(1, group.minSelect) : group.minSelect;
+      if (selected < minRequired) throw new Error('INVALID_MODIFIER_SELECTION');
+      if (selected > group.maxSelect) throw new Error('INVALID_MODIFIER_SELECTION');
+    }
+
     const now = new Date();
     const promoActive =
       pricing.promoPrice !== null &&
@@ -203,11 +235,12 @@ export class MenuOnlineService {
       const variation = await this.repository.getVariationPricingInputs(tenantId, input.productId, input.variationId);
       if (variation) {
         variationDelta = variation.priceDelta !== null ? variation.priceDelta : variation.price - basePrice;
+      } else {
+        throw new Error('INVALID_VARIATION');
       }
     }
 
-    const modifierOptionIds = input.modifierOptionIds ?? [];
-    const modifiersTotal = await this.repository.sumModifierOptionsPriceDelta(tenantId, modifierOptionIds);
+    const modifiersTotal = optionDetails.reduce((acc, opt) => acc + opt.priceDelta, 0);
 
     const subtotal = basePrice + variationDelta + modifiersTotal;
 
@@ -240,5 +273,89 @@ export class MenuOnlineService {
       total,
       appliedCouponCode,
     };
+  }
+
+  async listUpsellSuggestions(tenantId: string): Promise<MenuOnlineUpsellSuggestionDTO[]> {
+    return this.repository.listUpsellSuggestions(tenantId);
+  }
+
+  async createUpsellSuggestion(
+    tenantId: string,
+    input: MenuOnlineCreateUpsellSuggestionRequest,
+  ): Promise<MenuOnlineUpsellSuggestionDTO> {
+    if (input.suggestedProductId.trim().length === 0) {
+      throw new Error('INVALID_UPSELL_SUGGESTION');
+    }
+    return this.repository.createUpsellSuggestion(tenantId, {
+      ...input,
+      suggestedProductId: input.suggestedProductId.trim(),
+      fromProductId: input.fromProductId === undefined ? undefined : input.fromProductId,
+    });
+  }
+
+  async updateUpsellSuggestion(
+    tenantId: string,
+    id: string,
+    input: MenuOnlineUpdateUpsellSuggestionRequest,
+  ): Promise<MenuOnlineUpsellSuggestionDTO | null> {
+    return this.repository.updateUpsellSuggestion(tenantId, id, input);
+  }
+
+  async deleteUpsellSuggestion(tenantId: string, id: string): Promise<boolean> {
+    return this.repository.deleteUpsellSuggestion(tenantId, id);
+  }
+
+  async getLoyaltyConfig(tenantId: string): Promise<MenuOnlineLoyaltyConfigDTO> {
+    return this.repository.getLoyaltyConfig(tenantId);
+  }
+
+  async updateLoyaltyConfig(
+    tenantId: string,
+    input: MenuOnlineUpdateLoyaltyConfigRequest,
+  ): Promise<MenuOnlineLoyaltyConfigDTO> {
+    const pointsPerCurrency = input.pointsPerCurrency;
+    const currencyPerPoint = input.currencyPerPoint;
+    if (pointsPerCurrency !== undefined && pointsPerCurrency < 0) {
+      throw new Error('INVALID_LOYALTY_CONFIG');
+    }
+    if (currencyPerPoint !== undefined && currencyPerPoint < 0) {
+      throw new Error('INVALID_LOYALTY_CONFIG');
+    }
+    return this.repository.updateLoyaltyConfig(tenantId, input);
+  }
+
+  async getCashbackConfig(tenantId: string): Promise<MenuOnlineCashbackConfigDTO> {
+    return this.repository.getCashbackConfig(tenantId);
+  }
+
+  async updateCashbackConfig(
+    tenantId: string,
+    input: MenuOnlineUpdateCashbackConfigRequest,
+  ): Promise<MenuOnlineCashbackConfigDTO> {
+    if (input.percent !== undefined && (input.percent < 0 || input.percent > 100)) {
+      throw new Error('INVALID_CASHBACK_CONFIG');
+    }
+    if (input.expiresDays !== undefined && input.expiresDays !== null && input.expiresDays <= 0) {
+      throw new Error('INVALID_CASHBACK_CONFIG');
+    }
+    return this.repository.updateCashbackConfig(tenantId, input);
+  }
+
+  async getCustomerBalance(tenantId: string, customerKey: string): Promise<MenuOnlineCustomerBalanceDTO> {
+    return this.repository.getCustomerBalance(tenantId, customerKey);
+  }
+
+  async updateCustomerBalance(
+    tenantId: string,
+    customerKey: string,
+    input: { loyaltyPoints?: number; cashbackBalance?: number },
+  ): Promise<MenuOnlineCustomerBalanceDTO> {
+    if (input.loyaltyPoints !== undefined && input.loyaltyPoints < 0) {
+      throw new Error('INVALID_CUSTOMER_BALANCE');
+    }
+    if (input.cashbackBalance !== undefined && input.cashbackBalance < 0) {
+      throw new Error('INVALID_CUSTOMER_BALANCE');
+    }
+    return this.repository.updateCustomerBalance(tenantId, customerKey, input);
   }
 }

@@ -37,6 +37,7 @@ import financialModule from '@/src/modules/financial/src';
 // Tenant Controllers
 import * as helloController from './tenant/hello/hello.controller';
 import * as tenantWhiteLabelController from './tenant/white-label.controller';
+import * as publicWhiteLabelController from './public/white-label.controller';
 
 // SaaS Admin Controllers
 import * as tenantsController from './saas-admin/tenants.controller';
@@ -64,6 +65,12 @@ export const routes: Route[] = [
   ...authRoutes,
 
   ...menuOnlinePublicRoutes,
+  {
+    method: 'GET',
+    path: '/api/v1/public/white-label/:tenantSlug',
+    middlewares: [requestLogger, errorHandler],
+    handler: publicWhiteLabelController.getPublicWhiteLabel,
+  },
 
   ...tenantRoutes,
 

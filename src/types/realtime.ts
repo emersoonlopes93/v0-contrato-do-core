@@ -21,6 +21,18 @@ export type RealtimeOrderStatusChangedPayload = {
   status: string;
 };
 
+export type RealtimeOrderUpdatedPayload = {
+  orderId: string;
+  status: string;
+  order?: OrdersOrderDTO;
+};
+
+export type RealtimeOrderCancelledPayload = {
+  orderId: string;
+  status: string;
+  order?: OrdersOrderDTO;
+};
+
 export type RealtimeCheckoutStartedPayload = {
   orderId: string;
   orderNumber: number;
@@ -52,7 +64,7 @@ export type RealtimeFinancialUpdatedPayload = FinancialSummaryDTO;
 
 export type OrdersRealtimeEventName = Extract<
   RealtimeOrderEventName,
-  'order.created' | 'order.status.changed'
+  'order.created' | 'order.updated' | 'order.status.changed' | 'order.cancelled'
 >;
 
 export type CheckoutRealtimeEventName = Extract<
@@ -69,7 +81,9 @@ export type FinancialRealtimeEventName = Extract<RealtimeFinancialEventName, 'fi
 
 export type RealtimeEventPayloads = {
   'order.created': RealtimeOrderCreatedPayload;
+  'order.updated': RealtimeOrderUpdatedPayload;
   'order.status.changed': RealtimeOrderStatusChangedPayload;
+  'order.cancelled': RealtimeOrderCancelledPayload;
   'checkout.started': RealtimeCheckoutStartedPayload;
   'checkout.awaiting_payment': RealtimeCheckoutAwaitingPaymentPayload;
   'payment.confirmed': RealtimePaymentConfirmedPayload;
@@ -82,7 +96,9 @@ export type KnownRealtimeEventName = Extract<RealtimeEventName, keyof RealtimeEv
 
 export type OrdersListUpdatableEvent =
   | 'order.created'
+  | 'order.updated'
   | 'order.status.changed'
+  | 'order.cancelled'
   | 'payment.confirmed'
   | 'payment.failed'
   | 'payment.expired';
@@ -90,4 +106,3 @@ export type OrdersListUpdatableEvent =
 export type OrdersKanbanUpdatableEvent = OrdersListUpdatableEvent;
 
 export type OrdersKanbanState = OrdersOrderSummaryDTO[];
-

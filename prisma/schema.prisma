@@ -695,13 +695,19 @@ model Order {
   id             String   @id @default(uuid())
   tenant_id      String
   order_number   Int
+  public_order_code String?
   source         String
   status         String
+  subtotal       Float    @default(0)
+  discount       Float    @default(0)
+  cashback_used  Float    @default(0)
   total          Float
   payment_method String?
   customer_name  String?
   customer_phone String?
   delivery_type  String?
+  customer_snapshot Json?
+  delivery_info     Json?
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
@@ -710,6 +716,7 @@ model Order {
   timelineEvents OrderTimelineEvent[]
 
   @@unique([tenant_id, order_number])
+  @@index([tenant_id, public_order_code])
   @@index([tenant_id])
   @@index([status])
   @@index([created_at])
@@ -720,7 +727,9 @@ model OrderItem {
   id           String   @id @default(uuid())
   tenant_id    String
   order_id     String
+  product_id   String?
   name         String
+  base_price   Float    @default(0)
   quantity     Int
   unit_price   Float
   total_price  Float
@@ -742,6 +751,7 @@ model OrderItemModifier {
   tenant_id     String
   order_item_id String
   name          String
+  option_name   String?
   price_delta   Float    @default(0)
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt

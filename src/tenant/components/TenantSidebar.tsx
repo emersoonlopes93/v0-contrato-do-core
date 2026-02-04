@@ -139,6 +139,12 @@ export function TenantSidebar() {
       icon: <BookOpen className="h-4 w-4" />,
       items: [
         {
+          label: 'Dashboard',
+          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online` : undefined,
+          disabled: !isModuleEnabled('menu-online'),
+          isActive: isRouteActive(`${basePath}/menu-online`) && !isRouteActive(`${basePath}/menu-online/`),
+        },
+        {
           label: 'Categorias',
           href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/categories` : undefined,
           disabled: !isModuleEnabled('menu-online'),
@@ -157,9 +163,22 @@ export function TenantSidebar() {
           isActive: isRouteActive(`${basePath}/menu-online/modifiers`),
         },
         {
-          label: 'Cupons',
-          href: undefined,
-          disabled: true,
+          label: 'Promoções',
+          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/promotions` : undefined,
+          disabled: !isModuleEnabled('menu-online'),
+          isActive: isRouteActive(`${basePath}/menu-online/promotions`),
+        },
+        {
+          label: 'Fidelidade & Cashback',
+          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/rewards` : undefined,
+          disabled: !isModuleEnabled('menu-online'),
+          isActive: isRouteActive(`${basePath}/menu-online/rewards`),
+        },
+        {
+          label: 'Preview',
+          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/preview` : undefined,
+          disabled: !isModuleEnabled('menu-online'),
+          isActive: isRouteActive(`${basePath}/menu-online/preview`),
         },
       ],
     },

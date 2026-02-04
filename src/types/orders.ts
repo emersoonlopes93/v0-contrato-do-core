@@ -61,10 +61,13 @@ export type OrdersOrderSummaryDTO = {
 export type OrdersCreateOrderItemModifierInput = {
   name: string;
   priceDelta?: number;
+  optionName?: string | null;
 };
 
 export type OrdersCreateOrderItemInput = {
+  productId?: string | null;
   name: string;
+  basePrice?: number;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -83,6 +86,32 @@ export type OrdersCreateOrderRequest = {
   items: OrdersCreateOrderItemInput[];
 };
 
+export type OrdersUpdateStatusRequest = {
+  status: string;
+};
+
+export type OrdersCancelOrderRequest = {
+  reason?: string | null;
+};
+
+export type OrdersKanbanColumnKey =
+  | 'created'
+  | 'accepted'
+  | 'preparing'
+  | 'ready'
+  | 'completed'
+  | 'cancelled';
+
+export type OrdersKanbanColumnDTO = {
+  key: OrdersKanbanColumnKey;
+  title: string;
+  orders: OrdersOrderSummaryDTO[];
+};
+
+export type OrdersKanbanDTO = {
+  columns: OrdersKanbanColumnDTO[];
+};
+
 export type OrdersServiceContract = {
   createOrder(request: {
     tenantId: string;
@@ -91,4 +120,11 @@ export type OrdersServiceContract = {
   }): Promise<OrdersOrderDTO>;
   listOrdersByTenant(tenantId: string): Promise<OrdersOrderSummaryDTO[]>;
   getOrderById(tenantId: string, orderId: string): Promise<OrdersOrderDTO | null>;
+  updateOrderStatus(request: {
+    tenantId: string;
+    orderId: string;
+    userId: string | null;
+    status: string;
+  }): Promise<OrdersOrderDTO>;
+  getKanbanByTenant(tenantId: string): Promise<OrdersKanbanDTO>;
 };

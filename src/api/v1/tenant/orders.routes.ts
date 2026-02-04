@@ -12,8 +12,10 @@ import {
 import { globalModuleServiceRegistry } from '@/src/core';
 import { asModuleId } from '@/src/core/types';
 import type {
+  OrdersCancelOrderRequest,
   OrdersCreateOrderRequest,
   OrdersServiceContract,
+  OrdersUpdateStatusRequest,
 } from '@/src/types/orders';
 
 function getOrdersService(): OrdersServiceContract | null {
@@ -75,6 +77,26 @@ function isOrdersCreateOrderRequest(value: unknown): value is OrdersCreateOrderR
       }
     }
   }
+
+  return true;
+}
+
+function isOrdersUpdateStatusRequest(value: unknown): value is OrdersUpdateStatusRequest {
+  if (!isRecord(value)) return false;
+
+  const status = value.status;
+
+  if (!isString(status)) return false;
+
+  return true;
+}
+
+function isOrdersCancelOrderRequest(value: unknown): value is OrdersCancelOrderRequest {
+  if (!isRecord(value)) return false;
+
+  const reason = value.reason;
+
+  if (reason !== undefined && reason !== null && !isString(reason)) return false;
 
   return true;
 }
@@ -237,6 +259,183 @@ async function handleGetOrder(req: Request, res: Response): Promise<void> {
   }
 }
 
+async function handleUpdateOrderStatus(req: Request, res: Response): Promise<void> {
+  const authReq = req as AuthenticatedRequest;
+  const auth = authReq.auth;
+
+  if (!auth || !auth.tenantId || !auth.userId) {
+    res.status = 401;
+    res.body = {
+      error: 'Unauthorized',
+      message: 'Authentication context is missing',
+    };
+    return;
+  }
+
+  const orderId = req.params?.id;
+
+  if (!orderId || typeof orderId !== 'string') {
+    res.status = 400;
+    res.body = {
+      error: 'Bad Request',
+      message: 'Parâmetro "id" é obrigatório',
+    };
+    return;
+  }
+
+  const body: unknown = req.body;
+
+  if (!isOrdersUpdateStatusRequest(body)) {
+    res.status = 400;
+    res.body = {
+      error: 'Bad Request',
+      message: 'Body inválido',
+    };
+    return;
+  }
+
+  const ordersService = getOrdersService();
+
+  if (!ordersService) {
+    res.status = 500;
+    res.body = {
+      error: 'Internal Server Error',
+      message: 'Orders module service not found',
+    };
+    return;
+  }
+
+  try {
+    const updated = await ordersService.updateOrderStatus({
+      tenantId: auth.tenantId,
+      orderId,
+      userId: auth.userId,
+      status: body.status,
+    });
+
+    res.status = 200;
+    res.body = {
+      success: true,
+      data: updated,
+    };
+  } catch (error) {
+    res.status = 500;
+    res.body = {
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to update order status',
+    };
+  }
+}
+
+async function handleCancelOrder(req: Request, res: Response): Promise<void> {
+  const authReq = req as AuthenticatedRequest;
+  const auth = authReq.auth;
+
+  if (!auth || !auth.tenantId || !auth.userId) {
+    res.status = 401;
+    res.body = {
+      error: 'Unauthorized',
+      message: 'Authentication context is missing',
+    };
+    return;
+  }
+
+  const orderId = req.params?.id;
+
+  if (!orderId || typeof orderId !== 'string') {
+    res.status = 400;
+    res.body = {
+      error: 'Bad Request',
+      message: 'Parâmetro "id" é obrigatório',
+    };
+    return;
+  }
+
+  const body: unknown = req.body;
+
+  if (!isOrdersCancelOrderRequest(body)) {
+    res.status = 400;
+    res.body = {
+      error: 'Bad Request',
+      message: 'Body inválido',
+    };
+    return;
+  }
+
+  const ordersService = getOrdersService();
+
+  if (!ordersService) {
+    res.status = 500;
+    res.body = {
+      error: 'Internal Server Error',
+      message: 'Orders module service not found',
+    };
+    return;
+  }
+
+  try {
+    const updated = await ordersService.updateOrderStatus({
+      tenantId: auth.tenantId,
+      orderId,
+      userId: auth.userId,
+      status: 'cancelled',
+    });
+
+    res.status = 200;
+    res.body = {
+      success: true,
+      data: updated,
+    };
+  } catch (error) {
+    res.status = 500;
+    res.body = {
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to cancel order',
+    };
+  }
+}
+
+async function handleGetKanban(req: Request, res: Response): Promise<void> {
+  const authReq = req as AuthenticatedRequest;
+  const auth = authReq.auth;
+
+  if (!auth || !auth.tenantId) {
+    res.status = 401;
+    res.body = {
+      error: 'Unauthorized',
+      message: 'Authentication context is missing',
+    };
+    return;
+  }
+
+  const ordersService = getOrdersService();
+
+  if (!ordersService) {
+    res.status = 500;
+    res.body = {
+      error: 'Internal Server Error',
+      message: 'Orders module service not found',
+    };
+    return;
+  }
+
+  try {
+    const kanban = await ordersService.getKanbanByTenant(auth.tenantId);
+
+    res.status = 200;
+    res.body = {
+      success: true,
+      data: kanban,
+    };
+  } catch (error) {
+    res.status = 500;
+    res.body = {
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to load orders kanban',
+    };
+  }
+}
+
 export const ordersTenantRoutes: Route[] = [
   {
     method: 'POST',
@@ -264,6 +463,18 @@ export const ordersTenantRoutes: Route[] = [
   },
   {
     method: 'GET',
+    path: '/api/v1/tenant/orders/kanban',
+    middlewares: [
+      requestLogger,
+      errorHandler,
+      requireTenantAuth,
+      requireModule('orders-module'),
+      requirePermission('orders.read'),
+    ],
+    handler: handleGetKanban,
+  },
+  {
+    method: 'GET',
     path: '/api/v1/tenant/orders/:id',
     middlewares: [
       requestLogger,
@@ -273,5 +484,29 @@ export const ordersTenantRoutes: Route[] = [
       requirePermission('orders.read'),
     ],
     handler: handleGetOrder,
+  },
+  {
+    method: 'PATCH',
+    path: '/api/v1/tenant/orders/:id/status',
+    middlewares: [
+      requestLogger,
+      errorHandler,
+      requireTenantAuth,
+      requireModule('orders-module'),
+      requirePermission('orders.create'),
+    ],
+    handler: handleUpdateOrderStatus,
+  },
+  {
+    method: 'POST',
+    path: '/api/v1/tenant/orders/:id/cancel',
+    middlewares: [
+      requestLogger,
+      errorHandler,
+      requireTenantAuth,
+      requireModule('orders-module'),
+      requirePermission('orders.create'),
+    ],
+    handler: handleCancelOrder,
   },
 ];

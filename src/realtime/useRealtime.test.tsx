@@ -7,6 +7,12 @@ import { REALTIME_ORDER_EVENTS } from '@/src/core/realtime/contracts';
 import type { TypedRealtimeEnvelope } from '@/src/realtime/realtime-client';
 import type { KnownRealtimeEventName } from '@/src/types/realtime';
 
+let mockedClient: RealtimeClient | null = null;
+
+vi.mock('@/src/realtime/realtime-context', () => ({
+  useRealtimeContext: () => ({ client: mockedClient }),
+}));
+
 function createMockClient() {
   const handlers: Partial<
     Record<
@@ -36,9 +42,8 @@ function createMockClient() {
 describe('useRealtimeEvent', () => {
   it('registra e remove handler corretamente', () => {
     const { client, handlers } = createMockClient();
-    const wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-      <RealtimeProviderMock client={client}>{children}</RealtimeProviderMock>
-    );
+    mockedClient = client;
+    const wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => children;
 
     const handler = vi.fn();
 
@@ -73,14 +78,3 @@ describe('useRealtimeEvent', () => {
     expect(Object.keys(handlers)).not.toContain(REALTIME_ORDER_EVENTS.ORDER_CREATED);
   });
 });
-
-type RealtimeProviderMockProps = {
-  client: RealtimeClient;
-  children: React.ReactNode;
-};
-
-const RealtimeContext = React.createContext<{ client: RealtimeClient | null } | undefined>(undefined);
-
-function RealtimeProviderMock({ client, children }: RealtimeProviderMockProps) {
-  return <RealtimeContext.Provider value={{ client }}>{children}</RealtimeContext.Provider>;
-}
