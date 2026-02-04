@@ -20,9 +20,21 @@ export const authRoutes: Route[] = [
   },
   {
     method: 'POST',
+    path: '/api/v1/auth/saas-admin/refresh',
+    middlewares: [requestLogger, errorHandler],
+    handler: saasAuthController.saasAdminRefresh,
+  },
+  {
+    method: 'POST',
     path: '/api/v1/auth/tenant/login',
     middlewares: [requestLogger, errorHandler],
     handler: tenantAuthController.tenantLogin,
+  },
+  {
+    method: 'POST',
+    path: '/api/v1/auth/tenant/refresh',
+    middlewares: [requestLogger, errorHandler],
+    handler: tenantAuthController.tenantRefresh,
   },
   {
     method: 'POST',

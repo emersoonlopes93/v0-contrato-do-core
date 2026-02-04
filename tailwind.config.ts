@@ -22,6 +22,9 @@ const config: Config = {
          ======================================== */
       colors: {
         background: 'hsl(var(--background))',
+        'background-app': 'hsl(var(--background-app))',
+        'background-surface': 'hsl(var(--background-surface))',
+        'background-card': 'hsl(var(--background-card))',
         foreground: 'hsl(var(--foreground))',
         card: {
           DEFAULT: 'hsl(var(--card))',
@@ -75,6 +78,8 @@ const config: Config = {
           soft: 'hsl(var(--info-soft))',
         },
         border: 'hsl(var(--border))',
+        'border-default': 'hsl(var(--border-default))',
+        'border-soft': 'hsl(var(--border-soft))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         chart: {
@@ -83,6 +88,12 @@ const config: Config = {
           '3': 'hsl(var(--chart-3))',
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
+        },
+        text: {
+          primary: 'hsl(var(--text-primary))',
+          secondary: 'hsl(var(--text-secondary))',
+          muted: 'hsl(var(--text-muted))',
+          inverse: 'hsl(var(--text-inverse))',
         },
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',

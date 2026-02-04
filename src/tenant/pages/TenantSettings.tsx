@@ -3,11 +3,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FormFooterSaveBar } from '@/components/form/FormFooterSaveBar';
+import { toast } from '@/hooks/use-toast';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { TenantSettingsDTO, TenantSettingsUpdateRequest } from '@/src/types/tenant-settings';
 
@@ -63,6 +64,7 @@ function TenantSettingsPageContent() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
 
   const initialFromSession = useMemo(() => {
     return {
@@ -168,6 +170,7 @@ function TenantSettingsPageContent() {
     if (!accessToken) return;
     setIsSaving(true);
     setError('');
+    setSuccess('');
 
     const parsedLatitude = normalizeNumber(latitude);
     if (typeof parsedLatitude === 'object' && parsedLatitude !== null && 'error' in parsedLatitude) {
@@ -213,8 +216,19 @@ function TenantSettingsPageContent() {
       setSettings(dto);
       applyToForm(dto);
       await refreshSession();
+      setSuccess('Configurações salvas com sucesso');
+      toast({
+        title: 'Salvo com sucesso',
+        description: 'Configurações salvas com sucesso',
+      });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao salvar configurações');
+      const message = e instanceof Error ? e.message : 'Erro ao salvar configurações';
+      setError(message);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar',
+        description: message,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -229,8 +243,31 @@ function TenantSettingsPageContent() {
     normalizeText(addressState) === null ||
     normalizeText(timezone) === null;
 
+  const isDirty =
+    (settings !== null &&
+      (tradeName !== (settings.tradeName ?? '') ||
+        addressCity !== (settings.addressCity ?? '' ) ||
+        addressState !== (settings.addressState ?? '' ) ||
+        timezone !== (settings.timezone ?? '' ) ||
+        currency !== (settings.currency ?? '' ) ||
+        isOpen !== settings.isOpen)) ||
+    (settings === null &&
+      (tradeName !== initialFromSession.tradeName ||
+        addressCity !== initialFromSession.addressCity ||
+        addressState !== initialFromSession.addressState ||
+        timezone !== initialFromSession.timezone ||
+        isOpen !== initialFromSession.isOpen ||
+        currency !== ''));
+
   return (
-    <div className="space-y-6">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+      id="tenant-settings-form"
+      className="space-y-6 pb-4"
+    >
       <div>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Configurações da Loja</h1>
         <p className="text-muted-foreground">Dados operacionais do tenant</p>
@@ -247,6 +284,12 @@ function TenantSettingsPageContent() {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && !error && (
+        <Alert>
+          <AlertDescription>{success}</AlertDescription>
         </Alert>
       )}
 
@@ -349,11 +392,19 @@ function TenantSettingsPageContent() {
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Timezone</Label>
-                <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="Ex.: America/Sao_Paulo" />
+                <Input
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  placeholder="Ex.: America/Sao_Paulo"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Moeda</Label>
-                <Input value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder="Ex.: BRL" />
+                <Input
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  placeholder="Ex.: BRL"
+                />
               </div>
 
               <div className="flex items-center justify-between rounded-lg border p-3 md:col-span-2">
@@ -361,21 +412,28 @@ function TenantSettingsPageContent() {
                   <div className="font-medium">Loja aberta</div>
                   <div className="text-sm text-muted-foreground">Usado para exibir aberto/fechado</div>
                 </div>
-                <input type="checkbox" checked={isOpen} onChange={(e) => setIsOpen(e.target.checked)} />
-              </div>
-
-              <div className="flex gap-2 md:col-span-2">
-                <Button disabled={isSaving} onClick={() => void save()}>
-                  {isSaving ? 'Salvando...' : 'Salvar'}
-                </Button>
+                <input
+                  type="checkbox"
+                  checked={isOpen}
+                  onChange={(e) => setIsOpen(e.target.checked)}
+                />
               </div>
             </CardContent>
           </Card>
         </div>
       )}
-    </div>
+
+      {isDirty && (
+        <FormFooterSaveBar
+          isLoading={isSaving}
+          primaryLabel="Salvar"
+          showCancel
+          cancelLabel="Cancelar"
+          onCancel={() => applyToForm(settings)}
+        />
+      )}
+    </form>
   );
 }
 
 export const TenantSettingsPage = withModuleGuard(TenantSettingsPageContent, 'settings');
-

@@ -5,25 +5,26 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,box-shadow,transform,border-color,color] duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:border-border [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:translate-y-px',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        default:
+          'bg-[hsl(var(--action-primary-safe))] text-[hsl(var(--action-primary-foreground-safe))] border border-border-soft shadow-sm hover:brightness-95 hover:shadow-md active:brightness-90',
         destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+          'bg-danger text-danger-foreground border border-border-soft shadow-sm hover:brightness-95 hover:shadow-md active:brightness-90',
         outline:
-          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+          'border border-border-default bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-muted',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+          'bg-secondary text-secondary-foreground border border-border-soft shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-muted',
+        ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
+        link: 'text-[hsl(var(--action-primary-safe))] underline-offset-4 hover:underline hover:brightness-95 active:brightness-90',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-md px-3',
+        default: 'h-11 px-4',
+        sm: 'h-11 rounded-md px-3',
         lg: 'h-11 rounded-md px-8',
-        icon: 'h-10 w-10',
+        icon: 'h-11 w-11',
       },
     },
     defaultVariants: {

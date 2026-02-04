@@ -48,7 +48,7 @@ export function AdminAuditLogsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Audit Logs</h1>
-      <div className="rounded bg-white p-4 shadow space-y-3">
+      <div className="rounded bg-card p-4 shadow-md space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <input
             placeholder="Tenant"
@@ -77,13 +77,12 @@ export function AdminAuditLogsPage() {
         </div>
         <button
           onClick={fetchEvents}
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          style={{ minHeight: 44 }}
+          className="rounded-md bg-[hsl(var(--action-primary-safe))] px-4 py-2 text-sm font-medium text-[hsl(var(--action-primary-foreground-safe))] hover:bg-[hsl(var(--action-primary-safe)/0.9)]"
         >
           Filtrar
         </button>
       </div>
-      <div className="rounded bg-white shadow">
+      <div className="rounded bg-card shadow-md">
         {loading ? (
           <p className="p-4">Carregando...</p>
         ) : events.length === 0 ? (

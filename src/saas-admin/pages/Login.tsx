@@ -17,10 +17,11 @@ export function AdminLoginPage() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok || !data.accessToken) {
+      if (!res.ok || !data.accessToken || !data.refreshToken) {
         throw new Error(data.error || 'Falha ao autenticar');
       }
-      localStorage.setItem('auth_token', data.accessToken);
+      localStorage.setItem('saas_admin_access_token', data.accessToken);
+      localStorage.setItem('saas_admin_refresh_token', data.refreshToken);
       window.location.replace('/admin');
     } catch (error: unknown) {
       const message =
@@ -32,11 +33,11 @@ export function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
+    <div className="min-h-screen flex items-center justify-center bg-background-app p-6">
+      <div className="w-full max-w-md bg-card rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold mb-4">SaaS Admin Login</h1>
         {error && (
-          <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-red-700">
+          <div className="mb-4 rounded border border-danger/20 bg-danger-soft p-3 text-danger">
             {error}
           </div>
         )}
@@ -66,8 +67,7 @@ export function AdminLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded bg-blue-600 px-4 py-3 text-white hover:bg-blue-700 disabled:opacity-50"
-            style={{ minHeight: 44 }}
+            className="w-full h-11 rounded-md bg-[hsl(var(--action-primary-safe))] px-4 text-sm font-medium text-[hsl(var(--action-primary-foreground-safe))] hover:bg-[hsl(var(--action-primary-safe)/0.9)] disabled:opacity-50"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>

@@ -10,7 +10,6 @@ import type {
   ApiErrorResponse,
   ApiSuccessResponse,
   MenuOnlineCategoryDTO,
-  MenuOnlineModifierGroupDTO,
   MenuOnlineProductDTO,
   MenuOnlineSettingsDTO,
 } from '@/src/types/menu-online';
@@ -45,19 +44,10 @@ async function apiGet<T>(url: string, accessToken: string): Promise<T> {
   return raw.data;
 }
 
-function formatPrice(value: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(value);
-  } catch {
-    return `R$ ${value.toFixed(2)}`;
-  }
-}
-
 function MenuOnlinePreviewPageContent() {
   const { accessToken } = useSession();
   const [categories, setCategories] = useState<MenuOnlineCategoryDTO[]>([]);
   const [products, setProducts] = useState<MenuOnlineProductDTO[]>([]);
-  const [modifierGroups, setModifierGroups] = useState<MenuOnlineModifierGroupDTO[]>([]);
   const [settings, setSettings] = useState<MenuOnlineSettingsDTO | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -69,16 +59,14 @@ function MenuOnlinePreviewPageContent() {
       setIsLoading(true);
       setError('');
       try {
-        const [cats, prods, groups, s] = await Promise.all([
+        const [cats, prods, s] = await Promise.all([
           apiGet<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', accessToken),
           apiGet<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', accessToken),
-          apiGet<MenuOnlineModifierGroupDTO[]>('/api/v1/tenant/menu-online/modifiers/groups', accessToken),
           apiGet<MenuOnlineSettingsDTO>('/api/v1/tenant/menu-online/settings', accessToken),
         ]);
         if (cancelled) return;
         setCategories(cats);
         setProducts(prods);
-        setModifierGroups(groups);
         setSettings(s);
       } catch (e) {
         if (cancelled) return;
@@ -109,12 +97,6 @@ function MenuOnlinePreviewPageContent() {
     }
     return map;
   }, [products]);
-
-  const modifierGroupNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const g of modifierGroups) map.set(g.id, g.name);
-    return map;
-  }, [modifierGroups]);
 
   const currency = settings?.currency ?? 'BRL';
   const showImages = settings?.showImages ?? true;

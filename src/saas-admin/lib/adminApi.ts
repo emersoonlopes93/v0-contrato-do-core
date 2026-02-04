@@ -7,18 +7,44 @@
  */
 
 const BASE_URL = '/api/v1/admin';
+const ADMIN_ACCESS_TOKEN_KEY = 'saas_admin_access_token';
+const ADMIN_REFRESH_TOKEN_KEY = 'saas_admin_refresh_token';
+const LEGACY_ACCESS_TOKEN_KEY = 'auth_token';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
 }
 
 class AdminApiClient {
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
   private getAccessToken(): string {
-    const token = localStorage.getItem('auth_token');
+    const token =
+      localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY) ??
+      localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
     if (!token) {
       throw new Error('Sessão expirada. Faça login novamente.');
     }
     return token;
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    const refreshToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY);
+    if (!refreshToken) return null;
+
+    const res = await fetch('/api/v1/auth/saas-admin/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const raw: unknown = await res.json().catch(() => null);
+    if (!res.ok || !raw || typeof raw !== 'object') return null;
+    const candidate = raw as { accessToken?: unknown };
+    if (typeof candidate.accessToken !== 'string' || candidate.accessToken.trim().length === 0) return null;
+    localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, candidate.accessToken);
+    return candidate.accessToken;
   }
 
   private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
@@ -32,28 +58,45 @@ class AdminApiClient {
       });
     }
 
-    const config: RequestInit = {
-      ...customConfig,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...headers,
-      },
+    const doFetch = async (accessToken: string) => {
+      const config: RequestInit = {
+        ...customConfig,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          ...headers,
+        },
+      };
+      const response = await fetch(url.toString(), config);
+      const data: unknown = await response.json().catch(() => ({}));
+      return { response, data };
     };
 
-    const response = await fetch(url.toString(), config);
-    const data = await response.json();
+    let { response, data } = await doFetch(token);
 
     if (!response.ok) {
-      // Se for 401, a sessão provavelmente expirou ou é inválida
       if (response.status === 401) {
-        // Opção: Redirecionar para login ou apenas lançar erro
-        // window.location.href = '/login/admin'; // Descomentar se desejar redirect automático
+        const refreshed = await this.refreshAccessToken();
+        if (refreshed) {
+          ({ response, data } = await doFetch(refreshed));
+        }
       }
-      throw new Error(data.message || data.error || 'Erro na requisição');
+      if (!response.ok) {
+        const parsed = this.isRecord(data) ? data : {};
+        const message =
+          typeof parsed.message === 'string'
+            ? parsed.message
+            : typeof parsed.error === 'string'
+              ? parsed.error
+              : 'Erro na requisição';
+        throw new Error(message);
+      }
     }
 
-    return data.data !== undefined ? data.data : data; // Suporte para { success: true, data: ... } ou retorno direto
+    if (this.isRecord(data) && data.data !== undefined) {
+      return data.data as T;
+    }
+    return data as T;
   }
 
   async get<T>(endpoint: string, params?: Record<string, string>): Promise<T> {

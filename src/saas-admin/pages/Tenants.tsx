@@ -104,13 +104,12 @@ export function AdminTenantsPage() {
         <h2 className="text-lg font-semibold">Criar Tenant (rápido)</h2>
         <a
           href="/admin/tenants/create"
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          style={{ minHeight: 44 }}
+          className="rounded-md bg-[hsl(var(--action-primary-safe))] px-4 py-2 text-sm font-medium text-[hsl(var(--action-primary-foreground-safe))] hover:bg-[hsl(var(--action-primary-safe)/0.9)]"
         >
           Onboarding Controlado
         </a>
       </div>
-      <form onSubmit={createTenant} className="rounded bg-white p-4 shadow space-y-3 mt-2">
+      <form onSubmit={createTenant} className="rounded bg-card p-4 shadow-md space-y-3 mt-2">
         <div className="flex gap-2 items-end">
           <div className="flex-1">
             <input
@@ -135,7 +134,7 @@ export function AdminTenantsPage() {
               required
               value={planId}
               onChange={(e) => setPlanId(e.target.value)}
-              className="w-full rounded border px-3 py-2 bg-white"
+              className="w-full rounded border border-input bg-background px-3 py-2"
             >
               <option value="" disabled>Selecione um plano</option>
               {plans.map((p) => (
@@ -148,8 +147,7 @@ export function AdminTenantsPage() {
           <button
             type="submit"
             disabled={!planId}
-            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ minHeight: 44 }}
+            className="rounded-md bg-[hsl(var(--action-primary-safe))] px-4 py-2 text-sm font-medium text-[hsl(var(--action-primary-foreground-safe))] hover:bg-[hsl(var(--action-primary-safe)/0.9)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Criar
           </button>
@@ -158,7 +156,7 @@ export function AdminTenantsPage() {
       </form>
 
       {selectedTenant && (
-        <div className="rounded bg-white p-4 shadow">
+        <div className="rounded bg-card p-4 shadow-md">
           <h2 className="text-lg font-semibold">Detalhes do tenant</h2>
           <p className="text-sm text-muted-foreground mt-1">ID: {selectedTenant.id}</p>
           <p className="text-sm text-muted-foreground">Slug: {selectedTenant.slug}</p>
@@ -169,7 +167,7 @@ export function AdminTenantsPage() {
         </div>
       )}
 
-      <div className="rounded bg-white shadow">
+      <div className="rounded bg-card shadow-md">
         {loading ? (
           <p className="p-4">Carregando...</p>
         ) : tenants.length === 0 ? (
@@ -193,22 +191,19 @@ export function AdminTenantsPage() {
                   <td className="p-3 space-x-2">
                     <button
                       onClick={() => updateStatus(t.id, 'active')}
-                      className="rounded bg-green-600 px-3 py-2 text-white hover:bg-green-700"
-                      style={{ minHeight: 44 }}
+                      className="rounded-md bg-success px-3 py-2 text-xs font-medium text-success-foreground hover:bg-success/90"
                     >
                       Ativar
                     </button>
                     <button
                       onClick={() => updateStatus(t.id, 'suspended')}
-                      className="rounded bg-yellow-600 px-3 py-2 text-white hover:bg-yellow-700"
-                      style={{ minHeight: 44 }}
+                      className="rounded-md bg-warning px-3 py-2 text-xs font-medium text-warning-foreground hover:bg-warning/90"
                     >
                       Suspender
                     </button>
                     <a
                       href={`/admin/tenants/${t.id}`}
-                      className="rounded border px-3 py-2 hover:bg-gray-100"
-                      style={{ minHeight: 44 }}
+                      className="rounded border px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
                     >
                       Detalhes
                     </a>

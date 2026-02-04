@@ -2,18 +2,24 @@ import React from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import type { RealtimeClient } from '@/src/realtime/realtime-client';
-import { RealtimeProvider } from '@/src/realtime/realtime-context';
 import { useRealtimeEvent } from '@/src/realtime/useRealtime';
 import { REALTIME_ORDER_EVENTS } from '@/src/core/realtime/contracts';
 import type { TypedRealtimeEnvelope } from '@/src/realtime/realtime-client';
+import type { KnownRealtimeEventName } from '@/src/types/realtime';
 
 function createMockClient() {
-  const handlers: Record<string, (envelope: TypedRealtimeEnvelope<any>) => void> = {};
+  const handlers: Partial<
+    Record<
+      KnownRealtimeEventName,
+      (envelope: TypedRealtimeEnvelope<KnownRealtimeEventName>) => void
+    >
+  > = {};
 
   const client: RealtimeClient = {
     socket: {} as never,
     subscribe(event, handler) {
-      handlers[event] = handler as (envelope: TypedRealtimeEnvelope<any>) => void;
+      handlers[event] =
+        handler as unknown as (envelope: TypedRealtimeEnvelope<KnownRealtimeEventName>) => void;
       return {
         unsubscribe() {
           delete handlers[event];
@@ -78,4 +84,3 @@ const RealtimeContext = React.createContext<{ client: RealtimeClient | null } | 
 function RealtimeProviderMock({ client, children }: RealtimeProviderMockProps) {
   return <RealtimeContext.Provider value={{ client }}>{children}</RealtimeContext.Provider>;
 }
-

@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FormFooterSaveBar } from '@/components/form/FormFooterSaveBar';
+import { toast } from '@/hooks/use-toast';
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
@@ -106,11 +108,15 @@ function MenuOnlineModifiersPageContent() {
   const [groupSortOrder, setGroupSortOrder] = useState<string>('0');
   const [groupStatus, setGroupStatus] = useState<MenuOnlineStatus>('active');
 
+  const [isSavingGroup, setIsSavingGroup] = useState<boolean>(false);
+
   const [optionEditingId, setOptionEditingId] = useState<string | null>(null);
   const [optionName, setOptionName] = useState<string>('');
   const [optionPriceDelta, setOptionPriceDelta] = useState<string>('0');
   const [optionSortOrder, setOptionSortOrder] = useState<string>('0');
   const [optionStatus, setOptionStatus] = useState<MenuOnlineStatus>('active');
+
+  const [isSavingOption, setIsSavingOption] = useState<boolean>(false);
 
   const selectedGroup = useMemo(
     () => groups.find((g) => g.id === selectedGroupId) ?? null,
@@ -233,40 +239,62 @@ function MenuOnlineModifiersPageContent() {
       return;
     }
 
-    if (groupEditingId) {
-      const payload: MenuOnlineUpdateModifierGroupRequest = {
-        name,
-        description: groupDescription.trim() === '' ? null : groupDescription.trim(),
-        minSelect,
-        maxSelect,
-        isRequired,
-        sortOrder,
-        status,
-      };
-      await apiRequestJson<MenuOnlineModifierGroupDTO>(
-        `/api/v1/tenant/menu-online/modifiers/groups/${groupEditingId}`,
-        accessToken,
-        { method: 'PUT', body: JSON.stringify(payload) },
-      );
-    } else {
-      const payload: MenuOnlineCreateModifierGroupRequest = {
-        name,
-        description: groupDescription.trim() === '' ? null : groupDescription.trim(),
-        minSelect,
-        maxSelect,
-        isRequired,
-        sortOrder,
-        status,
-      };
-      await apiRequestJson<MenuOnlineModifierGroupDTO>(
-        '/api/v1/tenant/menu-online/modifiers/groups',
-        accessToken,
-        { method: 'POST', body: JSON.stringify(payload) },
-      );
-    }
+    setIsSavingGroup(true);
 
-    resetGroupForm();
-    await loadGroups();
+    try {
+      if (groupEditingId) {
+        const payload: MenuOnlineUpdateModifierGroupRequest = {
+          name,
+          description: groupDescription.trim() === '' ? null : groupDescription.trim(),
+          minSelect,
+          maxSelect,
+          isRequired,
+          sortOrder,
+          status,
+        };
+        await apiRequestJson<MenuOnlineModifierGroupDTO>(
+          `/api/v1/tenant/menu-online/modifiers/groups/${groupEditingId}`,
+          accessToken,
+          { method: 'PUT', body: JSON.stringify(payload) },
+        );
+        toast({
+          title: 'Salvo com sucesso',
+          description: 'Grupo de complementos atualizado',
+        });
+      } else {
+        const payload: MenuOnlineCreateModifierGroupRequest = {
+          name,
+          description: groupDescription.trim() === '' ? null : groupDescription.trim(),
+          minSelect,
+          maxSelect,
+          isRequired,
+          sortOrder,
+          status,
+        };
+        await apiRequestJson<MenuOnlineModifierGroupDTO>(
+          '/api/v1/tenant/menu-online/modifiers/groups',
+          accessToken,
+          { method: 'POST', body: JSON.stringify(payload) },
+        );
+        toast({
+          title: 'Salvo com sucesso',
+          description: 'Grupo de complementos criado',
+        });
+      }
+
+      resetGroupForm();
+      await loadGroups();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Erro ao salvar grupo de complementos';
+      setError(message);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar',
+        description: message,
+      });
+    } finally {
+      setIsSavingGroup(false);
+    }
   }
 
   async function deleteGroup(groupId: string): Promise<void> {
@@ -323,35 +351,57 @@ function MenuOnlineModifiersPageContent() {
       return;
     }
 
-    if (optionEditingId) {
-      const payload: MenuOnlineUpdateModifierOptionRequest = {
-        name,
-        priceDelta,
-        sortOrder,
-        status,
-      };
-      await apiRequestJson<MenuOnlineModifierOptionDTO>(
-        `/api/v1/tenant/menu-online/modifiers/options/${optionEditingId}`,
-        accessToken,
-        { method: 'PUT', body: JSON.stringify(payload) },
-      );
-    } else {
-      const payload: MenuOnlineCreateModifierOptionRequest = {
-        groupId: selectedGroupId,
-        name,
-        priceDelta,
-        sortOrder,
-        status,
-      };
-      await apiRequestJson<MenuOnlineModifierOptionDTO>(
-        '/api/v1/tenant/menu-online/modifiers/options',
-        accessToken,
-        { method: 'POST', body: JSON.stringify(payload) },
-      );
-    }
+    setIsSavingOption(true);
 
-    resetOptionForm();
-    await loadOptions(selectedGroupId);
+    try {
+      if (optionEditingId) {
+        const payload: MenuOnlineUpdateModifierOptionRequest = {
+          name,
+          priceDelta,
+          sortOrder,
+          status,
+        };
+        await apiRequestJson<MenuOnlineModifierOptionDTO>(
+          `/api/v1/tenant/menu-online/modifiers/options/${optionEditingId}`,
+          accessToken,
+          { method: 'PUT', body: JSON.stringify(payload) },
+        );
+        toast({
+          title: 'Salvo com sucesso',
+          description: 'Opção de complemento atualizada',
+        });
+      } else {
+        const payload: MenuOnlineCreateModifierOptionRequest = {
+          groupId: selectedGroupId,
+          name,
+          priceDelta,
+          sortOrder,
+          status,
+        };
+        await apiRequestJson<MenuOnlineModifierOptionDTO>(
+          '/api/v1/tenant/menu-online/modifiers/options',
+          accessToken,
+          { method: 'POST', body: JSON.stringify(payload) },
+        );
+        toast({
+          title: 'Salvo com sucesso',
+          description: 'Opção de complemento criada',
+        });
+      }
+
+      resetOptionForm();
+      await loadOptions(selectedGroupId);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Erro ao salvar opção de complemento';
+      setError(message);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar',
+        description: message,
+      });
+    } finally {
+      setIsSavingOption(false);
+    }
   }
 
   async function deleteOption(optionId: string): Promise<void> {
@@ -369,7 +419,7 @@ function MenuOnlineModifiersPageContent() {
   if (!accessToken) return null;
 
   return (
-    <PermissionGuard permission="menu.view">
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Complementos</h1>
@@ -424,7 +474,13 @@ function MenuOnlineModifiersPageContent() {
                 </div>
 
                 <PermissionGuard permission="modifiers.manage">
-                  <div className="space-y-3 rounded-lg border p-4">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void submitGroup();
+                    }}
+                    className="space-y-3 rounded-lg border p-4 pb-4"
+                  >
                     <div className="font-medium">{groupEditingId ? 'Editar grupo' : 'Novo grupo'}</div>
 
                     <div className="space-y-2">
@@ -481,13 +537,14 @@ function MenuOnlineModifiersPageContent() {
                       <Input value={groupSortOrder} onChange={(e) => setGroupSortOrder(e.target.value)} />
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button onClick={() => void submitGroup()}>{groupEditingId ? 'Salvar' : 'Criar'}</Button>
-                      <Button variant="outline" onClick={resetGroupForm}>
-                        Limpar
-                      </Button>
-                    </div>
-                  </div>
+                    <FormFooterSaveBar
+                      isLoading={isSavingGroup}
+                      primaryLabel={groupEditingId ? 'Salvar' : 'Criar'}
+                      showCancel
+                      cancelLabel="Cancelar"
+                      onCancel={resetGroupForm}
+                    />
+                  </form>
                 </PermissionGuard>
               </CardContent>
             </Card>
@@ -530,7 +587,13 @@ function MenuOnlineModifiersPageContent() {
                     </div>
 
                     <PermissionGuard permission="modifiers.manage">
-                      <div className="space-y-3 rounded-lg border p-4">
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void submitOption();
+                        }}
+                        className="space-y-3 rounded-lg border p-4 pb-4"
+                      >
                         <div className="font-medium">{optionEditingId ? 'Editar opção' : 'Nova opção'}</div>
 
                         <div className="space-y-2">
@@ -564,13 +627,14 @@ function MenuOnlineModifiersPageContent() {
                           </select>
                         </div>
 
-                        <div className="flex gap-2">
-                          <Button onClick={() => void submitOption()}>{optionEditingId ? 'Salvar' : 'Criar'}</Button>
-                          <Button variant="outline" onClick={resetOptionForm}>
-                            Limpar
-                          </Button>
-                        </div>
-                      </div>
+                        <FormFooterSaveBar
+                          isLoading={isSavingOption}
+                          primaryLabel={optionEditingId ? 'Salvar' : 'Criar'}
+                          showCancel
+                          cancelLabel="Cancelar"
+                          onCancel={resetOptionForm}
+                        />
+                      </form>
                     </PermissionGuard>
                   </>
                 )}
@@ -579,7 +643,7 @@ function MenuOnlineModifiersPageContent() {
           </div>
         )}
       </div>
-    </PermissionGuard>
+    </>
   );
 }
 

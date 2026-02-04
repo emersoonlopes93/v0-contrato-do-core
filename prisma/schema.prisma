@@ -315,6 +315,8 @@ model WhiteBrandConfig {
   logo            String?
   primary_color   String
   secondary_color String
+  background_color String?
+  theme           String?
   domain          String?
   custom_metadata Json?
   created_at      DateTime @default(now())

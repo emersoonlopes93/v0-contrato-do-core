@@ -23,10 +23,12 @@ export interface GlobalTenantLoginResponse {
   user: GlobalTenantLoginUserDTO;
   tenant: GlobalTenantLoginTenantDTO;
   accessToken: string;
+  refreshToken: string;
 }
 
 export interface TenantLoginResponse {
   accessToken: string;
+  refreshToken: string;
   tenantId: string;
   activeModules: string[];
   role: string;
@@ -69,4 +71,3 @@ export interface AuthSessionResponse {
   tenantSettings?: TenantSettingsSessionDTO | null;
   theme: unknown;
 }
-

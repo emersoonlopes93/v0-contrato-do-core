@@ -161,6 +161,8 @@ export interface WhiteBrandTable {
   logo: string | null;
   primary_color: string;
   secondary_color: string;
+  background_color: string | null;
+  theme: string | null;
   domain: string | null;
   custom_metadata: Record<string, unknown> | null;
   created_at: Date;

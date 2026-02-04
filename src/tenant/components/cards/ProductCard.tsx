@@ -101,7 +101,9 @@ export function ProductCard({
           className="h-full w-full object-cover transition-transform duration-200 hover:scale-105"
         />
         {hasPromo && (
-          <Badge className="absolute right-2 top-2 bg-red-500 text-white">Promoção</Badge>
+          <Badge className="absolute right-2 top-2 bg-danger text-danger-foreground">
+            Promoção
+          </Badge>
         )}
         {status === 'inactive' && (
           <Badge variant="secondary" className="absolute left-2 top-2">

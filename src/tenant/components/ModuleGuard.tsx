@@ -55,7 +55,7 @@ function ModuleDisabledFallback({ moduleId }: { moduleId: string }) {
       <Card className="w-full max-w-md">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <AlertCircle className="h-6 w-6 text-orange-500" />
+            <AlertCircle className="h-6 w-6 text-warning" />
             <CardTitle>Módulo Não Disponível</CardTitle>
           </div>
           <CardDescription>
@@ -101,7 +101,7 @@ export function PermissionGuard({ permission, children, fallback }: PermissionGu
     }
 
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+      <div className="rounded-lg border border-danger/20 bg-danger-soft p-4 text-sm text-danger">
         Você não tem permissão para acessar este recurso.
       </div>
     );

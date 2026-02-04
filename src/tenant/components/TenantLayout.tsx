@@ -49,7 +49,6 @@ export function TenantLayout({
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      {/* Mobile: Header com Menu Toggle */}
       <div className="md:hidden">
         <div className="flex h-14 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 shadow-sm">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -66,25 +65,23 @@ export function TenantLayout({
               side="left" 
               className="w-72 flex flex-col p-0 transition-all duration-300"
             >
-              {/* Header institucional no mobile */}
               <TenantHeader />
-              
-              {/* Menu de navegação */}
+
               <div className="flex-1 overflow-y-auto p-4">
                 <TenantSidebar />
               </div>
 
-              {/* Indicador de plano */}
               <div className="border-t p-4 bg-muted/20">
                 <PlanUsageIndicator />
               </div>
 
-              {/* Rodapé com usuário */}
               <TenantFooter />
             </SheetContent>
           </Sheet>
           <span className="ml-3 font-semibold text-sm">{pageTitle || 'Menu'}</span>
         </div>
+
+        <TenantHeader />
       </div>
 
       <div className="flex flex-1 overflow-hidden">

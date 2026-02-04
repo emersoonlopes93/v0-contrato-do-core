@@ -1,29 +1,32 @@
 'use client';
 
 import React from "react"
-import { useSession } from '../context/SessionContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { withModuleGuard } from '../components/ModuleGuard';
+import { useSession } from '../context/SessionContext';
+import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
+import type { HelloMessageDTO } from '@/src/types/hello';
 
-/**
- * Hello Module Page - Example
- * 
- * Demonstrates:
- * - API integration with /api/v1/tenant/hello
- * - Module permission check
- * - Mobile-first form
- * - Loading states
- */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
-interface HelloMessage {
-  id: string;
-  message: string;
-  createdAt: string;
+function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
+  return isRecord(value) && value.success === true && 'data' in value;
+}
+
+function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
+  return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
+}
+
+function isHelloMessageDTO(value: unknown): value is HelloMessageDTO {
+  if (!isRecord(value)) return false;
+  return typeof value.message === 'string' && typeof value.createdAt === 'string';
 }
 
 function Spinner({ className }: { className?: string }) {
@@ -44,79 +47,88 @@ function Spinner({ className }: { className?: string }) {
     </svg>
   );
 }
-
 function HelloModulePageContent() {
-  const { user } = useSession();
-  const [messages, setMessages] = useState<HelloMessage[]>([]);
+  const { user, accessToken } = useSession();
+  const [messages, setMessages] = useState<HelloMessageDTO[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  // Load messages on mount
-  useEffect(() => {
-    loadMessages();
-  }, []);
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async (): Promise<void> => {
+    if (!accessToken) return;
     setIsLoading(true);
     setError('');
+    setSuccess('');
     try {
-      // TODO: Call /api/v1/tenant/hello with Authorization header
-      // Mocking for now as the backend might not be running or reachable during build/test
-      // const response = await fetch('/api/v1/tenant/hello', {
-      //   headers: {
-      //     Authorization: `Bearer ${accessToken}`,
-      //   },
-      // });
+      const response = await fetch('/api/v1/tenant/hello/list', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const raw: unknown = await response.json().catch(() => null);
 
-      // if (!response.ok) {
-      //   throw new Error('Falha ao carregar mensagens');
-      // }
+      if (!response.ok) {
+        if (isApiErrorResponse(raw)) {
+          throw new Error(raw.message);
+        }
+        throw new Error('Falha ao carregar mensagens');
+      }
 
-      // const data = await response.json();
-      // setMessages(data.messages || []);
-      
-      // Mock data
-      setMessages([
-          { id: '1', message: 'Hello from mock!', createdAt: new Date().toISOString() }
-      ]);
+      if (!isApiSuccessResponse<unknown[]>(raw)) {
+        throw new Error('Resposta inválida');
+      }
 
+      const list = Array.isArray(raw.data) ? raw.data : [];
+      const normalized: HelloMessageDTO[] = list.filter(isHelloMessageDTO);
+
+      setMessages(normalized);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [accessToken]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  useEffect(() => {
+    void loadMessages();
+  }, [loadMessages]);
+
+  const handleSendMessage = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !accessToken) return;
 
     setIsSending(true);
     setError('');
+    setSuccess('');
 
     try {
-      // const response = await fetch('/api/v1/tenant/hello', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     Authorization: `Bearer ${accessToken}`,
-      //   },
-      //   body: JSON.stringify({ message: newMessage }),
-      // });
+      const response = await fetch('/api/v1/tenant/hello/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ message: newMessage.trim() }),
+      });
 
-      // if (!response.ok) {
-      //   throw new Error('Falha ao enviar mensagem');
-      // }
+      const raw: unknown = await response.json().catch(() => null);
 
-      // const data = await response.json();
-      // setMessages([data.message, ...messages]);
-      
-      // Mock success
-       const mockMsg = { id: Date.now().toString(), message: newMessage, createdAt: new Date().toISOString() };
-       setMessages([mockMsg, ...messages]);
+      if (!response.ok) {
+        if (isApiErrorResponse(raw)) {
+          throw new Error(raw.message);
+        }
+        throw new Error('Falha ao enviar mensagem');
+      }
 
+      if (!isApiSuccessResponse<unknown>(raw)) {
+        throw new Error('Resposta inválida');
+      }
+
+      await loadMessages();
+      setSuccess('Mensagem enviada com sucesso');
       setNewMessage('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao enviar');
@@ -124,7 +136,7 @@ function HelloModulePageContent() {
       setIsSending(false);
     }
   };
-
+ 
   if (!user) {
     return null;
   }
@@ -161,6 +173,12 @@ function HelloModulePageContent() {
               </Alert>
             )}
 
+            {success && !error && (
+              <Alert>
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
             <Button type="submit" className="h-11 w-full" disabled={isSending}>
               {isSending ? 'Enviando...' : 'Enviar'}
             </Button>
@@ -184,8 +202,8 @@ function HelloModulePageContent() {
           </Card>
         ) : (
           <div className="space-y-2">
-            {messages.map((msg) => (
-              <Card key={msg.id}>
+            {messages.map((msg, index) => (
+              <Card key={`${msg.createdAt}-${index}`}>
                 <CardContent className="pt-6">
                   <p className="text-sm">{msg.message}</p>
                   <p className="mt-2 text-xs text-muted-foreground">

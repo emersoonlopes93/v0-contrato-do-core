@@ -31,7 +31,7 @@ export function AdminDashboardPage() {
   }, []);
 
   if (loading) return <p>Carregando métricas...</p>;
-  if (error) return <p className="text-red-600">{error}</p>;
+  if (error) return <p className="text-danger">{error}</p>;
   if (!metrics) return <p>Nenhuma métrica disponível</p>;
 
   return (
@@ -46,7 +46,7 @@ export function AdminDashboardPage() {
       </div>
       <div>
         <h2 className="text-xl font-semibold mb-2">Eventos recentes</h2>
-        <div className="rounded border bg-white">
+        <div className="rounded border bg-card">
           {metrics.recentEvents.length === 0 ? (
             <p className="p-4 text-muted-foreground">Sem eventos</p>
           ) : (
@@ -67,7 +67,7 @@ export function AdminDashboardPage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded bg-white p-4 shadow">
+    <div className="rounded bg-card p-4 shadow-md">
       <div className="text-sm text-muted-foreground">{label}</div>
       <div className="text-2xl font-bold">{value}</div>
     </div>

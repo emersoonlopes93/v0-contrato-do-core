@@ -1937,6 +1937,18 @@ export const menuOnlinePublicRoutes: Route[] = [
     middlewares: [requestLogger, errorHandler],
     handler: handlePublicCheckout,
   },
+  {
+    method: 'GET',
+    path: '/api/v1/menu/:tenantSlug',
+    middlewares: [requestLogger, errorHandler],
+    handler: handleGetPublicMenu,
+  },
+  {
+    method: 'POST',
+    path: '/api/v1/menu/:tenantSlug/checkout',
+    middlewares: [requestLogger, errorHandler],
+    handler: handlePublicCheckout,
+  },
 ];
 
 export const menuOnlineTenantRoutes: Route[] = [

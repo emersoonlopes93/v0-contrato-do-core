@@ -78,6 +78,7 @@ export async function tenantLogin(req: Request, res: Response) {
     res.status = 200;
     res.body = {
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
       tenantId: tenant.id,
       activeModules: result.activeModules,
       role: result.user.role,
@@ -91,6 +92,32 @@ export async function tenantLogin(req: Request, res: Response) {
         error instanceof Error
           ? error.message
           : 'Authentication failed',
+    };
+  }
+}
+
+function isRefreshBody(body: unknown): body is { refreshToken: string } {
+  if (typeof body !== 'object' || body === null) return false;
+  const candidate = body as Record<string, unknown>;
+  return typeof candidate.refreshToken === 'string' && candidate.refreshToken.trim().length > 0;
+}
+
+export async function tenantRefresh(req: Request, res: Response) {
+  const body = req.body;
+  if (!isRefreshBody(body)) {
+    res.status = 400;
+    res.body = { error: 'refreshToken is required' };
+    return;
+  }
+
+  try {
+    const result = await tenantAuth.refreshToken(body.refreshToken);
+    res.status = 200;
+    res.body = { accessToken: result.accessToken };
+  } catch (error: unknown) {
+    res.status = 401;
+    res.body = {
+      error: error instanceof Error ? error.message : 'Refresh token inválido',
     };
   }
 }

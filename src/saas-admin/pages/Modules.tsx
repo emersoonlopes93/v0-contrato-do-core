@@ -96,7 +96,7 @@ export function AdminModulesPage() {
             id="tenant-select"
             value={selectedTenantId}
             onChange={handleTenantChange}
-            className="rounded border px-3 py-2 bg-white text-sm"
+            className="rounded border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">Selecione um tenant</option>
             {tenants.map((tenant) => (
@@ -111,9 +111,9 @@ export function AdminModulesPage() {
         )}
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
-      <div className="rounded bg-white shadow">
+      <div className="rounded bg-card shadow-md">
         {loading ? (
           <p className="p-4">Carregando...</p>
         ) : modules.length === 0 ? (
@@ -159,10 +159,10 @@ export function AdminModulesPage() {
                       type="button"
                       disabled={!selectedTenantId || isUpdating}
                       onClick={() => toggleModule(m.id, m.isActiveForTenant)}
-                      className={`rounded px-3 py-2 text-xs font-medium ${
+                      className={`rounded-md px-3 py-2 text-xs font-medium ${
                         m.isActiveForTenant
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                          ? 'bg-success text-success-foreground hover:bg-success/90'
+                          : 'bg-[hsl(var(--action-primary-safe))] text-[hsl(var(--action-primary-foreground-safe))] hover:bg-[hsl(var(--action-primary-safe)/0.9)]'
                       } ${!selectedTenantId || isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {m.isActiveForTenant ? 'Desativar' : 'Ativar'}

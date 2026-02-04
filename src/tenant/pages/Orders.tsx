@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { withModuleGuard, PermissionGuard } from '@/src/tenant/components/ModuleGuard';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { OrderCard } from '@/src/tenant/components/cards';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -46,37 +46,6 @@ async function apiGet<T>(url: string, accessToken: string): Promise<T> {
 
   if (!isApiSuccessResponse<T>(raw)) throw new Error('Resposta inválida');
   return raw.data;
-}
-
-function formatDateTime(value: string, timezone: string | null): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  try {
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: timezone ?? undefined,
-    }).format(date);
-  } catch {
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
-  }
-}
-
-function formatCurrency(value: number, currency: string | null): string {
-  try {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency ?? 'BRL' }).format(value);
-  } catch {
-    return `R$ ${value.toFixed(2)}`;
-  }
 }
 
 function OrdersPageContent() {

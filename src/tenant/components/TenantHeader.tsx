@@ -23,13 +23,8 @@ export function TenantHeader() {
   const { tenantSettings } = useSession();
   const { tenantSlug } = useTenant();
 
-  // Status da loja
   const isOpen = tenantSettings?.isOpen ?? false;
-  
-  // Nome do restaurante
-  const restaurantName = tenantSettings?.tradeName ?? 'Restaurante';
-
-  // URL do cardápio público
+  const restaurantName = tenantSettings?.tradeName ?? tenantSlug ?? '';
   const menuPublicUrl = `/menu/${tenantSlug}`;
 
   return (
@@ -57,17 +52,15 @@ export function TenantHeader() {
 
         {/* Status da Loja - Badge Premium */}
         <Badge 
-          variant={isOpen ? 'default' : 'secondary'}
-          className={`
-            font-medium transition-all duration-200
-            ${isOpen 
-              ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 hover:bg-green-500/20' 
-              : 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 hover:bg-red-500/20'
-            }
-          `}
+          variant="outline"
+          className={`font-medium transition-all duration-200 ${
+            isOpen
+              ? 'bg-success-soft text-success border-success/20'
+              : 'bg-danger-soft text-danger border-danger/20'
+          }`}
         >
-          <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${isOpen ? 'bg-green-500' : 'bg-red-500'}`} />
-          {isOpen ? 'Loja Aberta' : 'Loja Fechada'}
+          <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${isOpen ? 'bg-success' : 'bg-danger'}`} />
+          {isOpen ? '🟢 Loja aberta' : '🔴 Loja fechada'}
         </Badge>
 
         {/* Link Cardápio Público - Botão elegante */}

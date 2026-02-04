@@ -1,3 +1,6 @@
+---
+alwaysApply: true
+---
 Follow all rules strictly. If a request violates them or exceeds scope, STOP and explain.
 
 LANGUAGE

@@ -187,8 +187,8 @@ export function LayoutDemo() {
           <CardContent className="space-y-3">
             <div className="grid gap-2">
               <div className="flex items-start gap-2">
-                <div className="h-5 w-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                <div className="h-5 w-5 rounded-full bg-success-soft flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="h-2 w-2 rounded-full bg-success" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Mobile-First Design</p>
@@ -198,8 +198,8 @@ export function LayoutDemo() {
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <div className="h-5 w-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                <div className="h-5 w-5 rounded-full bg-success-soft flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="h-2 w-2 rounded-full bg-success" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Visual Premium</p>
@@ -209,8 +209,8 @@ export function LayoutDemo() {
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <div className="h-5 w-5 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                <div className="h-5 w-5 rounded-full bg-success-soft flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="h-2 w-2 rounded-full bg-success" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Zero Breaking Changes</p>

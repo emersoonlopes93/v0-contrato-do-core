@@ -2,265 +2,258 @@
 @tailwind components;
 @tailwind utilities;
 
-/**
- * DESIGN SYSTEM SAAS - Mobile-First Premium
- * Paleta profissional, tipografia consistente, espaçamentos padronizados
- */
 
-@layer base {
-  :root {
-    /* ========================================
-       CORES PRIMÁRIAS - Marca SaaS
-       ======================================== */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 217 91% 54%;
-    --primary-active: 217 91% 48%;
-    --primary-soft: 217 91% 97%;
-    
-    /* ========================================
-       CORES NEUTRAS - Backgrounds e Surfaces
-       ======================================== */
-    --background: 0 0% 100%;
-    --background-app: 0 0% 99%;
-    --background-surface: 0 0% 100%;
-    --background-card: 0 0% 100%;
-    
-    --foreground: 222 47% 11%;
-    
-    /* Específicos do shadcn/ui */
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    
-    /* ========================================
-       CORES SECUNDÁRIAS
-       ======================================== */
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    
-    /* ========================================
-       BORDAS
-       ======================================== */
-    --border: 214 32% 91%;
-    --border-default: 214 32% 91%;
-    --border-soft: 214 20% 95%;
-    
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
-    
-    /* ========================================
-       CORES DE STATUS - Gestão e Feedback
-       ======================================== */
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 100%;
-    --success-soft: 142 76% 96%;
-    
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --warning-soft: 38 92% 96%;
-    
-    --danger: 0 84% 60%;
-    --danger-foreground: 0 0% 100%;
-    --danger-soft: 0 84% 97%;
-    
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 100%;
-    --info-soft: 199 89% 96%;
-    
-    /* ========================================
-       TEXTOS - Hierarquia Tipográfica
-       ======================================== */
-    --text-primary: 222 47% 11%;
-    --text-secondary: 215 16% 47%;
-    --text-muted: 215 14% 65%;
-    --text-inverse: 0 0% 100%;
-    
-    /* ========================================
-       BORDAS E ELEVAÇÃO
-       ======================================== */
-    --radius: 0.5rem;
-    --radius-sm: 0.375rem;
-    --radius-md: 0.5rem;
-    --radius-lg: 0.75rem;
-    
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-    
-    /* ========================================
-       ESPAÇAMENTOS - Sistema de Grid (4px base)
-       ======================================== */
-    --spacing-1: 0.25rem;  /* 4px */
-    --spacing-2: 0.5rem;   /* 8px */
-    --spacing-3: 0.75rem;  /* 12px */
-    --spacing-4: 1rem;     /* 16px */
-    --spacing-5: 1.25rem;  /* 20px */
-    --spacing-6: 1.5rem;   /* 24px */
-    --spacing-8: 2rem;     /* 32px */
-    
-    /* ========================================
-       SIDEBAR (mantém compatibilidade)
-       ======================================== */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 217 91% 60%;
-    
-    /* ========================================
-       CHARTS (mantém compatibilidade)
-       ======================================== */
-    --chart-1: 217 91% 60%;
-    --chart-2: 142 76% 36%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 199 89% 48%;
-  }
-
-  .dark {
-    /* ========================================
-       DARK MODE - Paleta Invertida
-       ======================================== */
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-    --primary-hover: 217 91% 54%;
-    --primary-active: 217 91% 48%;
-    --primary-soft: 217 50% 12%;
-    
-    --background: 222 47% 11%;
-    --background-app: 222 47% 9%;
-    --background-surface: 222 47% 11%;
-    --background-card: 217 33% 17%;
-    
-    --foreground: 210 40% 98%;
-    
-    --card: 217 33% 17%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    
-    --border: 217 33% 24%;
-    --border-default: 217 33% 24%;
-    --border-soft: 217 20% 20%;
-    
-    --input: 217 33% 24%;
-    --ring: 217 91% 60%;
-    
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 100%;
-    --success-soft: 142 50% 12%;
-    
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --warning-soft: 38 50% 12%;
-    
-    --danger: 0 84% 60%;
-    --danger-foreground: 0 0% 100%;
-    --danger-soft: 0 50% 12%;
-    
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 210 40% 98%;
-    
-    --info: 199 89% 48%;
-    --info-foreground: 0 0% 100%;
-    --info-soft: 199 50% 12%;
-    
-    --text-primary: 210 40% 98%;
-    --text-secondary: 215 20% 65%;
-    --text-muted: 215 14% 50%;
-    --text-inverse: 222 47% 11%;
-    
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 24%;
-    --sidebar-ring: 217 91% 60%;
-    
-    --chart-1: 217 91% 60%;
-    --chart-2: 142 76% 36%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 199 89% 48%;
-  }
+body {
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  
-  /* Touch targets para mobile */
-  button, [role="button"], a {
-    @apply min-h-[44px] md:min-h-0;
-  }
-}
 
+/* =========================
+   UTILITIES
+   ========================= */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
-  
-  /* Utilities para transições suaves */
-  .transition-smooth {
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =========================
+   BASE THEME
+   ========================= */
+@layer base {
+  :root {
+    --primary: var(--tenant-primary, 221 83% 56%);
+    --primary-foreground: var(--tenant-primary-foreground, 0 0% 100%);
+    --primary-hover: 221 83% 51%;
+    --primary-active: 221 83% 46%;
+    --primary-soft: 221 90% 96%;
+
+    --background: var(--tenant-background, 210 40% 99%);
+    --background-app: 210 40% 98%;
+    --background-surface: 210 40% 99%;
+    --background-card: 0 0% 100%;
+
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --secondary: var(--tenant-secondary, 210 40% 96.1%);
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 214 32% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 214 32% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 214 32% 91%;
+    --border-default: 214 32% 91%;
+    --border-soft: 214 20% 95%;
+
+    --input: 214 32% 91%;
+    --ring: var(--tenant-ring, 217 91% 60%);
+
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+
+    --success: var(--tenant-success, 142 70% 45%);
+    --success-foreground: 0 0% 100%;
+    --success-soft: 142 70% 95%;
+
+    --warning: 38 95% 52%;
+    --warning-foreground: 24 10% 18%;
+    --warning-soft: 38 95% 95%;
+
+    --danger: var(--tenant-danger, 0 72% 55%);
+    --danger-foreground: 0 0% 100%;
+    --danger-soft: 0 72% 96%;
+
+    --info: 200 90% 50%;
+    --info-foreground: 210 100% 97%;
+    --info-soft: 200 90% 95%;
+
+    --text-primary: 222 47% 11%;
+    --text-secondary: 215 16% 47%;
+    --text-muted: 215 14% 65%;
+    --text-inverse: 0 0% 100%;
+
+    --radius: 0.5rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+    --spacing-1: 0.25rem;
+    --spacing-2: 0.5rem;
+    --spacing-3: 0.75rem;
+    --spacing-4: 1rem;
+    --spacing-5: 1.25rem;
+    --spacing-6: 1.5rem;
+    --spacing-8: 2rem;
+
+    --sidebar-background: 210 40% 99%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 32% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 56%;
+
+    --action-primary-safe: var(--tenant-primary, 221 83% 56%);
+    --action-primary-foreground-safe: var(--tenant-primary-foreground, 0 0% 100%);
+
+    --switch-on-bg: hsl(221 83% 56%);
+    --switch-off-bg: hsl(220 9% 35%);
+    --switch-disabled-bg: hsl(220 5% 25%);
+    --switch-thumb-bg: hsl(0 0% 100%);
+    --switch-border: hsl(220 10% 20%);
+
+    --switch-track-on: var(--switch-on-bg);
+    --switch-track-off: var(--switch-off-bg);
+    --switch-thumb: var(--switch-thumb-bg);
   }
-  
-  .transition-smooth-200 {
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* =========================
+     DARK MODE
+     ========================= */
+  .dark {
+    --primary: var(--tenant-primary, 221 83% 56%);
+    --primary-foreground: var(--tenant-primary-foreground, 222 47% 11%);
+    --primary-hover: 221 83% 51%;
+    --primary-active: 221 83% 46%;
+    --primary-soft: 221 55% 14%;
+
+    --background: var(--tenant-background, 222 47% 10%);
+    --background-app: 222 47% 8%;
+    --background-surface: 223 36% 12%;
+    --background-card: 223 32% 14%;
+
+    --foreground: 210 40% 98%;
+
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --secondary: var(--tenant-secondary, 217 33% 17%);
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 223 22% 16%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 223 22% 17%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 223 22% 22%;
+    --border-default: 217 33% 24%;
+    --border-soft: 217 20% 20%;
+
+    --input: 217 33% 24%;
+    --ring: var(--tenant-ring, 217 91% 60%);
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+
+    --success: var(--tenant-success, 142 70% 45%);
+    --success-foreground: 0 0% 100%;
+    --success-soft: 142 35% 16%;
+
+    --warning: 38 95% 55%;
+    --warning-foreground: 48 100% 97%;
+    --warning-soft: 38 35% 16%;
+
+    --danger: var(--tenant-danger, 0 72% 55%);
+    --danger-foreground: 0 0% 100%;
+    --danger-soft: 0 35% 16%;
+
+    --info: 200 90% 55%;
+    --info-foreground: 210 100% 97%;
+    --info-soft: 200 35% 16%;
+
+    --text-primary: 210 40% 98%;
+    --text-secondary: 215 20% 65%;
+    --text-muted: 215 14% 50%;
+    --text-inverse: 222 47% 11%;
+
+    --sidebar-background: 223 36% 12%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 221 83% 56%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 223 22% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 223 22% 22%;
+    --sidebar-ring: 221 83% 56%;
+
+    --action-primary-safe: var(--tenant-primary, 221 83% 56%);
+    --action-primary-foreground-safe: var(--tenant-primary-foreground, 222 47% 11%);
   }
-  
-  /* Scrollbar customizado */
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+/* =========================
+   GLOBAL BASE RULES
+   ========================= */
+@layer base {
+  * {
+    @apply border-border;
   }
-  
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+
+  body {
+    @apply bg-background text-foreground;
   }
-  
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+
+  .switch-safe {
+    opacity: 1 !important;
+    filter: none !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    color-scheme: light;
+    outline: none !important;
+    box-shadow: none !important;
   }
-  
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--muted-foreground) / 0.3);
-    border-radius: 4px;
+
+  .switch-safe * {
+    opacity: 1 !important;
+    filter: none !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
   }
-  
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--muted-foreground) / 0.5);
+
+  .switch-safe[data-state='checked'] {
+    background-color: var(--switch-track-on) !important;
+  }
+
+  .switch-safe[data-state='unchecked'] {
+    background-color: var(--switch-track-off) !important;
+  }
+
+  .switch-safe:disabled {
+    background-color: var(--switch-track-off) !important;
+    cursor: not-allowed !important;
+  }
+
+  .switch-safe .switch-safe-thumb {
+    background-color: var(--switch-thumb-bg) !important;
   }
 }

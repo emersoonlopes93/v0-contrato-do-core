@@ -121,7 +121,7 @@ function MenuOnlinePageContent() {
         )}
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div className="rounded-lg border border-danger/20 bg-danger-soft p-4 text-sm text-danger">
             {error}
           </div>
         )}

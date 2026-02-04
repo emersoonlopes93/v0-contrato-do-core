@@ -24,6 +24,10 @@ import type { TenantSettingsSessionDTO } from '@/src/types/tenant-settings';
 
 export const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
+const TENANT_ACCESS_TOKEN_KEY = 'tenant_access_token';
+const TENANT_REFRESH_TOKEN_KEY = 'tenant_refresh_token';
+const LEGACY_ACCESS_TOKEN_KEY = 'auth_token';
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -90,12 +94,25 @@ function isTenantLoginResponse(value: unknown): value is TenantLoginResponse {
   return (
     isRecord(value) &&
     isString(value.accessToken) &&
+    isString(value.refreshToken) &&
     isString(value.tenantId) &&
     isStringArray(value.activeModules) &&
     isString(value.role) &&
     isStringArray(value.permissions) &&
     isString(value.email)
   );
+}
+
+function decodeJwtExpMs(token: string): number | null {
+  try {
+    const payloadRaw = token.split('.')[1];
+    if (!payloadRaw) return null;
+    const json = JSON.parse(atob(payloadRaw)) as { exp?: unknown };
+    if (typeof json.exp !== 'number') return null;
+    return json.exp * 1000;
+  } catch {
+    return null;
+  }
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -117,8 +134,31 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const tenantId = tenant?.id ?? user?.tenantId ?? null;
   const resolvedTenantSlug = tenant?.slug ?? null;
 
+  const refreshAccessToken = async (): Promise<string | null> => {
+    const refreshToken =
+      localStorage.getItem(TENANT_REFRESH_TOKEN_KEY);
+    if (!refreshToken) return null;
+
+    const response = await fetch('/api/v1/auth/tenant/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const raw: unknown = await response.json().catch(() => null);
+    if (!response.ok || !isRecord(raw) || !isString(raw.accessToken)) {
+      return null;
+    }
+
+    const nextToken = raw.accessToken;
+    setAccessToken(nextToken);
+    localStorage.setItem(TENANT_ACCESS_TOKEN_KEY, nextToken);
+    return nextToken;
+  };
+
   useEffect(() => {
-    const storedToken = localStorage.getItem('auth_token');
+    const storedToken =
+      localStorage.getItem(TENANT_ACCESS_TOKEN_KEY) ??
+      localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
     if (!storedToken) {
       setIsLoading(false);
       return;
@@ -131,7 +171,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
   }, [tenantSlug]);
 
-  const fetchSession = async (token: string): Promise<{
+  const fetchSession = async (
+    token: string,
+    allowRefresh = true,
+  ): Promise<{
     activeModules: string[];
     permissions: string[];
     tenantOnboarded: boolean;
@@ -146,6 +189,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
+        if (response.status === 401 && allowRefresh) {
+          const refreshed = await refreshAccessToken();
+          if (refreshed) {
+            return await fetchSession(refreshed, false);
+          }
+        }
         throw new Error('Failed to fetch session');
       }
 
@@ -242,10 +291,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
 
       const token = data.accessToken;
+      const refreshToken = data.refreshToken;
       const loginActiveModules = data.activeModules;
       
       setAccessToken(token);
-      localStorage.setItem('auth_token', token);
+      localStorage.setItem(TENANT_ACCESS_TOKEN_KEY, token);
+      localStorage.setItem(TENANT_REFRESH_TOKEN_KEY, refreshToken);
       setAuthError(null);
 
       return loginActiveModules;
@@ -268,7 +319,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setActiveModules([]);
     setPermissions([]);
     setPlan(null);
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem(TENANT_ACCESS_TOKEN_KEY);
+    localStorage.removeItem(TENANT_REFRESH_TOKEN_KEY);
     localStorage.removeItem('tenant_session'); // Cleanup old key
     setIsLoading(false);
   };
@@ -278,7 +330,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshSession = async () => {
-    const token = accessToken ?? localStorage.getItem('auth_token');
+    const token =
+      accessToken ??
+      localStorage.getItem(TENANT_ACCESS_TOKEN_KEY) ??
+      localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
     if (!token) {
       return;
     }
@@ -290,6 +345,37 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setIsRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const shouldRefreshSoon = () => {
+      const expMs = decodeJwtExpMs(accessToken);
+      if (!expMs) return false;
+      return expMs - Date.now() <= 60 * 1000;
+    };
+
+    const tick = async () => {
+      if (!shouldRefreshSoon()) return;
+      await refreshAccessToken();
+    };
+
+    const interval = window.setInterval(() => {
+      void tick();
+    }, 15 * 1000);
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void tick();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [accessToken]);
 
   const isModuleEnabled = (moduleId: string): boolean => {
     return activeModules.includes(moduleId);

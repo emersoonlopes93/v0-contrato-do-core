@@ -37,7 +37,7 @@ export function AdminPlansPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Plans</h1>
       {feedback && <p className="text-sm text-muted-foreground">{feedback}</p>}
-      <div className="rounded bg-white shadow">
+      <div className="rounded bg-card shadow-md">
         {loading ? (
           <p className="p-4">Carregando...</p>
         ) : plans.length === 0 ? (

@@ -101,6 +101,7 @@ export async function tenantGlobalLogin(req: Request, res: Response) {
         name: tenant.name,
       },
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     };
 
     res.status = 200;
@@ -112,4 +113,3 @@ export async function tenantGlobalLogin(req: Request, res: Response) {
     };
   }
 }
-

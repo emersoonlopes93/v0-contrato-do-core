@@ -1,39 +1,13 @@
-import { TenantApp } from './tenant/TenantApp';
-import { SaaSAdminApp } from './saas-admin/SaaSAdminApp';
-import { AdminLoginPage } from './saas-admin/pages/Login';
-import { GlobalTenantLoginPage } from './pages/Login';
-import { PublicSignupPage } from './pages/Signup';
+import React from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { TenantApp } from '@/src/tenant/TenantApp';
+import { SaaSAdminApp } from '@/src/saas-admin/SaaSAdminApp';
+import { AdminLoginPage } from '@/src/saas-admin/pages/Login';
+import { GlobalTenantLoginPage } from '@/src/pages/Login';
+import { PublicSignupPage } from '@/src/pages/Signup';
+import MenuPublicPage from '@/src/pages/public/MenuPublic';
 
-function App() {
-  // Simple routing
-  const path = window.location.pathname;
-  const isTenantApp = path.startsWith('/tenant');
-  const isAdminApp = path.startsWith('/saas-admin') || path.startsWith('/admin');
-  const isTenantLogin = path === '/login';
-  const isPublicSignup = path === '/signup';
-  const isAdminLogin = path === '/login/admin';
-
-  if (isTenantApp) {
-    return <TenantApp />;
-  }
-
-  if (isAdminApp) {
-    return <SaaSAdminApp />;
-  }
-
-  if (isTenantLogin) {
-    return <GlobalTenantLoginPage />;
-  }
-
-  if (isAdminLogin) {
-    return <AdminLoginPage />;
-  }
-
-  if (isPublicSignup) {
-    return <PublicSignupPage />;
-  }
-
-  // Default landing page
+function LandingPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="text-center">
@@ -55,6 +29,36 @@ function App() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PublicRouter() {
+  return (
+    <Routes>
+      <Route path="/login" element={<GlobalTenantLoginPage />} />
+      <Route path="/login/admin" element={<AdminLoginPage />} />
+      <Route path="/signup" element={<PublicSignupPage />} />
+      <Route path="/menu/:slug" element={<MenuPublicPage />} />
+      <Route path="/" element={<LandingPage />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <Routes>
+        <Route path="/tenant/*" element={<TenantApp />} />
+        <Route path="/saas-admin/*" element={<SaaSAdminApp />} />
+        <Route path="/admin/*" element={<SaaSAdminApp />} />
+        <Route path="/*" element={<PublicRouter />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -19,9 +19,11 @@ function isString(value: unknown): value is string {
 function parsePublicLoginResponse(value: unknown): PublicLoginResponse {
   if (!isRecord(value)) throw new Error('Resposta inválida');
   const accessToken = value.accessToken;
+  const refreshToken = value.refreshToken;
   const user = value.user;
   const tenant = value.tenant;
   if (!isString(accessToken)) throw new Error('Resposta inválida');
+  if (!isString(refreshToken)) throw new Error('Resposta inválida');
   if (!isRecord(user) || !isRecord(tenant)) throw new Error('Resposta inválida');
   if (!isString(user.id) || !isString(user.email) || !isString(user.role)) throw new Error('Resposta inválida');
   if (!isString(tenant.id) || !isString(tenant.slug) || !isString(tenant.name)) throw new Error('Resposta inválida');
@@ -33,6 +35,7 @@ function parsePublicLoginResponse(value: unknown): PublicLoginResponse {
   const name = typeof nameRaw === 'string' ? nameRaw : null;
   return {
     accessToken,
+    refreshToken,
     user: {
       id: user.id,
       email: user.email,
@@ -86,14 +89,16 @@ export function GlobalTenantLoginPage() {
       }
 
       const login = parsePublicLoginResponse(raw);
-      localStorage.setItem('auth_token', login.accessToken);
+      localStorage.setItem('tenant_access_token', login.accessToken);
+      localStorage.setItem('tenant_refresh_token', login.refreshToken);
 
       const sessionRes = await fetch('/api/v1/auth/session', {
         headers: { Authorization: `Bearer ${login.accessToken}` },
       });
       const sessionRaw: unknown = await sessionRes.json().catch(() => null);
       if (!sessionRes.ok) {
-        localStorage.removeItem('auth_token');
+        localStorage.removeItem('tenant_access_token');
+        localStorage.removeItem('tenant_refresh_token');
         if (isRecord(sessionRaw) && isString(sessionRaw.error)) {
           throw new Error(sessionRaw.error);
         }
@@ -104,7 +109,8 @@ export function GlobalTenantLoginPage() {
       window.location.replace(`/tenant/${sessionTenantSlug}/dashboard`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login');
-      localStorage.removeItem('auth_token');
+      localStorage.removeItem('tenant_access_token');
+      localStorage.removeItem('tenant_refresh_token');
     } finally {
       setIsLoading(false);
     }

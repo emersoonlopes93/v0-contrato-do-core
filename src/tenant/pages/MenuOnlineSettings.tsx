@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { withModuleGuard, PermissionGuard } from '../components/ModuleGuard';
+import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FormFooterSaveBar } from '@/components/form/FormFooterSaveBar';
+import { toast } from '@/hooks/use-toast';
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
@@ -57,6 +59,7 @@ function MenuOnlineSettingsPageContent() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
 
   useEffect(() => {
     if (!accessToken) return;
@@ -90,6 +93,7 @@ function MenuOnlineSettingsPageContent() {
     if (!accessToken) return;
     setIsSaving(true);
     setError('');
+    setSuccess('');
     try {
       const payload: MenuOnlineUpdateSettingsRequest = {
         currency: currency.trim() === '' ? undefined : currency.trim(),
@@ -102,8 +106,19 @@ function MenuOnlineSettingsPageContent() {
         { method: 'PUT', body: JSON.stringify(payload) },
       );
       setSettings(data);
+      setSuccess('Configurações salvas com sucesso');
+      toast({
+        title: 'Salvo com sucesso',
+        description: 'Configurações salvas com sucesso',
+      });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao salvar configurações');
+      const message = e instanceof Error ? e.message : 'Erro ao salvar configurações';
+      setError(message);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar',
+        description: message,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -111,9 +126,21 @@ function MenuOnlineSettingsPageContent() {
 
   if (!accessToken) return null;
 
+  const isDirty =
+    settings !== null &&
+    (currency !== settings.currency ||
+      showOutOfStock !== settings.showOutOfStock ||
+      showImages !== settings.showImages);
+
   return (
-    <PermissionGuard permission="menu.manage">
-      <div className="space-y-6">
+    <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+        id="menu-online-settings-form"
+        className="space-y-6 pb-4"
+      >
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Configurações</h1>
           <p className="text-muted-foreground">Preferências do cardápio do tenant</p>
@@ -122,6 +149,12 @@ function MenuOnlineSettingsPageContent() {
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {success && !error && (
+          <Alert>
+            <AlertDescription>{success}</AlertDescription>
           </Alert>
         )}
 
@@ -163,12 +196,10 @@ function MenuOnlineSettingsPageContent() {
                 />
               </div>
 
-              <div className="flex gap-2">
-                <Button disabled={isSaving} onClick={() => void save()}>
-                  {isSaving ? 'Salvando...' : 'Salvar'}
-                </Button>
-                {settings && (
+              {settings && (
+                <div className="flex gap-2">
                   <Button
+                    type="button"
                     variant="outline"
                     onClick={() => {
                       setCurrency(settings.currency);
@@ -178,15 +209,27 @@ function MenuOnlineSettingsPageContent() {
                   >
                     Reverter
                   </Button>
-                )}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
-      </div>
-    </PermissionGuard>
+
+        {settings && isDirty && (
+          <FormFooterSaveBar
+            isLoading={isSaving}
+            primaryLabel="Salvar"
+            showCancel
+            cancelLabel="Cancelar"
+            onCancel={() => {
+              setCurrency(settings.currency);
+              setShowOutOfStock(settings.showOutOfStock);
+              setShowImages(settings.showImages);
+            }}
+          />
+        )}
+      </form>
   );
 }
 
 export const MenuOnlineSettingsPage = withModuleGuard(MenuOnlineSettingsPageContent, 'menu-online');
-

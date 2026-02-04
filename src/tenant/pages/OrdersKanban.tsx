@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { withModuleGuard, PermissionGuard } from '@/src/tenant/components/ModuleGuard';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { OrderCard, StatusBadge } from '@/src/tenant/components/cards';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -46,14 +45,6 @@ async function apiGet<T>(url: string, accessToken: string): Promise<T> {
 
   if (!isApiSuccessResponse<T>(raw)) throw new Error('Resposta inválida');
   return raw.data;
-}
-
-function formatCurrency(value: number, currency: string | null): string {
-  try {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency ?? 'BRL' }).format(value);
-  } catch {
-    return `R$ ${value.toFixed(2)}`;
-  }
 }
 
 type KanbanColumn = {

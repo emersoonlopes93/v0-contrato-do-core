@@ -157,19 +157,21 @@ export function AdminTenantSignupPage() {
       <h1 className="text-2xl font-bold">Onboarding de Tenant (Controlado)</h1>
 
       {error && (
-        <div className="rounded bg-red-100 p-3 text-red-700">{error}</div>
+        <div className="rounded border border-danger/20 bg-danger-soft p-3 text-danger">
+          {error}
+        </div>
       )}
 
       {/* Sidebar de progresso no desktop */}
       {!isMobile && (
         <div className="flex gap-6">
-          <aside className="w-64 rounded bg-white p-4 shadow">
+          <aside className="w-64 rounded bg-card p-4 shadow-md">
             <ol className="space-y-2 text-sm">
-              <li className={step === 1 ? 'font-semibold text-blue-600' : ''}>1. Criar Tenant</li>
-              <li className={step === 2 ? 'font-semibold text-blue-600' : ''}>2. Selecionar Módulos</li>
-              <li className={step === 3 ? 'font-semibold text-blue-600' : ''}>3. Usuário Admin</li>
-              <li className={step === 4 ? 'font-semibold text-blue-600' : ''}>4. Confirmar e Ativar</li>
-              <li className={step === 5 ? 'font-semibold text-green-600' : ''}>5. Concluído</li>
+              <li className={step === 1 ? 'font-semibold text-primary' : ''}>1. Criar Tenant</li>
+              <li className={step === 2 ? 'font-semibold text-primary' : ''}>2. Selecionar Módulos</li>
+              <li className={step === 3 ? 'font-semibold text-primary' : ''}>3. Usuário Admin</li>
+              <li className={step === 4 ? 'font-semibold text-primary' : ''}>4. Confirmar e Ativar</li>
+              <li className={step === 5 ? 'font-semibold text-success' : ''}>5. Concluído</li>
             </ol>
           </aside>
           <main className="flex-1">
@@ -223,8 +225,7 @@ export function AdminTenantSignupPage() {
         {step > 1 && step < 5 && (
           <button
             onClick={handlePrev}
-            className="rounded border px-4 py-3 hover:bg-gray-100"
-            style={{ minHeight: 44 }}
+            className="h-11 rounded-md border border-input px-4 py-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
             disabled={loading}
           >
             Voltar
@@ -233,8 +234,11 @@ export function AdminTenantSignupPage() {
         {step < 5 && (
           <button
             onClick={handleNext}
-            className={`rounded px-4 py-3 text-white ${step === 4 ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-            style={{ minHeight: 44 }}
+            className={`h-11 rounded-md px-4 py-3 text-sm font-medium ${
+              step === 4
+                ? 'bg-success text-success-foreground hover:bg-success/90'
+                : 'bg-[hsl(var(--action-primary-safe))] text-[hsl(var(--action-primary-foreground-safe))] hover:bg-[hsl(var(--action-primary-safe)/0.9)]'
+            }`}
             disabled={loading}
           >
             {loading ? 'Processando...' : step === 4 ? 'Confirmar e Ativar' : 'Continuar'}
@@ -243,8 +247,7 @@ export function AdminTenantSignupPage() {
         {step === 5 && (
           <a
             href="/admin/tenants"
-            className="rounded bg-green-600 px-4 py-3 text-white hover:bg-green-700"
-            style={{ minHeight: 44 }}
+            className="h-11 rounded-md bg-success px-4 py-3 text-sm font-medium text-success-foreground hover:bg-success/90"
           >
             Voltar para Lista
           </a>
@@ -294,7 +297,7 @@ function Wizard(props: {
 
   if (step === 1) {
     return (
-      <div className="rounded bg-white p-4 shadow space-y-3">
+      <div className="rounded bg-card p-4 shadow-md space-y-3">
         <h2 className="text-lg font-semibold">1. Informações do Tenant</h2>
         <div className="space-y-2">
           <label className="block text-sm font-medium">Nome</label>
@@ -331,14 +334,17 @@ function Wizard(props: {
 
   if (step === 2) {
     return (
-      <div className="rounded bg-white p-4 shadow space-y-3">
+      <div className="rounded bg-card p-4 shadow-md space-y-3">
         <h2 className="text-lg font-semibold">2. Seleção de Módulos</h2>
         <p className="text-sm text-muted-foreground">
           Marque os módulos que serão ativados neste tenant.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           {modules.map((m) => (
-            <label key={m} className="flex items-center gap-2 rounded border p-2 hover:bg-gray-50 cursor-pointer">
+            <label
+              key={m}
+              className="flex items-center gap-2 rounded border border-input bg-background p-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+            >
               <input
                 type="checkbox"
                 checked={selectedModules.includes(m)}
@@ -354,7 +360,7 @@ function Wizard(props: {
 
   if (step === 3) {
     return (
-      <div className="rounded bg-white p-4 shadow space-y-3">
+      <div className="rounded bg-card p-4 shadow-md space-y-3">
         <h2 className="text-lg font-semibold">3. Usuário Administrador</h2>
         <p className="text-sm text-muted-foreground">
           Defina as credenciais do primeiro usuário (Owner).
@@ -383,15 +389,15 @@ function Wizard(props: {
   if (step === 4) {
     const planName = plans.find((p) => p.id === planId)?.name || planId;
     return (
-        <div className="rounded bg-white p-4 shadow space-y-3">
+        <div className="rounded bg-card p-4 shadow-md space-y-3">
           <h2 className="text-lg font-semibold">4. Revisão e Ativação</h2>
-          <div className="space-y-2 text-sm border p-4 rounded bg-gray-50">
+          <div className="space-y-2 text-sm border border-border-soft p-4 rounded bg-muted">
             <p><strong>Tenant:</strong> {tenantName} ({tenantSlug})</p>
             <p><strong>Plano:</strong> {planName}</p>
             <p><strong>Módulos Selecionados:</strong> {selectedModules.join(', ') || 'Nenhum'}</p>
             <p><strong>Admin:</strong> {adminEmail}</p>
           </div>
-          <p className="text-sm text-yellow-600 mt-2">
+          <p className="mt-2 text-sm text-warning">
             Ao confirmar, o sistema irá criar o usuário, ativar os módulos e liberar o acesso (Onboarding).
           </p>
         </div>
@@ -399,8 +405,8 @@ function Wizard(props: {
   }
 
   return (
-    <div className="rounded bg-white p-4 shadow space-y-3">
-      <h2 className="text-lg font-semibold text-green-600">5. Onboarding Concluído!</h2>
+    <div className="rounded bg-card p-4 shadow-md space-y-3">
+      <h2 className="text-lg font-semibold text-success">5. Onboarding Concluído!</h2>
       {!summary ? (
         <p>Carregando resumo...</p>
       ) : (

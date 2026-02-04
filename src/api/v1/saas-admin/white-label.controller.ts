@@ -25,14 +25,28 @@ export async function getWhiteLabel(req: Request, res: Response): Promise<void> 
     const config = await prisma.whiteBrandConfig.findUnique({
       where: { tenant_id: tenantId },
     });
-    
-    // If no config exists, return default/null structure rather than 404
-    // or let the UI handle it. 
-    
+    if (!config) {
+      res.status = 200;
+      res.body = {
+        success: true,
+        data: null,
+      };
+      return;
+    }
+
     res.status = 200;
     res.body = {
       success: true,
-      data: config || null,
+      data: {
+        tenantId: config.tenant_id,
+        logo: config.logo ?? undefined,
+        primaryColor: config.primary_color,
+        secondaryColor: config.secondary_color,
+        backgroundColor: config.background_color ?? undefined,
+        theme: config.theme ?? undefined,
+        domain: config.domain ?? undefined,
+        customMetadata: config.custom_metadata as unknown as Record<string, unknown> | undefined,
+      },
     };
   } catch (error) {
     console.error('[v0] getWhiteLabel error:', error);
@@ -58,10 +72,12 @@ export async function updateWhiteLabel(req: Request, res: Response): Promise<voi
     return;
   }
 
-  const { primaryColor, secondaryColor, logo } = body as {
+  const { primaryColor, secondaryColor, backgroundColor, logo, theme } = body as {
     primaryColor?: string;
     secondaryColor?: string;
+    backgroundColor?: string;
     logo?: string | null;
+    theme?: "light" | "dark" | null;
   };
 
   if (!tenantId) {
@@ -77,14 +93,18 @@ export async function updateWhiteLabel(req: Request, res: Response): Promise<voi
       update: {
         primary_color: primaryColor,
         secondary_color: secondaryColor,
+        background_color: backgroundColor,
         logo: logo,
+        theme: theme,
         updated_at: new Date(),
       },
       create: {
         tenant_id: tenantId,
-        primary_color: primaryColor || '#000000',
-        secondary_color: secondaryColor || '#ffffff',
+        primary_color: primaryColor ?? '0 0% 9%',
+        secondary_color: secondaryColor ?? '0 0% 96.1%',
+        background_color: backgroundColor ?? '0 0% 100%',
         logo: logo,
+        theme: theme ?? 'light',
       },
     });
     
@@ -118,9 +138,11 @@ export async function initWhiteLabel(req: Request, res: Response): Promise<void>
 
   try {
     const defaults = {
-      primary_color: '#0F172A', // slate-900
-      secondary_color: '#38BDF8', // sky-400
+      primary_color: '0 0% 9%',
+      secondary_color: '0 0% 96.1%',
+      background_color: '0 0% 100%',
       logo: null as string | null,
+      theme: 'light',
     };
 
     const config = await prisma.whiteBrandConfig.upsert({

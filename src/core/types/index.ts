@@ -90,7 +90,9 @@ export interface WhiteBrandConfig {
   logo?: string;
   primaryColor: string;
   secondaryColor: string;
+   backgroundColor?: string;
   domain?: string;
+  theme?: 'light' | 'dark';
   customMetadata?: Record<string, unknown>;
 }
 

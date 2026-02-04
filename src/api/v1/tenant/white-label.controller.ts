@@ -33,6 +33,8 @@ export async function getTenantWhiteLabel(req: Request, res: Response): Promise<
         logo: config.logo ?? undefined,
         primaryColor: config.primary_color,
         secondaryColor: config.secondary_color,
+        backgroundColor: config.background_color ?? undefined,
+        theme: config.theme ?? undefined,
         domain: config.domain ?? undefined,
         customMetadata: config.custom_metadata as unknown as Record<string, unknown> | undefined,
       },
@@ -46,4 +48,3 @@ export async function getTenantWhiteLabel(req: Request, res: Response): Promise<
     };
   }
 }
-

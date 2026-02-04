@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { withModuleGuard, PermissionGuard } from '../components/ModuleGuard';
+import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { BaseModal } from '@/components/modal/BaseModal';
+import { ModalHeader } from '@/components/modal/ModalHeader';
+import { ModalBody } from '@/components/modal/ModalBody';
+import { ModalFooter } from '@/components/modal/ModalFooter';
+import { GripVertical, Pencil, Trash2, Search } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
@@ -40,9 +48,21 @@ function parseStatus(value: string): MenuOnlineStatus | undefined {
 function parseNumber(value: string): number | undefined {
   const trimmed = value.trim();
   if (trimmed === '') return undefined;
-  const num = Number(trimmed);
+  const normalized = trimmed.replace(/\./g, '').replace(',', '.');
+  const num = Number(normalized);
   if (Number.isNaN(num)) return undefined;
   return num;
+}
+
+function formatCurrencyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits === '') return '';
+  const padded = digits.padStart(3, '0');
+  const integer = padded.slice(0, -2);
+  const decimals = padded.slice(-2);
+  const intNumber = Number(integer);
+  const intString = intNumber.toString();
+  return `${intString},${decimals}`;
 }
 
 async function apiRequest<T>(
@@ -71,7 +91,7 @@ async function apiRequest<T>(
 }
 
 type DraftVariation = { name: string; price: string; isDefault: boolean; status: MenuOnlineStatus };
-type DraftImage = { url: string };
+type DraftImage = { url: string; file?: File | null; progress?: number };
 
 function MenuOnlineProductsPageContent() {
   const { tenantSlug } = useTenant();
@@ -81,8 +101,13 @@ function MenuOnlineProductsPageContent() {
   const [products, setProducts] = useState<MenuOnlineProductDTO[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [search, setSearch] = useState<string>('');
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const [categoryId, setCategoryId] = useState<string>('');
   const [name, setName] = useState<string>('');
@@ -109,6 +134,7 @@ function MenuOnlineProductsPageContent() {
     if (!accessToken) return;
     setIsLoading(true);
     setError('');
+    setSuccess('');
     try {
       const [cats, groups, items] = await Promise.all([
         apiRequest<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', accessToken),
@@ -117,7 +143,8 @@ function MenuOnlineProductsPageContent() {
       ]);
       setCategories(cats);
       setModifierGroups(groups);
-      setProducts(items);
+      const sortedItems = [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+      setProducts(sortedItems);
       if (!editingId && cats.length > 0 && categoryId === '') {
         setCategoryId(cats[0].id);
       }
@@ -141,7 +168,7 @@ function MenuOnlineProductsPageContent() {
     setStatus(editingItem.status);
     setBasePrice(String(editingItem.basePrice));
     setSelectedModifierGroupIds(editingItem.modifierGroupIds);
-    setImages(editingItem.images.map((img) => ({ url: img.url })));
+    setImages(editingItem.images.map((img) => ({ url: img.url, file: null, progress: 100 })));
     setVariations(
       editingItem.priceVariations.map((v) => ({
         name: v.name,
@@ -163,30 +190,36 @@ function MenuOnlineProductsPageContent() {
     setImages([]);
     setVariations([]);
     if (categories.length > 0) setCategoryId(categories[0].id);
+    setEditingId(null);
   };
 
-  const handleSave = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
+  const handleSave = async (): Promise<void> => {
     if (!accessToken) return;
     setError('');
+    setSuccess('');
+    setIsSaving(true);
 
     if (name.trim() === '') {
       setError('Nome é obrigatório');
+      setIsSaving(false);
       return;
     }
     if (categoryId.trim() === '') {
       setError('Categoria é obrigatória');
+      setIsSaving(false);
       return;
     }
 
     const sort = parseNumber(sortOrder);
     if (sortOrder.trim() !== '' && sort === undefined) {
       setError('Ordem inválida');
+      setIsSaving(false);
       return;
     }
     const base = parseNumber(basePrice);
     if (basePrice.trim() !== '' && base === undefined) {
       setError('Preço base inválido');
+      setIsSaving(false);
       return;
     }
 
@@ -236,6 +269,11 @@ function MenuOnlineProductsPageContent() {
           accessToken,
           { method: 'PUT', body: JSON.stringify(payload) },
         );
+        setSuccess('Produto atualizado com sucesso');
+        toast({
+          title: 'Salvo com sucesso',
+          description: 'Produto atualizado com sucesso',
+        });
       } else {
         const payload: MenuOnlineCreateProductRequest = {
           categoryId,
@@ -259,12 +297,26 @@ function MenuOnlineProductsPageContent() {
           accessToken,
           { method: 'POST', body: JSON.stringify(payload) },
         );
+        setSuccess('Produto criado com sucesso');
+        toast({
+          title: 'Salvo com sucesso',
+          description: 'Produto criado com sucesso',
+        });
       }
 
       resetForm();
       await load();
+      setIsModalOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar produto');
+      const message = err instanceof Error ? err.message : 'Erro ao salvar produto';
+      setError(message);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar',
+        description: message,
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -280,6 +332,85 @@ function MenuOnlineProductsPageContent() {
     }
   };
 
+  const handleDragStart = (id: string): void => {
+    setDraggingId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, overId: string): void => {
+    e.preventDefault();
+    if (!draggingId || draggingId === overId) return;
+    setProducts((prev) => {
+      const fromIndex = prev.findIndex((p) => p.id === draggingId);
+      const toIndex = prev.findIndex((p) => p.id === overId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const handleDrop = async (): Promise<void> => {
+    if (!accessToken || !draggingId) {
+      setDraggingId(null);
+      return;
+    }
+    setDraggingId(null);
+    const next = products.map((p, index) => ({ ...p, sortOrder: index }));
+    setProducts(next);
+    try {
+      await Promise.all(
+        next.map((p) =>
+          apiRequest<MenuOnlineProductDTO>(
+            `/api/v1/tenant/menu-online/products/${p.id}`,
+            accessToken,
+            {
+              method: 'PUT',
+              body: JSON.stringify({ sortOrder: p.sortOrder }),
+            },
+          ),
+        ),
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao reordenar produtos';
+      setError(message);
+      void load();
+    }
+  };
+
+  const filteredProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return products;
+    return products.filter((p) => {
+      const nameMatch = p.name.toLowerCase().includes(term);
+      const categoryName = categoryNameById.get(p.categoryId)?.toLowerCase() ?? '';
+      const categoryMatch = categoryName.includes(term);
+      return nameMatch || categoryMatch;
+    });
+  }, [products, search, categoryNameById]);
+
+  const handleToggleStatus = async (product: MenuOnlineProductDTO): Promise<void> => {
+    if (!accessToken) return;
+    const nextStatus: MenuOnlineStatus = product.status === 'active' ? 'inactive' : 'active';
+    try {
+      await apiRequest<MenuOnlineProductDTO>(
+        `/api/v1/tenant/menu-online/products/${product.id}`,
+        accessToken,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ status: nextStatus }),
+        },
+      );
+      await load();
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar status',
+        description: err instanceof Error ? err.message : 'Falha ao atualizar status do produto',
+      });
+    }
+  };
+
   const toggleGroup = (id: string): void => {
     setSelectedModifierGroupIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
@@ -288,25 +419,198 @@ function MenuOnlineProductsPageContent() {
 
   const basePath = `/tenant/${tenantSlug}`;
   return (
-    <PermissionGuard permission="products.manage">
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Produtos</h1>
-            <p className="text-muted-foreground">Gestão de produtos do cardápio</p>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                className="border-b-2 border-primary pb-1 text-sm font-semibold text-primary"
+              >
+                Produtos
+              </button>
+              <a
+                href={`${basePath}/menu-online/modifiers`}
+                className="pb-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Complementos
+              </a>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight md:text-2xl">Cardápio</h1>
           </div>
-          <a href={`${basePath}/menu-online`} className="text-sm text-primary underline-offset-4 hover:underline">
-            Voltar
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              className="h-9 border-danger/40 text-danger hover:bg-danger/5"
+            >
+              Remover desconto
+            </Button>
+            <Button
+              variant="default"
+              className="h-9"
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(true);
+              }}
+            >
+              + Novo produto
+            </Button>
+          </div>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? 'Editar Produto' : 'Novo Produto'}</CardTitle>
-            <CardDescription>Campos obrigatórios: categoria e nome</CardDescription>
+          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Produtos</CardTitle>
+              <CardDescription>Organize visualmente os itens do cardápio</CardDescription>
+            </div>
+            <div className="flex w-full max-w-xs items-center gap-2 md:w-auto">
+              <div className="relative w-full">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar produto..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-9 w-full pl-8"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSave} className="space-y-4">
+            {filteredProducts.length === 0 && !isLoading ? (
+              <div className="text-sm text-muted-foreground">Nenhum produto cadastrado</div>
+            ) : (
+              <div className="space-y-2">
+                {filteredProducts.map((p) => {
+                  const imageUrl = p.images[0]?.url ?? '';
+                  const hasPromo = p.promoPrice !== null;
+                  const oldPrice = p.promoPrice !== null ? p.basePrice : null;
+                  const currentPrice = p.promoPrice ?? p.basePrice;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex flex-col gap-3 rounded-xl border bg-card px-3 py-3 shadow-sm md:flex-row md:items-center"
+                      draggable
+                      onDragStart={() => handleDragStart(p.id)}
+                      onDragOver={(e) => handleDragOver(e, p.id)}
+                      onDrop={() => void handleDrop()}
+                    >
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          className="flex h-10 w-6 flex-col items-center justify-center text-muted-foreground"
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </button>
+                        <div className="flex flex-col items-center gap-2 md:flex-row md:gap-3">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={p.status === 'active'}
+                              onCheckedChange={() => void handleToggleStatus(p)}
+                            />
+                            <span
+                              className={
+                                p.status === 'active'
+                                  ? 'text-xs font-medium text-success'
+                                  : 'text-xs text-muted-foreground'
+                              }
+                            >
+                              {p.status === 'active' ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </div>
+                          <div className="h-12 w-12 overflow-hidden rounded-md bg-muted md:h-14 md:w-14">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={p.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+                                Sem imagem
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-1 flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate text-sm font-semibold">{p.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {categoryNameById.get(p.categoryId) ?? p.categoryId}
+                            </span>
+                            {hasPromo && (
+                              <Badge className="bg-warning-soft text-warning border-warning/40">
+                                Mais pedido
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {oldPrice !== null && (
+                              <span className="mr-1 line-through">
+                                De R$ {oldPrice.toFixed(2).replace('.', ',')}
+                              </span>
+                            )}
+                            <span className="font-semibold text-success">
+                              {oldPrice !== null ? 'por' : 'R$'}{' '}
+                              {currentPrice.toFixed(2).replace('.', ',')}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex gap-2 md:mt-0">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setEditingId(p.id);
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => void handleDelete(p.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <BaseModal
+          open={isModalOpen}
+          onOpenChange={(open) => {
+            setIsModalOpen(open);
+            if (!open) resetForm();
+          }}
+          size="lg"
+        >
+          <ModalHeader title={editingId ? 'Editar Produto' : 'Novo Produto'} />
+          <ModalBody>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleSave();
+              }}
+              className="space-y-4"
+              id="product-form"
+            >
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="categoryId">Categoria</Label>
@@ -341,7 +645,13 @@ function MenuOnlineProductsPageContent() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="basePrice">Preço base</Label>
-                  <Input id="basePrice" value={basePrice} onChange={(e) => setBasePrice(e.target.value)} inputMode="decimal" className="h-11" />
+                  <Input
+                    id="basePrice"
+                    value={basePrice}
+                    onChange={(e) => setBasePrice(formatCurrencyInput(e.target.value))}
+                    inputMode="decimal"
+                    className="h-11"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sortOrder">Ordem</Label>
@@ -382,31 +692,99 @@ function MenuOnlineProductsPageContent() {
               </div>
 
               <div className="space-y-2">
-                <Label>Imagens (URL)</Label>
+                <Label>Imagens do produto</Label>
+                <p className="text-xs text-muted-foreground">
+                  Envie uma imagem real ou cole um link externo.
+                </p>
                 <div className="space-y-2">
                   {images.map((img, idx) => (
-                    <div key={`${idx}`} className="flex gap-2">
-                      <Input
-                        value={img.url}
-                        onChange={(e) => {
-                          const next = [...images];
-                          next[idx] = { url: e.target.value };
-                          setImages(next);
-                        }}
-                        className="h-11"
-                        placeholder="https://..."
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11 bg-transparent"
-                        onClick={() => setImages(images.filter((_, i) => i !== idx))}
-                      >
-                        Remover
-                      </Button>
+                    <div key={`${idx}`} className="flex flex-col gap-2 md:flex-row">
+                      <div className="flex flex-1 flex-col gap-2 md:flex-row">
+                        <Input
+                          value={img.url}
+                          onChange={(e) => {
+                            const next = [...images];
+                            next[idx] = { ...next[idx], url: e.target.value };
+                            setImages(next);
+                          }}
+                          className="h-11 md:flex-1"
+                          placeholder="https://..."
+                        />
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="h-11 md:w-56"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            if (!file) return;
+                            const reader = new FileReader();
+                            const next = [...images];
+                            next[idx] = { ...next[idx], file, progress: 0 };
+                            setImages(next);
+                            reader.onprogress = (ev) => {
+                              if (!ev.lengthComputable) return;
+                              const percent = Math.round((ev.loaded / ev.total) * 100);
+                              setImages((current) => {
+                                const copy = [...current];
+                                if (!copy[idx]) return current;
+                                copy[idx] = { ...copy[idx], progress: percent };
+                                return copy;
+                              });
+                            };
+                            reader.onload = () => {
+                              const result = reader.result;
+                              if (typeof result !== 'string') return;
+                              setImages((current) => {
+                                const copy = [...current];
+                                if (!copy[idx]) return current;
+                                copy[idx] = { url: result, file: null, progress: 100 };
+                                return copy;
+                              });
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {typeof img.progress === 'number' && img.progress < 100 && (
+                          <div className="flex w-32 items-center gap-2">
+                            <div className="h-1.5 flex-1 rounded-full bg-muted">
+                              <div
+                                className="h-1.5 rounded-full bg-primary transition-all"
+                                style={{ width: `${img.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] text-muted-foreground">
+                              {img.progress}%
+                            </span>
+                          </div>
+                        )}
+                        {img.url && (
+                          <div className="h-12 w-12 overflow-hidden rounded-md bg-muted">
+                            <img
+                              src={img.url}
+                              alt={name || 'Imagem do produto'}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 bg-transparent"
+                          onClick={() => setImages(images.filter((_, i) => i !== idx))}
+                        >
+                          Remover
+                        </Button>
+                      </div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" className="h-11 bg-transparent" onClick={() => setImages([...images, { url: '' }])}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 bg-transparent"
+                    onClick={() => setImages([...images, { url: '', file: null, progress: 0 }])}
+                  >
                     Adicionar imagem
                   </Button>
                 </div>
@@ -431,7 +809,7 @@ function MenuOnlineProductsPageContent() {
                         value={v.price}
                         onChange={(e) => {
                           const next = [...variations];
-                          next[idx] = { ...v, price: e.target.value };
+                          next[idx] = { ...v, price: formatCurrencyInput(e.target.value) };
                           setVariations(next);
                         }}
                         className="h-11"
@@ -477,55 +855,38 @@ function MenuOnlineProductsPageContent() {
                 </Alert>
               )}
 
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" className="h-11" disabled={name.trim() === '' || categoryId.trim() === ''}>
-                  {editingId ? 'Salvar' : 'Criar'}
-                </Button>
-                {editingId && (
-                  <Button type="button" variant="outline" className="h-11 bg-transparent" onClick={resetForm}>
-                    Cancelar
-                  </Button>
-                )}
-              </div>
+              {success && !error && (
+                <Alert>
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
             </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Lista</CardTitle>
-            <CardDescription>{isLoading ? 'Carregando...' : `${products.length} produtos`}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {products.length === 0 && !isLoading ? (
-              <div className="text-sm text-muted-foreground">Nenhum produto cadastrado</div>
-            ) : (
-              products.map((p) => (
-                <div key={p.id} className="flex flex-col gap-2 rounded-md border bg-background p-3 md:flex-row md:items-center md:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="truncate text-sm font-medium">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">{categoryNameById.get(p.categoryId) ?? p.categoryId}</div>
-                      <div className="text-xs text-muted-foreground">R$ {p.basePrice.toFixed(2)}</div>
-                      <div className="text-xs text-muted-foreground">{p.status}</div>
-                    </div>
-                    {p.description && <div className="mt-1 text-xs text-muted-foreground">{p.description}</div>}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="outline" className="h-9 bg-transparent" onClick={() => setEditingId(p.id)}>
-                      Editar
-                    </Button>
-                    <Button type="button" variant="destructive" className="h-9" onClick={() => void handleDelete(p.id)}>
-                      Excluir
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10"
+              onClick={() => {
+                setIsModalOpen(false);
+                resetForm();
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="product-form"
+            variant="default"
+            className="h-10"
+              disabled={isSaving || name.trim() === '' || categoryId.trim() === ''}
+            >
+              {isSaving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+            </Button>
+          </ModalFooter>
+        </BaseModal>
       </div>
-    </PermissionGuard>
+    </>
   );
 }
 
