@@ -1,0 +1,277 @@
+/* =========================
+   SAAS-ADMIN PREMIUM STYLES
+   ========================= */
+
+/* CORES PRIMÁRIAS VIVAS E ELEGANTES */
+:root {
+  --saas-primary: var(--tenant-primary, 217 91% 60%);
+  --saas-primary-foreground: var(--tenant-primary-foreground, 0 0% 100%);
+  --saas-primary-hover: 217 91% 55%;
+  --saas-primary-active: 217 91% 50%;
+  --saas-primary-soft: 217 91% 97%;
+
+  /* BACKGROUND COM GRADIENTES SUAVES */
+  --saas-background: var(--tenant-background, 210 40% 99%);
+  --saas-background-app: linear-gradient(135deg, hsl(210 40% 99%) 0%, hsl(217 33% 97%) 100%);
+  --saas-background-surface: hsl(210 40% 99%);
+  --saas-background-card: 0 0% 100%;
+
+  --saas-foreground: 222 47% 11%;
+
+  --saas-card: 0 0% 100%;
+  --saas-card-foreground: 222 47% 11%;
+
+  --saas-secondary: var(--tenant-secondary, 210 40% 96.1%);
+  --saas-secondary-foreground: 222 47% 11%;
+
+  --saas-muted: 214 32% 96%;
+  --saas-muted-foreground: 215 16% 47%;
+
+  --saas-accent: 214 32% 96%;
+  --saas-accent-foreground: 222 47% 11%;
+
+  /* CORES DE STATUS VIVAS */
+  --saas-destructive: 0 72% 51%;
+  --saas-destructive-foreground: 0 0% 98%;
+  --saas-destructive-soft: 0 72% 96%;
+
+  --saas-success: 142 76% 36%;
+  --saas-success-foreground: 0 0% 100%;
+  --saas-success-soft: 142 76% 95%;
+
+  --saas-warning: 38 92% 50%;
+  --saas-warning-foreground: 24 10% 18%;
+  --saas-warning-soft: 38 92% 95%;
+
+  --saas-danger: 0 72% 51%;
+  --saas-danger-foreground: 0 0% 100%;
+  --saas-danger-soft: 0 72% 96%;
+
+  --saas-info: 200 88% 48%;
+  --saas-info-foreground: 210 100% 97%;
+  --saas-info-soft: 200 88% 95%;
+
+  /* CORES DE TEXTO MELHORADAS */
+  --saas-text-primary: 222 47% 11%;
+  --saas-text-secondary: 215 16% 47%;
+  --saas-text-muted: 215 14% 65%;
+  --saas-text-inverse: 0 0% 100%;
+
+  /* BORDAS E SOMBRAS REFINADAS */
+  --saas-border: 214 32% 91%;
+  --saas-border-default: 214 32% 91%;
+  --saas-border-soft: 214 20% 95%;
+  --saas-input: 214 32% 91%;
+  --saas-ring: var(--tenant-ring, 217 91% 60%);
+
+  /* CORES DE GRÁFICOS VIVAS */
+  --saas-chart-1: 217 91% 60%;
+  --saas-chart-2: 142 76% 36%;
+  --saas-chart-3: 38 92% 50%;
+  --saas-chart-4: 280 78% 55%;
+  --saas-chart-5: 0 72% 51%;
+
+  /* SIDEBAR CORES MODERNAS */
+  --saas-sidebar-background: 217 33% 97%;
+  --saas-sidebar-foreground: 222 47% 11%;
+  --saas-sidebar-primary: 217 91% 60%;
+  --saas-sidebar-primary-foreground: 0 0% 100%;
+  --saas-sidebar-accent: 214 32% 96%;
+  --saas-sidebar-accent-foreground: 222 47% 11%;
+  --saas-sidebar-border: 214 32% 91%;
+  --saas-sidebar-ring: 217 91% 60%;
+}
+
+/* DARK MODE CORES VIVAS E ELEGANTES */
+.dark {
+  --saas-primary: var(--tenant-primary, 217 91% 60%);
+  --saas-primary-foreground: var(--tenant-primary-foreground, 222 47% 11%);
+  --saas-primary-hover: 217 91% 55%;
+  --saas-primary-active: 217 91% 50%;
+  --saas-primary-soft: 217 55% 16%;
+
+  /* BACKGROUND COM GRADIENTES ESCUROS */
+  --saas-background: var(--tenant-background, 222 47% 10%);
+  --saas-background-app: linear-gradient(135deg, hsl(222 47% 10%) 0%, hsl(220 48% 8%) 100%);
+  --saas-background-surface: 223 36% 12%;
+  --saas-background-card: 223 32% 14%;
+
+  --saas-foreground: 210 40% 98%;
+
+  --saas-card: 217 33% 17%;
+  --saas-card-foreground: 210 40% 98%;
+
+  --saas-secondary: var(--tenant-secondary, 217 33% 17%);
+  --saas-secondary-foreground: 210 40% 98%;
+
+  --saas-muted: 223 22% 16%;
+  --saas-muted-foreground: 215 20% 65%;
+
+  --saas-accent: 223 22% 17%;
+  --saas-accent-foreground: 0 0% 98%;
+
+  /* CORES DE STATUS VIVAS DARK */
+  --saas-destructive: 0 62.8% 30.6%;
+  --saas-destructive-foreground: 0 0% 98%;
+  --saas-destructive-soft: 0 62.8% 16%;
+
+  --saas-success: 142 76% 36%;
+  --saas-success-foreground: 0 0% 100%;
+  --saas-success-soft: 142 76% 16%;
+
+  --saas-warning: 38 92% 50%;
+  --saas-warning-foreground: 48 100% 97%;
+  --saas-warning-soft: 38 92% 16%;
+
+  --saas-danger: 0 62.8% 30.6%;
+  --saas-danger-foreground: 0 0% 98%;
+  --saas-danger-soft: 0 62.8% 16%;
+
+  --saas-info: 200 88% 48%;
+  --saas-info-foreground: 210 100% 97%;
+  --saas-info-soft: 200 88% 16%;
+
+  /* CORES DE TEXTO DARK */
+  --saas-text-primary: 210 40% 98%;
+  --saas-text-secondary: 215 20% 65%;
+  --saas-text-muted: 215 14% 50%;
+  --saas-text-inverse: 222 47% 11%;
+
+  /* BORDAS E SOMBRAS DARK */
+  --saas-border: 223 22% 22%;
+  --saas-border-default: 217 33% 24%;
+  --saas-border-soft: 217 20% 20%;
+  --saas-input: 217 33% 24%;
+  --saas-ring: var(--tenant-ring, 217 91% 60%);
+
+  /* CORES DE GRÁFICOS VIVAS DARK */
+  --saas-chart-1: 217 91% 60%;
+  --saas-chart-2: 142 76% 36%;
+  --saas-chart-3: 38 92% 50%;
+  --saas-chart-4: 280 78% 55%;
+  --saas-chart-5: 0 62.8% 50%;
+
+  /* SIDEBAR CORES DARK */
+  --saas-sidebar-background: 223 36% 12%;
+  --saas-sidebar-foreground: 210 40% 98%;
+  --saas-sidebar-primary: 217 91% 60%;
+  --saas-sidebar-primary-foreground: 222 47% 11%;
+  --saas-sidebar-accent: 223 22% 17%;
+  --saas-sidebar-accent-foreground: 210 40% 98%;
+  --saas-sidebar-border: 223 22% 22%;
+  --saas-sidebar-ring: 217 91% 60%;
+}
+
+/* Aplicar cores específicas do SaaS-Admin */
+.saas-admin-app {
+  background: hsl(var(--saas-background));
+  color: hsl(var(--saas-foreground));
+}
+
+.saas-admin-app .bg-background {
+  background: hsl(var(--saas-background)) !important;
+}
+
+.saas-admin-app .bg-card {
+  background: hsl(var(--saas-card)) !important;
+}
+
+.saas-admin-app .text-foreground {
+  color: hsl(var(--saas-foreground)) !important;
+}
+
+.saas-admin-app .text-muted-foreground {
+  color: hsl(var(--saas-muted-foreground)) !important;
+}
+
+.saas-admin-app .border-border {
+  border-color: hsl(var(--saas-border)) !important;
+}
+
+.saas-admin-app .bg-primary {
+  background: hsl(var(--saas-primary)) !important;
+}
+
+.saas-admin-app .text-primary-foreground {
+  color: hsl(var(--saas-primary-foreground)) !important;
+}
+
+.saas-admin-app .bg-secondary {
+  background: hsl(var(--saas-secondary)) !important;
+}
+
+.saas-admin-app .text-secondary-foreground {
+  color: hsl(var(--saas-secondary-foreground)) !important;
+}
+
+.saas-admin-app .bg-muted {
+  background: hsl(var(--saas-muted)) !important;
+}
+
+.saas-admin-app .text-accent-foreground {
+  color: hsl(var(--saas-accent-foreground)) !important;
+}
+
+/* Sidebar específico */
+.saas-admin-app .sidebar {
+  background: hsl(var(--saas-sidebar-background)) !important;
+  border-right: 1px solid hsl(var(--saas-sidebar-border)) !important;
+}
+
+.saas-admin-app .sidebar-foreground {
+  color: hsl(var(--saas-sidebar-foreground)) !important;
+}
+
+.saas-admin-app .sidebar-primary {
+  background: hsl(var(--saas-sidebar-primary)) !important;
+  color: hsl(var(--saas-sidebar-primary-foreground)) !important;
+}
+
+/* Cores de status */
+.saas-admin-app .text-success {
+  color: hsl(var(--saas-success)) !important;
+}
+
+.saas-admin-app .text-warning {
+  color: hsl(var(--saas-warning)) !important;
+}
+
+.saas-admin-app .text-danger {
+  color: hsl(var(--saas-danger)) !important;
+}
+
+.saas-admin-app .text-info {
+  color: hsl(var(--saas-info)) !important;
+}
+
+.saas-admin-app .bg-success {
+  background: hsl(var(--saas-success)) !important;
+}
+
+.saas-admin-app .bg-success-soft {
+  background: hsl(var(--saas-success-soft)) !important;
+}
+
+.saas-admin-app .bg-warning {
+  background: hsl(var(--saas-warning)) !important;
+}
+
+.saas-admin-app .bg-warning-soft {
+  background: hsl(var(--saas-warning-soft)) !important;
+}
+
+.saas-admin-app .bg-danger {
+  background: hsl(var(--saas-danger)) !important;
+}
+
+.saas-admin-app .bg-danger-soft {
+  background: hsl(var(--saas-danger-soft)) !important;
+}
+
+.saas-admin-app .bg-info {
+  background: hsl(var(--saas-info)) !important;
+}
+
+.saas-admin-app .bg-info-soft {
+  background: hsl(var(--saas-info-soft)) !important;
+}

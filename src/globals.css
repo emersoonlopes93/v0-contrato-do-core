@@ -2,11 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
-
 
 /* =========================
    UTILITIES
@@ -211,49 +209,61 @@ body {
 }
 
 /* =========================
-   GLOBAL BASE RULES
+   COMPONENTS
    ========================= */
-@layer base {
-  * {
-    @apply border-border;
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
   }
-
-  body {
-    @apply bg-background text-foreground;
+  
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90;
   }
-
-  .switch-safe {
-    opacity: 1 !important;
-    filter: none !important;
-    background-image: none !important;
-    backdrop-filter: none !important;
-    color-scheme: light;
-    outline: none !important;
-    box-shadow: none !important;
+  
+  .btn-secondary {
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80;
   }
-
-  .switch-safe * {
-    opacity: 1 !important;
-    filter: none !important;
-    background-image: none !important;
-    backdrop-filter: none !important;
-    box-shadow: none !important;
+  
+  .btn-destructive {
+    @apply btn bg-destructive text-destructive-foreground hover:bg-destructive/90;
   }
-
-  .switch-safe[data-state='checked'] {
-    background-color: var(--switch-track-on) !important;
+  
+  .card {
+    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
   }
-
-  .switch-safe[data-state='unchecked'] {
-    background-color: var(--switch-track-off) !important;
+  
+  .card-header {
+    @apply flex flex-col space-y-1.5 p-6;
   }
-
-  .switch-safe:disabled {
-    background-color: var(--switch-track-off) !important;
-    cursor: not-allowed !important;
+  
+  .card-title {
+    @apply text-2xl font-semibold leading-none tracking-tight;
   }
-
-  .switch-safe .switch-safe-thumb {
-    background-color: var(--switch-thumb-bg) !important;
+  
+  .card-description {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  .card-content {
+    @apply p-6 pt-0;
+  }
+  
+  .card-footer {
+    @apply flex items-center p-6 pt-0;
   }
 }
+
+/* =========================
+   SAAS ADMIN STYLES
+   ========================= */
+.saas-admin-app {
+  @apply min-h-screen bg-background;
+}
+
+/* =========================
+   TENANT APP STYLES
+   ========================= */
+.tenant-app {
+  @apply min-h-screen bg-background;
+}
+

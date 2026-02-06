@@ -8,6 +8,7 @@ import { AdminPlansPage } from './pages/Plans';
 import { AdminModulesPage } from './pages/Modules';
 import { AdminWhiteLabelPage } from './pages/WhiteLabel';
 import { AdminAuditLogsPage } from './pages/AuditLogs';
+import './styles/saas-admin.css';
 
 export function SaaSAdminApp() {
   const path = window.location.pathname;
