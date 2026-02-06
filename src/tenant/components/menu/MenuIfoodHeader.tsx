@@ -39,50 +39,47 @@ export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHead
   return (
     <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b menu-ifood-transition">
       <div className="space-y-3 px-4 py-3 md:px-6 md:py-4">
-        {/* Header principal */}
         <div className="flex items-center justify-between gap-3">
-          {/* Lado esquerdo: apenas botão voltar */}
           <Button
             variant="ghost"
             size="icon"
             onClick={handleBack}
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
 
-          {/* Centro: Título Cardápio */}
           <h1 className="text-xl font-bold text-center flex-1">Cardápio</h1>
-          
-          {/* Lado direito: Toggle modo UX iFood + Configurações */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 menu-ifood-transition hover:bg-muted/70">
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
-              <Switch
-                checked={isIfoodMode}
-                onCheckedChange={handleToggleUxMode}
-                aria-label="Modo UX iFood"
-                className="menu-ifood-transition"
-              />
-              <Eye className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs font-medium">iFood</span>
-            </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden md:inline-flex gap-2 menu-ifood-transition hover:bg-primary hover:text-primary-foreground"
-              asChild
-            >
-              <a href={`/tenant/${tenantSlug}/menu-online/settings`}>
-                <Settings className="h-4 w-4" />
-                Configurações
-              </a>
-            </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden md:inline-flex gap-2 menu-ifood-transition hover:bg-primary hover:text-primary-foreground shrink-0"
+            asChild
+          >
+            <a href={`/tenant/${tenantSlug}/menu-online/settings`}>
+              <Settings className="h-4 w-4" />
+              Configurações
+            </a>
+          </Button>
+        </div>
+
+        <div className="w-full rounded-xl border bg-muted/40 px-3 py-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium truncate">iFood</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <Switch
+              checked={isIfoodMode}
+              onCheckedChange={handleToggleUxMode}
+              aria-label="Modo UX iFood"
+              className="menu-ifood-transition shrink-0"
+            />
           </div>
         </div>
 
-        {/* Tabs horizontais dentro do mesmo bloco */}
         <div className="flex items-center gap-4 overflow-x-auto pb-1">
           <nav className="flex gap-1" role="tablist">
             {tabs.map((tab) => (

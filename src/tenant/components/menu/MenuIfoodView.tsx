@@ -10,7 +10,6 @@ import { MenuIfoodHeader } from './MenuIfoodHeader';
 import { MenuCategoryHeader } from './MenuCategoryHeader';
 import { MenuProductCard } from './MenuProductCard';
 import { MenuFloatingActions } from './MenuFloatingActions';
-import { MenuCategoryBar } from '@/src/tenant/components/menu/MenuCategoryBar';
 import { BaseModal } from '@/components/modal/BaseModal';
 import { ModalHeader } from '@/components/modal/ModalHeader';
 import { ModalBody } from '@/components/modal/ModalBody';
@@ -76,14 +75,6 @@ export function MenuIfoodView({
     categories.forEach((cat) => map.set(cat.id, cat.name));
     return map;
   }, [categories]);
-
-  const productCountsByCategory = useMemo(() => {
-    const counts: Record<string, number> = {};
-    categories.forEach((category) => {
-      counts[category.id] = products.filter((product) => product.categoryId === category.id).length;
-    });
-    return counts;
-  }, [categories, products]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -204,16 +195,8 @@ export function MenuIfoodView({
       case 'products':
         return (
           <div className="space-y-4">
-            <MenuCategoryBar
-              categories={categories}
-              activeCategoryId={activeCategoryId}
-              onCategoryClick={setActiveCategoryId}
-              showAllCategory
-              productCounts={productCountsByCategory}
-            />
-
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1 max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar item..."
@@ -222,24 +205,25 @@ export function MenuIfoodView({
                   className="pl-10"
                 />
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFilterCategoryId(activeCategoryId);
-                    setIsFilterModalOpen(true);
-                  }}
-                >
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filtros
-                </Button>
-                <Button size="sm" onClick={onNewProduct}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Produto
-                </Button>
-              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={() => {
+                  setFilterCategoryId(activeCategoryId);
+                  setIsFilterModalOpen(true);
+                }}
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                className="shrink-0"
+                onClick={onNewProduct}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
 
             <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
@@ -261,9 +245,16 @@ export function MenuIfoodView({
 
                     const categoryStatsEntry = categoryStats.get(categoryId) || { total: 0, active: 0, inactive: 0 };
                     const isExpanded = expandedCategories.has(categoryId);
+                    const isCategoryInactive = category.status !== 'active';
 
                     return (
-                      <div key={categoryId} className="space-y-4">
+                      <div
+                        key={categoryId}
+                        className={`
+                          space-y-4
+                          ${isCategoryInactive ? 'opacity-50' : ''}
+                        `}
+                      >
                         <MenuCategoryHeader
                           category={category}
                           isExpanded={isExpanded}

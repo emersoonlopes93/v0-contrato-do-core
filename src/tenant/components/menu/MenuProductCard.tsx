@@ -111,7 +111,7 @@ export function MenuProductCard({
       <div className="flex gap-4">
         {/* Imagem do produto */}
         <div className="flex-shrink-0">
-          <div className="h-20 w-20 overflow-hidden rounded-lg bg-muted md:h-24 md:w-24">
+          <div className="h-[60px] w-[60px] overflow-hidden rounded-lg bg-muted md:h-24 md:w-24">
             {imageUrl ? (
               <img
                 src={imageUrl}

@@ -60,11 +60,9 @@ type DraftPriceVariation = {
 function MenuOnlineProductsPageContent() {
   const { accessToken } = useSession();
   const { isIfoodMode, setMode } = useMenuUxMode();
-  console.log('MenuOnlineProductsPageContent renderizado, isIfoodMode:', isIfoodMode);
   const [categories, setCategories] = useState<MenuOnlineCategoryDTO[]>([]);
   const [modifierGroups, setModifierGroups] = useState<MenuOnlineModifierGroupDTO[]>([]);
   const [products, setProducts] = useState<MenuOnlineProductDTO[]>([]);
-  console.log('Estado atual - categories:', categories.length, 'products:', products.length);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -101,9 +99,7 @@ function MenuOnlineProductsPageContent() {
 
   // Carregar dados
   const load = async () => {
-    console.log('Função load() iniciada, accessToken:', !!accessToken);
     if (!accessToken) {
-      console.log('Sem accessToken, retornando');
       return;
     }
 
@@ -111,8 +107,6 @@ function MenuOnlineProductsPageContent() {
     setError('');
 
     try {
-      console.log('Iniciando carregamento de categorias...');
-      console.log('URL da API:', '/api/v1/tenant/menu-online/categories');
       // Carregar categorias
       const categoriesRes = await fetch('/api/v1/tenant/menu-online/categories', {
         headers: {
@@ -121,23 +115,15 @@ function MenuOnlineProductsPageContent() {
         },
       });
 
-      console.log('Resposta categorias:', categoriesRes.status, categoriesRes.ok);
-      
-      // Verificar o conteúdo da resposta antes de parsear JSON
       const responseText = await categoriesRes.text();
-      console.log('Resposta bruta categorias:', responseText.substring(0, 200));
-      
       if (!categoriesRes.ok) {
         throw new Error(`Erro ${categoriesRes.status}: ${responseText.substring(0, 100)}`);
       }
       
       const categoriesData = JSON.parse(responseText) as ApiSuccessResponse<MenuOnlineCategoryDTO[]>;
-      console.log('Categorias carregadas:', categoriesData.data);
       setCategories(categoriesData.data);
 
       // Carregar produtos
-      console.log('Iniciando carregamento de produtos...');
-      console.log('URL da API produtos:', '/api/v1/tenant/menu-online/products');
       const productsRes = await fetch('/api/v1/tenant/menu-online/products', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -145,16 +131,12 @@ function MenuOnlineProductsPageContent() {
         },
       });
 
-      console.log('Resposta produtos:', productsRes.status, productsRes.ok);
-
       if (!productsRes.ok) {
         const errorData = (await productsRes.json()) as ApiErrorResponse;
-        console.error('Erro produtos:', errorData);
         throw new Error(errorData.message || 'Erro ao carregar produtos');
       }
 
       const productsData = (await productsRes.json()) as ApiSuccessResponse<MenuOnlineProductDTO[]>;
-      console.log('Produtos carregados:', productsData.data);
       setProducts(productsData.data);
 
       // Carregar grupos de modificadores
@@ -174,16 +156,13 @@ function MenuOnlineProductsPageContent() {
       setModifierGroups(modifiersData.data);
 
     } catch (err) {
-      console.error('Erro geral no load():', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
     } finally {
-      console.log('Finalizando load(), isLoading:', false);
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    console.log('useEffect executado, accessToken:', accessToken);
     load();
   }, [accessToken]);
 
@@ -270,7 +249,7 @@ function MenuOnlineProductsPageContent() {
       const newStatus = product.status === 'active' ? 'inactive' : 'active';
       
       const res = await fetch(`/api/v1/tenant/menu-online/products/${product.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -474,7 +453,7 @@ function MenuOnlineProductsPageContent() {
       await Promise.all(
         categoryProducts.map(async (product) => {
           const res = await fetch(`/api/v1/tenant/menu-online/products/${product.id}`, {
-            method: 'PATCH',
+            method: 'PUT',
             headers: {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/json',

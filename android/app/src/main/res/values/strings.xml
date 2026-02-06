@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Contrato Core</string>
+    <string name="title_activity_main">Contrato Core</string>
+    <string name="package_name">com.contratodocore.app</string>
+    <string name="custom_url_scheme">com.contratodocore.app</string>
+</resources>

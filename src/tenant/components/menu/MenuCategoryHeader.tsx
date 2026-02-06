@@ -84,10 +84,9 @@ export function MenuCategoryHeader({
   };
 
   return (
-    <div className="border-b bg-background">
+    <div className="rounded-xl border bg-card">
       <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
-        <div className="flex items-center justify-between gap-4 px-4 py-3 md:px-6">
-          {/* Lado esquerdo: Expandir + Nome + Status */}
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <CollapsibleTrigger asChild>
               <Button
@@ -104,10 +103,9 @@ export function MenuCategoryHeader({
             </CollapsibleTrigger>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <h3 className="truncate text-base font-semibold">{category.name}</h3>
-                
-                {/* Status da categoria */}
+
                 <Badge 
                   variant={category.status === 'active' ? 'default' : 'secondary'}
                   className="shrink-0"
@@ -115,7 +113,6 @@ export function MenuCategoryHeader({
                   {category.status === 'active' ? 'Ativa' : 'Inativa'}
                 </Badge>
 
-                {/* Estatísticas dos produtos */}
                 <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
                   <span>{productStats.total} itens</span>
                   {productStats.active > 0 && (
@@ -135,9 +132,7 @@ export function MenuCategoryHeader({
             </div>
           </div>
 
-          {/* Lado direito: Switch MASTER + Ações */}
           <div className="flex items-center gap-3 shrink-0">
-            {/* Switch MASTER */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground hidden sm:inline">
                 Todos
@@ -146,12 +141,11 @@ export function MenuCategoryHeader({
                 checked={masterSwitchState === 'on'}
                 onCheckedChange={handleMasterSwitchChange}
                 aria-label="Ativar/desativar todos os produtos"
-                className="data-[state=indeterminate]:bg-muted"
+                className="shrink-0"
                 data-state={masterSwitchState}
               />
             </div>
 
-            {/* Menu de ações */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
