@@ -129,35 +129,11 @@ function MenuOnlinePageContent() {
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Categorias</CardTitle>
-              <CardDescription>Organize o cardápio por seções</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <a href={`${basePath}/menu-online/categories`} className="text-sm text-primary underline-offset-4 hover:underline">
-                Gerenciar →
-              </a>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle>Produtos</CardTitle>
               <CardDescription>Cadastre itens e preços</CardDescription>
             </CardHeader>
             <CardContent>
               <a href={`${basePath}/menu-online/products`} className="text-sm text-primary underline-offset-4 hover:underline">
-                Gerenciar →
-              </a>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Complementos</CardTitle>
-              <CardDescription>Grupos e opções (extras, adicionais)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <a href={`${basePath}/menu-online/modifiers`} className="text-sm text-primary underline-offset-4 hover:underline">
                 Gerenciar →
               </a>
             </CardContent>

@@ -29,8 +29,7 @@ export function TenantHeader() {
 
   return (
     <div className="border-b bg-gradient-to-b from-background to-muted/20">
-      {/* Nome do SaaS - Elegante */}
-      <div className="border-b bg-muted/40 backdrop-blur-sm px-4 py-2.5">
+      <div className="border-b bg-muted/40 backdrop-blur-sm px-4 py-2.5 hidden md:block">
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
           {SAAS_NAME}
         </p>
@@ -38,8 +37,7 @@ export function TenantHeader() {
 
       {/* Informações do Tenant */}
       <div className="px-4 py-4 space-y-3.5">
-        {/* Logo/Nome do Restaurante com ícone */}
-        <div className="flex items-center gap-2.5">
+        <div className="hidden md:flex items-center gap-2.5">
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Store className="h-5 w-5 text-primary" />
           </div>
@@ -50,18 +48,19 @@ export function TenantHeader() {
           </div>
         </div>
 
-        {/* Status da Loja - Badge Premium */}
-        <Badge 
-          variant="outline"
-          className={`font-medium transition-all duration-200 ${
-            isOpen
-              ? 'bg-success-soft text-success border-success/20'
-              : 'bg-danger-soft text-danger border-danger/20'
-          }`}
-        >
-          <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${isOpen ? 'bg-success' : 'bg-danger'}`} />
-          {isOpen ? '🟢 Loja aberta' : '🔴 Loja fechada'}
-        </Badge>
+        <div className="flex justify-center">
+          <Badge
+            variant="outline"
+            className={`font-medium transition-all duration-200 ${
+              isOpen
+                ? 'bg-success-soft text-success border-success/20'
+                : 'bg-danger-soft text-danger border-danger/20'
+            }`}
+          >
+            <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${isOpen ? 'bg-success' : 'bg-danger'}`} />
+            {isOpen ? '🟢 Loja aberta' : '🔴 Loja fechada'}
+          </Badge>
+        </div>
 
         {/* Link Cardápio Público - Botão elegante */}
         <Button

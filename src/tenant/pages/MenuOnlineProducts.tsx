@@ -1,104 +1,70 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { withModuleGuard } from '../components/ModuleGuard';
-import { useSession } from '../context/SessionContext';
-import { useTenant } from '@/src/contexts/TenantContext';
+import { useState, useEffect } from 'react';
+import { withModuleGuard } from '@/src/tenant/components/ModuleGuard';
+import { useSession } from '@/src/tenant/context/SessionContext';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { BaseModal } from '@/components/modal/BaseModal';
 import { ModalHeader } from '@/components/modal/ModalHeader';
 import { ModalBody } from '@/components/modal/ModalBody';
 import { ModalFooter } from '@/components/modal/ModalFooter';
-import { GripVertical, Pencil, Trash2, Search } from 'lucide-react';
+import { GripVertical, Pencil, Trash2, Search, Plus, Filter, Eye, EyeOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useMenuUxMode } from '../hooks/useMenuUxMode';
+import { MenuIfoodView } from '../components/menu/MenuIfoodView';
+import { MenuUxFallback } from '../components/menu/MenuUxFallback';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
   MenuOnlineCategoryDTO,
+  MenuOnlineCreateCategoryRequest,
   MenuOnlineCreateProductRequest,
+  MenuOnlineCreateModifierGroupRequest,
   MenuOnlineModifierGroupDTO,
   MenuOnlineProductDTO,
   MenuOnlineStatus,
+  MenuOnlineUpdateCategoryRequest,
   MenuOnlineUpdateProductRequest,
 } from '@/src/types/menu-online';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
-  return isRecord(value) && value.success === true && 'data' in value;
-}
-
-function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
-  return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
-}
-
-function parseStatus(value: string): MenuOnlineStatus | undefined {
-  if (value === 'active' || value === 'inactive') return value;
-  return undefined;
-}
-
-function parseNumber(value: string): number | undefined {
-  const trimmed = value.trim();
-  if (trimmed === '') return undefined;
-  const normalized = trimmed.replace(/\./g, '').replace(',', '.');
-  const num = Number(normalized);
-  if (Number.isNaN(num)) return undefined;
-  return num;
-}
-
-function formatCurrencyInput(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits === '') return '';
-  const padded = digits.padStart(3, '0');
-  const integer = padded.slice(0, -2);
-  const decimals = padded.slice(-2);
-  const intNumber = Number(integer);
-  const intString = intNumber.toString();
-  return `${intString},${decimals}`;
-}
-
-async function apiRequest<T>(
-  url: string,
-  accessToken: string,
-  options?: RequestInit,
-): Promise<T> {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      ...(options?.headers ?? {}),
-    },
-  });
-
-  const raw: unknown = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    if (isApiErrorResponse(raw)) throw new Error(raw.message);
-    throw new Error('Falha na requisição');
+function formatCurrencyInput(value: string): string {
+  // Remove tudo que não é dígito ou vírgula
+  const cleanValue = value.replace(/[^\d,]/g, '');
+  
+  // Garante apenas uma vírgula decimal
+  const parts = cleanValue.split(',');
+  if (parts.length > 2) {
+    parts[1] = parts[1].slice(0, 2);
   }
-
-  if (!isApiSuccessResponse<T>(raw)) throw new Error('Resposta inválida');
-  return raw.data;
+  
+  return parts.join(',');
 }
 
-type DraftVariation = { name: string; price: string; isDefault: boolean; status: MenuOnlineStatus };
 type DraftImage = { url: string; file?: File | null; progress?: number };
+type DraftPriceVariation = {
+  id: string;
+  name: string;
+  price: number;
+  priceDelta?: number;
+  isDefault: boolean;
+  sortOrder: number;
+  status: MenuOnlineStatus;
+};
 
 function MenuOnlineProductsPageContent() {
-  const { tenantSlug } = useTenant();
   const { accessToken } = useSession();
+  const { isIfoodMode, setMode } = useMenuUxMode();
+  console.log('MenuOnlineProductsPageContent renderizado, isIfoodMode:', isIfoodMode);
   const [categories, setCategories] = useState<MenuOnlineCategoryDTO[]>([]);
   const [modifierGroups, setModifierGroups] = useState<MenuOnlineModifierGroupDTO[]>([]);
   const [products, setProducts] = useState<MenuOnlineProductDTO[]>([]);
+  console.log('Estado atual - categories:', categories.length, 'products:', products.length);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -107,7 +73,6 @@ function MenuOnlineProductsPageContent() {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
-  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const [categoryId, setCategoryId] = useState<string>('');
   const [name, setName] = useState<string>('');
@@ -117,70 +82,115 @@ function MenuOnlineProductsPageContent() {
   const [basePrice, setBasePrice] = useState<string>('0');
   const [selectedModifierGroupIds, setSelectedModifierGroupIds] = useState<string[]>([]);
   const [images, setImages] = useState<DraftImage[]>([]);
-  const [variations, setVariations] = useState<DraftVariation[]>([]);
+  const [priceVariations, setPriceVariations] = useState<DraftPriceVariation[]>([]);
+  const [isModifierGroupModalOpen, setIsModifierGroupModalOpen] = useState<boolean>(false);
+  const [modifierGroupName, setModifierGroupName] = useState<string>('');
+  const [modifierGroupDescription, setModifierGroupDescription] = useState<string>('');
+  const [modifierGroupMinSelect, setModifierGroupMinSelect] = useState<string>('0');
+  const [modifierGroupMaxSelect, setModifierGroupMaxSelect] = useState<string>('1');
+  const [modifierGroupIsRequired, setModifierGroupIsRequired] = useState<boolean>(false);
+  const [modifierGroupSortOrder, setModifierGroupSortOrder] = useState<string>('0');
+  const [isSavingModifierGroup, setIsSavingModifierGroup] = useState<boolean>(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
+  const [isSavingCategory, setIsSavingCategory] = useState<boolean>(false);
+  const [categoryEditingId, setCategoryEditingId] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState<string>('');
+  const [categoryDescription, setCategoryDescription] = useState<string>('');
+  const [categorySortOrder, setCategorySortOrder] = useState<string>('0');
+  const [categoryStatus, setCategoryStatus] = useState<MenuOnlineStatus>('active');
 
-  const editingItem = useMemo(
-    () => products.find((p) => p.id === editingId) ?? null,
-    [products, editingId],
-  );
+  // Carregar dados
+  const load = async () => {
+    console.log('Função load() iniciada, accessToken:', !!accessToken);
+    if (!accessToken) {
+      console.log('Sem accessToken, retornando');
+      return;
+    }
 
-  const categoryNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of categories) map.set(c.id, c.name);
-    return map;
-  }, [categories]);
-
-  const load = async (): Promise<void> => {
-    if (!accessToken) return;
     setIsLoading(true);
     setError('');
-    setSuccess('');
+
     try {
-      const [cats, groups, items] = await Promise.all([
-        apiRequest<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', accessToken),
-        apiRequest<MenuOnlineModifierGroupDTO[]>('/api/v1/tenant/menu-online/modifiers/groups', accessToken),
-        apiRequest<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', accessToken),
-      ]);
-      setCategories(cats);
-      setModifierGroups(groups);
-      const sortedItems = [...items].sort((a, b) => a.sortOrder - b.sortOrder);
-      setProducts(sortedItems);
-      if (!editingId && cats.length > 0 && categoryId === '') {
-        setCategoryId(cats[0].id);
+      console.log('Iniciando carregamento de categorias...');
+      console.log('URL da API:', '/api/v1/tenant/menu-online/categories');
+      // Carregar categorias
+      const categoriesRes = await fetch('/api/v1/tenant/menu-online/categories', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Resposta categorias:', categoriesRes.status, categoriesRes.ok);
+      
+      // Verificar o conteúdo da resposta antes de parsear JSON
+      const responseText = await categoriesRes.text();
+      console.log('Resposta bruta categorias:', responseText.substring(0, 200));
+      
+      if (!categoriesRes.ok) {
+        throw new Error(`Erro ${categoriesRes.status}: ${responseText.substring(0, 100)}`);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar produtos');
+      
+      const categoriesData = JSON.parse(responseText) as ApiSuccessResponse<MenuOnlineCategoryDTO[]>;
+      console.log('Categorias carregadas:', categoriesData.data);
+      setCategories(categoriesData.data);
+
+      // Carregar produtos
+      console.log('Iniciando carregamento de produtos...');
+      console.log('URL da API produtos:', '/api/v1/tenant/menu-online/products');
+      const productsRes = await fetch('/api/v1/tenant/menu-online/products', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Resposta produtos:', productsRes.status, productsRes.ok);
+
+      if (!productsRes.ok) {
+        const errorData = (await productsRes.json()) as ApiErrorResponse;
+        console.error('Erro produtos:', errorData);
+        throw new Error(errorData.message || 'Erro ao carregar produtos');
+      }
+
+      const productsData = (await productsRes.json()) as ApiSuccessResponse<MenuOnlineProductDTO[]>;
+      console.log('Produtos carregados:', productsData.data);
+      setProducts(productsData.data);
+
+      // Carregar grupos de modificadores
+      const modifiersRes = await fetch('/api/v1/tenant/menu-online/modifiers/groups', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!modifiersRes.ok) {
+        const errorData = (await modifiersRes.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao carregar complementos');
+      }
+
+      const modifiersData = (await modifiersRes.json()) as ApiSuccessResponse<MenuOnlineModifierGroupDTO[]>;
+      setModifierGroups(modifiersData.data);
+
+    } catch (err) {
+      console.error('Erro geral no load():', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
     } finally {
+      console.log('Finalizando load(), isLoading:', false);
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    void load();
+    console.log('useEffect executado, accessToken:', accessToken);
+    load();
   }, [accessToken]);
 
-  useEffect(() => {
-    if (!editingItem) return;
-    setCategoryId(editingItem.categoryId);
-    setName(editingItem.name);
-    setDescription(editingItem.description ?? '');
-    setSortOrder(String(editingItem.sortOrder));
-    setStatus(editingItem.status);
-    setBasePrice(String(editingItem.basePrice));
-    setSelectedModifierGroupIds(editingItem.modifierGroupIds);
-    setImages(editingItem.images.map((img) => ({ url: img.url, file: null, progress: 100 })));
-    setVariations(
-      editingItem.priceVariations.map((v) => ({
-        name: v.name,
-        price: String(v.price),
-        isDefault: v.isDefault,
-        status: v.status,
-      })),
-    );
-  }, [editingItem]);
-
-  const resetForm = (): void => {
+  // Resetar formulário
+  const resetForm = () => {
     setEditingId(null);
+    setCategoryId('');
     setName('');
     setDescription('');
     setSortOrder('0');
@@ -188,705 +198,1269 @@ function MenuOnlineProductsPageContent() {
     setBasePrice('0');
     setSelectedModifierGroupIds([]);
     setImages([]);
-    setVariations([]);
-    if (categories.length > 0) setCategoryId(categories[0].id);
-    setEditingId(null);
-  };
-
-  const handleSave = async (): Promise<void> => {
-    if (!accessToken) return;
+    setPriceVariations([]);
     setError('');
     setSuccess('');
-    setIsSaving(true);
+  };
 
-    if (name.trim() === '') {
-      setError('Nome é obrigatório');
-      setIsSaving(false);
-      return;
-    }
-    if (categoryId.trim() === '') {
-      setError('Categoria é obrigatória');
-      setIsSaving(false);
-      return;
-    }
+  const resetCategoryForm = () => {
+    setCategoryEditingId(null);
+    setCategoryName('');
+    setCategoryDescription('');
+    setCategorySortOrder('0');
+    setCategoryStatus('active');
+  };
 
-    const sort = parseNumber(sortOrder);
-    if (sortOrder.trim() !== '' && sort === undefined) {
-      setError('Ordem inválida');
-      setIsSaving(false);
-      return;
-    }
-    const base = parseNumber(basePrice);
-    if (basePrice.trim() !== '' && base === undefined) {
-      setError('Preço base inválido');
-      setIsSaving(false);
-      return;
-    }
-
-    const normalizedImages = images
-      .map((img) => img.url.trim())
-      .filter((u) => u !== '')
-      .map((url, idx) => ({ url, sortOrder: idx }));
-
-    const normalizedVariations = variations
-      .map((v, idx) => ({
-        name: v.name.trim(),
-        price: parseNumber(v.price),
-        isDefault: v.isDefault,
-        sortOrder: idx,
-        status: v.status,
+  // Editar produto
+  const handleEditProduct = (product: MenuOnlineProductDTO) => {
+    setEditingId(product.id);
+    setCategoryId(product.categoryId);
+    setName(product.name);
+    setDescription(product.description || '');
+    setSortOrder(product.sortOrder.toString());
+    setStatus(product.status);
+    setBasePrice(product.basePrice.toString());
+    setSelectedModifierGroupIds(product.modifierGroupIds || []);
+    setImages(
+      (product.images || []).map(img => ({
+        url: img.url,
+        file: null,
+        progress: undefined,
       }))
-      .filter((v) => v.name !== '' && v.price !== undefined)
-      .map((v) => ({
+    );
+    setPriceVariations(
+      priceVariations.map(v => ({
+        id: v.id || '',
         name: v.name,
-        price: v.price as number,
+        price: v.price,
+        priceDelta: v.priceDelta,
         isDefault: v.isDefault,
         sortOrder: v.sortOrder,
         status: v.status,
-      }));
+      })) || []
+    );
+    setIsModalOpen(true);
+  };
+
+  // Editar categoria
+  const handleEditCategory = (category: MenuOnlineCategoryDTO) => {
+    setCategoryEditingId(category.id);
+    setCategoryName(category.name);
+    setCategoryDescription(category.description ?? '');
+    setCategorySortOrder(category.sortOrder.toString());
+    setCategoryStatus(category.status);
+    setIsCategoryModalOpen(true);
+  };
+
+  // Criar novo produto
+  const handleNewProduct = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
+
+  // Criar nova categoria
+  const handleNewCategory = () => {
+    resetCategoryForm();
+    setIsCategoryModalOpen(true);
+  };
+
+  // Toggle status do produto
+  const handleToggleStatus = async (product: MenuOnlineProductDTO) => {
+    try {
+      const newStatus = product.status === 'active' ? 'inactive' : 'active';
+      
+      const res = await fetch(`/api/v1/tenant/menu-online/products/${product.id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = (await res.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao atualizar produto');
+      }
+
+      // Atualizar estado local
+      setProducts(prev =>
+        prev.map(p =>
+          p.id === product.id ? { ...p, status: newStatus } : p
+        )
+      );
+
+      toast({
+        title: 'Produto atualizado',
+        description: `Produto ${product.name} foi ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso.`,
+      });
+
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Erro ao atualizar produto',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Excluir produto
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
 
     try {
-      if (editingId) {
-        const payload: MenuOnlineUpdateProductRequest = {
-          categoryId,
-          name: name.trim(),
-          description: description.trim() === '' ? null : description,
-          sortOrder: sort ?? 0,
-          status: parseStatus(status),
-          basePrice: base ?? 0,
-          modifierGroupIds: selectedModifierGroupIds,
-          images: normalizedImages.map((img) => ({ url: img.url, sortOrder: img.sortOrder })),
-          priceVariations: normalizedVariations.map((v) => ({
-            name: v.name,
-            price: v.price,
-            isDefault: v.isDefault,
-            sortOrder: v.sortOrder,
-            status: v.status,
-          })),
-        };
-        await apiRequest<MenuOnlineProductDTO>(
-          `/api/v1/tenant/menu-online/products/${editingId}`,
-          accessToken,
-          { method: 'PUT', body: JSON.stringify(payload) },
+      const res = await fetch(`/api/v1/tenant/menu-online/products/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = (await res.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao excluir produto');
+      }
+
+      // Atualizar estado local
+      setProducts(prev => prev.filter(p => p.id !== productId));
+
+      toast({
+        title: 'Produto excluído',
+        description: 'Produto foi excluído com sucesso.',
+      });
+
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Erro ao excluir produto',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Excluir categoria
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
+
+    try {
+      const res = await fetch(`/api/v1/tenant/menu-online/categories/${categoryId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const errorData = (await res.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao excluir categoria');
+      }
+
+      // Atualizar estado local
+      setCategories(prev => prev.filter(c => c.id !== categoryId));
+
+      toast({
+        title: 'Categoria excluída',
+        description: 'Categoria foi excluída com sucesso.',
+      });
+
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Erro ao excluir categoria',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Duplicar produto
+  const handleDuplicateProduct = async (product: MenuOnlineProductDTO) => {
+    try {
+      const duplicateData: MenuOnlineCreateProductRequest = {
+        categoryId: product.categoryId,
+        name: `${product.name} (Cópia)`,
+        description: product.description,
+        basePrice: product.basePrice,
+        status: 'inactive', // Começa inativo
+        modifierGroupIds: product.modifierGroupIds,
+        images: product.images,
+        priceVariations: product.priceVariations || [],
+      };
+
+      const res = await fetch(`/api/v1/tenant/menu-online/products`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(duplicateData),
+      });
+
+      if (!res.ok) {
+        const errorData = (await res.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao duplicar produto');
+      }
+
+      const newData = (await res.json()) as ApiSuccessResponse<MenuOnlineProductDTO>;
+      
+      // Atualizar estado local
+      setProducts(prev => [...prev, newData.data]);
+
+      toast({
+        title: 'Produto duplicado',
+        description: `Produto ${product.name} foi duplicado com sucesso.`,
+      });
+
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Erro ao duplicar produto',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Duplicar categoria
+  const handleDuplicateCategory = async (category: MenuOnlineCategoryDTO) => {
+    try {
+      const duplicateData = {
+        name: `${category.name} (Cópia)`,
+        sortOrder: (parseInt(category.sortOrder.toString()) + 10).toString(),
+        status: 'inactive', // Começa inativo
+      };
+
+      const res = await fetch(`/api/v1/tenant/menu-online/categories`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(duplicateData),
+      });
+
+      if (!res.ok) {
+        const errorData = (await res.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao duplicar categoria');
+      }
+
+      const newData = (await res.json()) as ApiSuccessResponse<MenuOnlineCategoryDTO>;
+      
+      // Atualizar estado local
+      setCategories(prev => [...prev, newData.data]);
+
+      toast({
+        title: 'Categoria duplicada',
+        description: `Categoria ${category.name} foi duplicada com sucesso.`,
+      });
+
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Erro ao duplicar categoria',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Toggle todos os produtos de uma categoria
+  const handleToggleAllProductsInCategory = async (categoryId: string, enabled: boolean) => {
+    try {
+      const categoryProducts = products.filter(p => p.categoryId === categoryId);
+      
+      // Atualizar cada produto
+      await Promise.all(
+        categoryProducts.map(async (product) => {
+          const res = await fetch(`/api/v1/tenant/menu-online/products/${product.id}`, {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              status: enabled ? 'active' : 'inactive',
+            }),
+          });
+
+          if (!res.ok) {
+            throw new Error(`Erro ao atualizar produto ${product.name}`);
+          }
+
+          return { productId: product.id, success: true };
+        })
+      );
+
+      // Atualizar estado local
+      setProducts(prev =>
+        prev.map(p =>
+          p.categoryId === categoryId ? { ...p, status: enabled ? 'active' : 'inactive' } : p
+        )
+      );
+
+      toast({
+        title: enabled ? 'Produtos ativados' : 'Produtos desativados',
+        description: `Todos os produtos da categoria foram ${enabled ? 'ativados' : 'desativados'}.`,
+      });
+
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Não foi possível alterar o status dos produtos.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Salvar produto
+  const handleSave = async () => {
+    if (!categoryId.trim() || !name.trim()) {
+      setError('Preencha os campos obrigatórios');
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
+
+    try {
+      const productData: MenuOnlineCreateProductRequest | MenuOnlineUpdateProductRequest = {
+        categoryId,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        basePrice: parseFloat(basePrice.replace(',', '.')) || 0,
+        sortOrder: parseInt(sortOrder) || 0,
+        status,
+        modifierGroupIds: selectedModifierGroupIds,
+        images: images.map(img => ({
+          url: img.url,
+          sortOrder: 0,
+        })),
+        priceVariations: priceVariations,
+      };
+
+      const isEditing = !!editingId;
+      const url = isEditing
+        ? `/api/v1/tenant/menu-online/products/${editingId}`
+        : `/api/v1/tenant/menu-online/products`;
+
+      const res = await fetch(url, {
+        method: isEditing ? 'PUT' : 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (!res.ok) {
+        const errorData = (await res.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao salvar produto');
+      }
+
+      const newData = (await res.json()) as ApiSuccessResponse<MenuOnlineProductDTO>;
+      
+      if (isEditing) {
+        // Atualizar produto existente
+        setProducts(prev =>
+          prev.map(p => (p.id === editingId ? newData.data : p))
         );
-        setSuccess('Produto atualizado com sucesso');
-        toast({
-          title: 'Salvo com sucesso',
-          description: 'Produto atualizado com sucesso',
-        });
+        setSuccess('Produto atualizado com sucesso!');
       } else {
-        const payload: MenuOnlineCreateProductRequest = {
-          categoryId,
-          name: name.trim(),
-          description: description.trim() === '' ? null : description,
-          sortOrder: sort ?? 0,
-          status: parseStatus(status),
-          basePrice: base ?? 0,
-          modifierGroupIds: selectedModifierGroupIds,
-          images: normalizedImages.map((img) => ({ url: img.url, sortOrder: img.sortOrder })),
-          priceVariations: normalizedVariations.map((v) => ({
-            name: v.name,
-            price: v.price,
-            isDefault: v.isDefault,
-            sortOrder: v.sortOrder,
-            status: v.status,
-          })),
-        };
-        await apiRequest<MenuOnlineProductDTO>(
-          '/api/v1/tenant/menu-online/products',
-          accessToken,
-          { method: 'POST', body: JSON.stringify(payload) },
-        );
-        setSuccess('Produto criado com sucesso');
-        toast({
-          title: 'Salvo com sucesso',
-          description: 'Produto criado com sucesso',
-        });
+        // Adicionar novo produto
+        setProducts(prev => [...prev, newData.data]);
+        setSuccess('Produto criado com sucesso!');
       }
 
       resetForm();
-      await load();
-      setIsModalOpen(false);
+
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao salvar produto';
-      setError(message);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao salvar',
-        description: message,
-      });
+      setError(err instanceof Error ? err.message : 'Erro ao salvar produto');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = async (id: string): Promise<void> => {
-    if (!accessToken) return;
-    setError('');
-    try {
-      await apiRequest<boolean>(`/api/v1/tenant/menu-online/products/${id}`, accessToken, { method: 'DELETE' });
-      if (editingId === id) resetForm();
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao excluir produto');
-    }
-  };
-
-  const handleDragStart = (id: string): void => {
-    setDraggingId(id);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, overId: string): void => {
-    e.preventDefault();
-    if (!draggingId || draggingId === overId) return;
-    setProducts((prev) => {
-      const fromIndex = prev.findIndex((p) => p.id === draggingId);
-      const toIndex = prev.findIndex((p) => p.id === overId);
-      if (fromIndex === -1 || toIndex === -1) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  };
-
-  const handleDrop = async (): Promise<void> => {
-    if (!accessToken || !draggingId) {
-      setDraggingId(null);
+  const handleSaveModifierGroup = async () => {
+    if (!modifierGroupName.trim()) {
       return;
     }
-    setDraggingId(null);
-    const next = products.map((p, index) => ({ ...p, sortOrder: index }));
-    setProducts(next);
-    try {
-      await Promise.all(
-        next.map((p) =>
-          apiRequest<MenuOnlineProductDTO>(
-            `/api/v1/tenant/menu-online/products/${p.id}`,
-            accessToken,
-            {
-              method: 'PUT',
-              body: JSON.stringify({ sortOrder: p.sortOrder }),
-            },
-          ),
-        ),
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao reordenar produtos';
-      setError(message);
-      void load();
-    }
-  };
 
-  const filteredProducts = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return products;
-    return products.filter((p) => {
-      const nameMatch = p.name.toLowerCase().includes(term);
-      const categoryName = categoryNameById.get(p.categoryId)?.toLowerCase() ?? '';
-      const categoryMatch = categoryName.includes(term);
-      return nameMatch || categoryMatch;
-    });
-  }, [products, search, categoryNameById]);
+    setIsSavingModifierGroup(true);
 
-  const handleToggleStatus = async (product: MenuOnlineProductDTO): Promise<void> => {
-    if (!accessToken) return;
-    const nextStatus: MenuOnlineStatus = product.status === 'active' ? 'inactive' : 'active';
     try {
-      await apiRequest<MenuOnlineProductDTO>(
-        `/api/v1/tenant/menu-online/products/${product.id}`,
-        accessToken,
-        {
-          method: 'PUT',
-          body: JSON.stringify({ status: nextStatus }),
+      const payload: MenuOnlineCreateModifierGroupRequest = {
+        name: modifierGroupName.trim(),
+        description: modifierGroupDescription.trim() || undefined,
+        minSelect: parseInt(modifierGroupMinSelect, 10) || 0,
+        maxSelect: parseInt(modifierGroupMaxSelect, 10) || 1,
+        isRequired: modifierGroupIsRequired,
+        sortOrder: parseInt(modifierGroupSortOrder, 10) || 0,
+        status: 'active',
+      };
+
+      const res = await fetch('/api/v1/tenant/menu-online/modifiers/groups', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
-      );
-      await load();
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = (await res.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao criar grupo de complementos');
+      }
+
+      const data = (await res.json()) as ApiSuccessResponse<MenuOnlineModifierGroupDTO>;
+      setModifierGroups((prev) => [...prev, data.data]);
+
+      toast({
+        title: 'Grupo criado',
+        description: 'Grupo de complementos criado com sucesso.',
+      });
+
+      setIsModifierGroupModalOpen(false);
+      setModifierGroupName('');
+      setModifierGroupDescription('');
+      setModifierGroupMinSelect('0');
+      setModifierGroupMaxSelect('1');
+      setModifierGroupIsRequired(false);
+      setModifierGroupSortOrder('0');
     } catch (err) {
       toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Erro ao criar grupo de complementos',
         variant: 'destructive',
-        title: 'Erro ao atualizar status',
-        description: err instanceof Error ? err.message : 'Falha ao atualizar status do produto',
       });
+    } finally {
+      setIsSavingModifierGroup(false);
     }
   };
 
-  const toggleGroup = (id: string): void => {
-    setSelectedModifierGroupIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const handleSaveCategory = async () => {
+    if (!categoryName.trim()) {
+      toast({
+        title: 'Erro',
+        description: 'Preencha o nome da categoria',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingCategory(true);
+
+    try {
+      const isEditingCategory = categoryEditingId !== null;
+
+      const payload: MenuOnlineCreateCategoryRequest | MenuOnlineUpdateCategoryRequest = {
+        name: categoryName.trim(),
+        description: categoryDescription.trim() || null,
+        sortOrder: parseInt(categorySortOrder, 10) || 0,
+        status: categoryStatus,
+      };
+
+      const url = isEditingCategory
+        ? `/api/v1/tenant/menu-online/categories/${categoryEditingId}`
+        : '/api/v1/tenant/menu-online/categories';
+
+      const method = isEditingCategory ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = (await res.json()) as ApiErrorResponse;
+        throw new Error(errorData.message || 'Erro ao salvar categoria');
+      }
+
+      const data = (await res.json()) as ApiSuccessResponse<MenuOnlineCategoryDTO>;
+
+      if (isEditingCategory) {
+        setCategories((prev) => prev.map((category) => (category.id === data.data.id ? data.data : category)));
+        toast({
+          title: 'Categoria atualizada',
+          description: 'Categoria atualizada com sucesso.',
+        });
+      } else {
+        setCategories((prev) => [...prev, data.data]);
+        toast({
+          title: 'Categoria criada',
+          description: 'Categoria criada com sucesso.',
+        });
+      }
+
+      resetCategoryForm();
+      setIsCategoryModalOpen(false);
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Erro ao salvar categoria',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingCategory(false);
+    }
   };
 
   if (!accessToken) return null;
+  
+  // Se estiver no modo iFood, renderizar a nova UX com fallback
+  if (isIfoodMode) {
+    return (
+      <MenuUxFallback onRetry={() => window.location.reload()}>
+        <>
+          <MenuIfoodView
+            categories={categories}
+            products={products}
+            modifierGroups={modifierGroups}
+            isLoading={isLoading}
+            onEditProduct={handleEditProduct}
+            onEditCategory={handleEditCategory}
+            onNewProduct={handleNewProduct}
+            onNewCategory={handleNewCategory}
+            onToggleProductStatus={handleToggleStatus}
+            onToggleCategoryStatus={async (category) => {
+              console.log('Toggle category:', category);
+            }}
+            onDeleteProduct={handleDeleteProduct}
+            onDeleteCategory={handleDeleteCategory}
+            onDuplicateProduct={handleDuplicateProduct}
+            onDuplicateCategory={handleDuplicateCategory}
+            onToggleAllProductsInCategory={handleToggleAllProductsInCategory}
+            onNewModifierGroup={() => setIsModifierGroupModalOpen(true)}
+          />
 
-  const basePath = `/tenant/${tenantSlug}`;
-  return (
-    <>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                className="border-b-2 border-primary pb-1 text-sm font-semibold text-primary"
+          <BaseModal
+            open={isModalOpen}
+            onOpenChange={(open) => {
+              setIsModalOpen(open);
+              if (!open) resetForm();
+            }}
+            size="lg"
+          >
+            <ModalHeader title={editingId ? 'Editar Produto' : 'Novo Produto'} />
+            <ModalBody>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handleSave();
+                }}
+                className="space-y-4"
+                id="product-form"
               >
-                Produtos
-              </button>
-              <a
-                href={`${basePath}/menu-online/modifiers`}
-                className="pb-1 text-sm text-muted-foreground hover:text-foreground"
-              >
-                Complementos
-              </a>
-            </div>
-            <h1 className="text-xl font-bold tracking-tight md:text-2xl">Cardápio</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              className="h-9 border-danger/40 text-danger hover:bg-danger/5"
-            >
-              Remover desconto
-            </Button>
-            <Button
-              variant="default"
-              className="h-9"
-              onClick={() => {
-                resetForm();
-                setIsModalOpen(true);
-              }}
-            >
-              + Novo produto
-            </Button>
-          </div>
-        </div>
-
-        <Card>
-          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-1">
-              <CardTitle>Produtos</CardTitle>
-              <CardDescription>Organize visualmente os itens do cardápio</CardDescription>
-            </div>
-            <div className="flex w-full max-w-xs items-center gap-2 md:w-auto">
-              <div className="relative w-full">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar produto..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-9 w-full pl-8"
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {filteredProducts.length === 0 && !isLoading ? (
-              <div className="text-sm text-muted-foreground">Nenhum produto cadastrado</div>
-            ) : (
-              <div className="space-y-2">
-                {filteredProducts.map((p) => {
-                  const imageUrl = p.images[0]?.url ?? '';
-                  const hasPromo = p.promoPrice !== null;
-                  const oldPrice = p.promoPrice !== null ? p.basePrice : null;
-                  const currentPrice = p.promoPrice ?? p.basePrice;
-
-                  return (
-                    <div
-                      key={p.id}
-                      className="flex flex-col gap-3 rounded-xl border bg-card px-3 py-3 shadow-sm md:flex-row md:items-center"
-                      draggable
-                      onDragStart={() => handleDragStart(p.id)}
-                      onDragOver={(e) => handleDragOver(e, p.id)}
-                      onDrop={() => void handleDrop()}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="categoryId">Categoria</Label>
+                    <select
+                      id="categoryId"
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
                     >
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          className="flex h-10 w-6 flex-col items-center justify-center text-muted-foreground"
-                        >
-                          <GripVertical className="h-4 w-4" />
-                        </button>
-                        <div className="flex flex-col items-center gap-2 md:flex-row md:gap-3">
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={p.status === 'active'}
-                              onCheckedChange={() => void handleToggleStatus(p)}
-                            />
-                            <span
-                              className={
-                                p.status === 'active'
-                                  ? 'text-xs font-medium text-success'
-                                  : 'text-xs text-muted-foreground'
-                              }
-                            >
-                              {p.status === 'active' ? 'Ativo' : 'Inativo'}
-                            </span>
-                          </div>
-                          <div className="h-12 w-12 overflow-hidden rounded-md bg-muted md:h-14 md:w-14">
-                            {imageUrl ? (
-                              <img
-                                src={imageUrl}
-                                alt={p.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
-                                Sem imagem
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-1 flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="truncate text-sm font-semibold">{p.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {categoryNameById.get(p.categoryId) ?? p.categoryId}
-                            </span>
-                            {hasPromo && (
-                              <Badge className="bg-warning-soft text-warning border-warning/40">
-                                Mais pedido
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {oldPrice !== null && (
-                              <span className="mr-1 line-through">
-                                De R$ {oldPrice.toFixed(2).replace('.', ',')}
-                              </span>
-                            )}
-                            <span className="font-semibold text-success">
-                              {oldPrice !== null ? 'por' : 'R$'}{' '}
-                              {currentPrice.toFixed(2).replace('.', ',')}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="mt-2 flex gap-2 md:mt-0">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              setEditingId(p.id);
-                              setIsModalOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => void handleDelete(p.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <BaseModal
-          open={isModalOpen}
-          onOpenChange={(open) => {
-            setIsModalOpen(open);
-            if (!open) resetForm();
-          }}
-          size="lg"
-        >
-          <ModalHeader title={editingId ? 'Editar Produto' : 'Novo Produto'} />
-          <ModalBody>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void handleSave();
-              }}
-              className="space-y-4"
-              id="product-form"
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="categoryId">Categoria</Label>
-                  <select
-                    id="categoryId"
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    {categories.length === 0 ? (
-                      <option value="">Sem categorias</option>
-                    ) : (
-                      categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                      {categories.length === 0 ? (
+                        <option value="">Sem categorias</option>
+                      ) : (
+                        categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome</Label>
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
+                  </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome</Label>
-                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
+                  <Label htmlFor="description">Descrição (opcional)</Label>
+                  <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="h-11" />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição (opcional)</Label>
-                <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="h-11" />
-              </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="basePrice">Preço base</Label>
+                    <Input
+                      id="basePrice"
+                      value={basePrice}
+                      onChange={(e) => setBasePrice(formatCurrencyInput(e.target.value))}
+                      inputMode="decimal"
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sortOrder">Ordem</Label>
+                    <Input id="sortOrder" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} inputMode="numeric" className="h-11" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <select
+                      id="status"
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value === 'inactive' ? 'inactive' : 'active')}
+                      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="active">Ativo</option>
+                      <option value="inactive">Inativo</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+
+                {success && !error && (
+                  <Alert>
+                    <AlertDescription>{success}</AlertDescription>
+                  </Alert>
+                )}
+              </form>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  resetForm();
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="product-form"
+                variant="default"
+                className="h-10"
+                disabled={isSaving || name.trim() === '' || categoryId.trim() === ''}
+              >
+                {isSaving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+              </Button>
+            </ModalFooter>
+          </BaseModal>
+
+          <BaseModal
+            open={isCategoryModalOpen}
+            onOpenChange={(open) => {
+              setIsCategoryModalOpen(open);
+              if (!open) {
+                resetCategoryForm();
+              }
+            }}
+            size="md"
+          >
+            <ModalHeader title={categoryEditingId ? 'Editar Categoria' : 'Nova Categoria'} />
+            <ModalBody>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSaveCategory();
+                }}
+                className="space-y-4"
+                id="category-form"
+              >
                 <div className="space-y-2">
-                  <Label htmlFor="basePrice">Preço base</Label>
+                  <Label htmlFor="categoryName">Nome</Label>
                   <Input
-                    id="basePrice"
-                    value={basePrice}
-                    onChange={(e) => setBasePrice(formatCurrencyInput(e.target.value))}
-                    inputMode="decimal"
+                    id="categoryName"
+                    value={categoryName}
+                    onChange={(event) => setCategoryName(event.target.value)}
                     className="h-11"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sortOrder">Ordem</Label>
-                  <Input id="sortOrder" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} inputMode="numeric" className="h-11" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <select
-                    id="status"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value === 'inactive' ? 'inactive' : 'active')}
-                    className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="active">Ativo</option>
-                    <option value="inactive">Inativo</option>
-                  </select>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Grupos de complementos</Label>
-                <div className="grid gap-2 md:grid-cols-2">
-                  {modifierGroups.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">Nenhum grupo cadastrado</div>
-                  ) : (
-                    modifierGroups.map((g) => (
-                      <label key={g.id} className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={selectedModifierGroupIds.includes(g.id)}
-                          onChange={() => toggleGroup(g.id)}
-                        />
-                        <span className="truncate">{g.name}</span>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Imagens do produto</Label>
-                <p className="text-xs text-muted-foreground">
-                  Envie uma imagem real ou cole um link externo.
-                </p>
                 <div className="space-y-2">
-                  {images.map((img, idx) => (
-                    <div key={`${idx}`} className="flex flex-col gap-2 md:flex-row">
-                      <div className="flex flex-1 flex-col gap-2 md:flex-row">
-                        <Input
-                          value={img.url}
-                          onChange={(e) => {
-                            const next = [...images];
-                            next[idx] = { ...next[idx], url: e.target.value };
-                            setImages(next);
-                          }}
-                          className="h-11 md:flex-1"
-                          placeholder="https://..."
-                        />
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="h-11 md:w-56"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] ?? null;
-                            if (!file) return;
-                            const reader = new FileReader();
-                            const next = [...images];
-                            next[idx] = { ...next[idx], file, progress: 0 };
-                            setImages(next);
-                            reader.onprogress = (ev) => {
-                              if (!ev.lengthComputable) return;
-                              const percent = Math.round((ev.loaded / ev.total) * 100);
-                              setImages((current) => {
-                                const copy = [...current];
-                                if (!copy[idx]) return current;
-                                copy[idx] = { ...copy[idx], progress: percent };
-                                return copy;
-                              });
-                            };
-                            reader.onload = () => {
-                              const result = reader.result;
-                              if (typeof result !== 'string') return;
-                              setImages((current) => {
-                                const copy = [...current];
-                                if (!copy[idx]) return current;
-                                copy[idx] = { url: result, file: null, progress: 100 };
-                                return copy;
-                              });
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                        />
+                  <Label htmlFor="categoryDescription">Descrição (opcional)</Label>
+                  <Input
+                    id="categoryDescription"
+                    value={categoryDescription}
+                    onChange={(event) => setCategoryDescription(event.target.value)}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="categorySortOrder">Ordem</Label>
+                    <Input
+                      id="categorySortOrder"
+                      value={categorySortOrder}
+                      onChange={(event) => setCategorySortOrder(event.target.value)}
+                      inputMode="numeric"
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="categoryStatus">Status</Label>
+                    <select
+                      id="categoryStatus"
+                      value={categoryStatus}
+                      onChange={(event) =>
+                        setCategoryStatus(event.target.value === 'inactive' ? 'inactive' : 'active')
+                      }
+                      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="active">Ativa</option>
+                      <option value="inactive">Inativa</option>
+                    </select>
+                  </div>
+                </div>
+              </form>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                onClick={() => {
+                  setIsCategoryModalOpen(false);
+                  resetCategoryForm();
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="category-form"
+                variant="default"
+                className="h-10"
+                disabled={isSavingCategory || categoryName.trim() === ''}
+              >
+                {isSavingCategory ? 'Salvando...' : categoryEditingId ? 'Salvar' : 'Criar'}
+              </Button>
+            </ModalFooter>
+          </BaseModal>
+
+          <BaseModal
+            open={isModifierGroupModalOpen}
+            onOpenChange={(open) => {
+              setIsModifierGroupModalOpen(open);
+              if (!open) {
+                setModifierGroupName('');
+                setModifierGroupDescription('');
+                setModifierGroupMinSelect('0');
+                setModifierGroupMaxSelect('1');
+                setModifierGroupIsRequired(false);
+                setModifierGroupSortOrder('0');
+              }
+            }}
+            size="md"
+          >
+            <ModalHeader title="Novo grupo de complementos" />
+            <ModalBody>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSaveModifierGroup();
+                }}
+                className="space-y-4"
+                id="modifier-group-form"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="modifierGroupName">Nome do grupo</Label>
+                  <Input
+                    id="modifierGroupName"
+                    value={modifierGroupName}
+                    onChange={(event) => setModifierGroupName(event.target.value)}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="modifierGroupDescription">Descrição (opcional)</Label>
+                  <Input
+                    id="modifierGroupDescription"
+                    value={modifierGroupDescription}
+                    onChange={(event) => setModifierGroupDescription(event.target.value)}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="modifierGroupMinSelect">Mínimo de escolhas</Label>
+                    <Input
+                      id="modifierGroupMinSelect"
+                      value={modifierGroupMinSelect}
+                      onChange={(event) => setModifierGroupMinSelect(event.target.value)}
+                      inputMode="numeric"
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="modifierGroupMaxSelect">Máximo de escolhas</Label>
+                    <Input
+                      id="modifierGroupMaxSelect"
+                      value={modifierGroupMaxSelect}
+                      onChange={(event) => setModifierGroupMaxSelect(event.target.value)}
+                      inputMode="numeric"
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="modifierGroupSortOrder">Ordem</Label>
+                    <Input
+                      id="modifierGroupSortOrder"
+                      value={modifierGroupSortOrder}
+                      onChange={(event) => setModifierGroupSortOrder(event.target.value)}
+                      inputMode="numeric"
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="modifierGroupIsRequired"
+                    checked={modifierGroupIsRequired}
+                    onCheckedChange={setModifierGroupIsRequired}
+                  />
+                  <Label htmlFor="modifierGroupIsRequired" className="text-sm">
+                    Obrigatório
+                  </Label>
+                </div>
+              </form>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                onClick={() => {
+                  setIsModifierGroupModalOpen(false);
+                  setModifierGroupName('');
+                  setModifierGroupDescription('');
+                  setModifierGroupMinSelect('0');
+                  setModifierGroupMaxSelect('1');
+                  setModifierGroupIsRequired(false);
+                  setModifierGroupSortOrder('0');
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="modifier-group-form"
+                variant="default"
+                className="h-10"
+                disabled={
+                  isSavingModifierGroup || modifierGroupName.trim() === ''
+                }
+              >
+                {isSavingModifierGroup ? 'Salvando...' : 'Criar grupo'}
+              </Button>
+            </ModalFooter>
+          </BaseModal>
+        </>
+      </MenuUxFallback>
+    );
+  }
+
+  // UX Classic (original)
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-xl font-bold tracking-tight md:text-2xl">Cardápio</h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+            <Switch
+              checked={isIfoodMode}
+              onCheckedChange={(checked) => setMode(checked ? 'ifood' : 'classic')}
+              aria-label="Modo UX iFood"
+            />
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-medium">iFood</span>
+          </div>
+          <Button
+            variant="default"
+            className="h-9"
+            onClick={handleNewProduct}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Produto
+          </Button>
+        </div>
+      </div>
+
+      {/* Barra de busca */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar produtos..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled>
+            <Filter className="h-4 w-4 mr-2" />
+            Filtros
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleNewCategory}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Categoria
+          </Button>
+        </div>
+      </div>
+
+      {/* Lista de produtos */}
+      <div className="space-y-4">
+        {categories.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Nenhuma categoria encontrada.</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Crie categorias para organizar seus produtos.
+            </p>
+            <Button className="mt-4" onClick={handleNewCategory}>
+              <Plus className="h-4 w-4 mr-2" />
+              Criar Categoria
+            </Button>
+          </div>
+        ) : (
+          categories
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((category) => {
+              const categoryProducts = products.filter(
+                (product) => product.categoryId === category.id
+              );
+              console.log(`Produtos da categoria ${category.name}:`, categoryProducts);
+              const activeCount = categoryProducts.filter(
+                (product) => product.status === 'active'
+              ).length;
+
+              return (
+                <Card key={category.id} className="overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex items-center justify-between p-4 border-b">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-semibold">{category.name}</h3>
+                        <Badge variant="secondary">
+                          {categoryProducts.length} produtos
+                        </Badge>
+                        <Badge
+                          variant={activeCount === categoryProducts.length ? 'default' : 'secondary'}
+                        >
+                          {activeCount} ativos
+                        </Badge>
                       </div>
                       <div className="flex items-center gap-2">
-                        {typeof img.progress === 'number' && img.progress < 100 && (
-                          <div className="flex w-32 items-center gap-2">
-                            <div className="h-1.5 flex-1 rounded-full bg-muted">
-                              <div
-                                className="h-1.5 rounded-full bg-primary transition-all"
-                                style={{ width: `${img.progress}%` }}
-                              />
-                            </div>
-                            <span className="text-[11px] text-muted-foreground">
-                              {img.progress}%
-                            </span>
-                          </div>
-                        )}
-                        {img.url && (
-                          <div className="h-12 w-12 overflow-hidden rounded-md bg-muted">
-                            <img
-                              src={img.url}
-                              alt={name || 'Imagem do produto'}
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                        )}
                         <Button
-                          type="button"
-                          variant="outline"
-                          className="h-11 bg-transparent"
-                          onClick={() => setImages(images.filter((_, i) => i !== idx))}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditCategory(category)}
                         >
-                          Remover
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCategory(category.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 bg-transparent"
-                    onClick={() => setImages([...images, { url: '', file: null, progress: 0 }])}
-                  >
-                    Adicionar imagem
-                  </Button>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Variações de preço</Label>
-                <div className="space-y-2">
-                  {variations.map((v, idx) => (
-                    <div key={`${idx}`} className="grid gap-2 rounded-md border bg-background p-3 md:grid-cols-5 md:items-center">
-                      <Input
-                        value={v.name}
-                        onChange={(e) => {
-                          const next = [...variations];
-                          next[idx] = { ...v, name: e.target.value };
-                          setVariations(next);
-                        }}
-                        className="h-11 md:col-span-2"
-                        placeholder="Nome (ex: P)"
-                      />
-                      <Input
-                        value={v.price}
-                        onChange={(e) => {
-                          const next = [...variations];
-                          next[idx] = { ...v, price: formatCurrencyInput(e.target.value) };
-                          setVariations(next);
-                        }}
-                        className="h-11"
-                        inputMode="decimal"
-                        placeholder="Preço"
-                      />
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={v.isDefault}
-                          onChange={(e) => {
-                            const next = [...variations];
-                            next[idx] = { ...v, isDefault: e.target.checked };
-                            setVariations(next);
-                          }}
-                        />
-                        Padrão
-                      </label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11 bg-transparent"
-                        onClick={() => setVariations(variations.filter((_, i) => i !== idx))}
-                      >
-                        Remover
-                      </Button>
+                    <div className="divide-y">
+                      {categoryProducts.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <p className="text-muted-foreground">
+                            Nenhum produto nesta categoria.
+                          </p>
+                          <Button
+                            className="mt-4"
+                            size="sm"
+                            onClick={handleNewProduct}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Adicionar Produto
+                          </Button>
+                        </div>
+                      ) : (
+                        categoryProducts
+                          .sort((a, b) => a.sortOrder - b.sortOrder)
+                          .map((product) => (
+                            <div
+                              key={product.id}
+                              className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-medium">{product.name}</h4>
+                                    <Badge
+                                      variant={
+                                        product.status === 'active' ? 'default' : 'secondary'
+                                      }
+                                    >
+                                      {product.status === 'active' ? 'Ativo' : 'Inativo'}
+                                    </Badge>
+                                  </div>
+                                  {product.description && (
+                                    <p className="text-sm text-muted-foreground">
+                                      {product.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={product.status === 'active'}
+                                  onCheckedChange={() => handleToggleStatus(product)}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditProduct(product)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteProduct(product.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                      )}
                     </div>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 bg-transparent"
-                    onClick={() => setVariations([...variations, { name: '', price: '', isDefault: false, status: 'active' }])}
-                  >
-                    Adicionar variação
-                  </Button>
-                </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+        )}
+      </div>
+
+      <BaseModal
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) resetForm();
+        }}
+        size="lg"
+      >
+        <ModalHeader title={editingId ? 'Editar Produto' : 'Novo Produto'} />
+        <ModalBody>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSave();
+            }}
+            className="space-y-4"
+            id="product-form"
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="categoryId">Categoria</Label>
+                <select
+                  id="categoryId"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {categories.length === 0 ? (
+                    <option value="">Sem categorias</option>
+                  ) : (
+                    categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
+              </div>
+            </div>
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição (opcional)</Label>
+              <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="h-11" />
+            </div>
 
-              {success && !error && (
-                <Alert>
-                  <AlertDescription>{success}</AlertDescription>
-                </Alert>
-              )}
-            </form>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10"
-              onClick={() => {
-                setIsModalOpen(false);
-                resetForm();
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              form="product-form"
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="basePrice">Preço base</Label>
+                <Input
+                  id="basePrice"
+                  value={basePrice}
+                  onChange={(e) => setBasePrice(formatCurrencyInput(e.target.value))}
+                  inputMode="decimal"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sortOrder">Ordem</Label>
+                <Input id="sortOrder" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} inputMode="numeric" className="h-11" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <select
+                  id="status"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value === 'inactive' ? 'inactive' : 'active')}
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="active">Ativo</option>
+                  <option value="inactive">Inativo</option>
+                </select>
+              </div>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && !error && (
+              <Alert>
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+          </form>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10"
+            onClick={() => {
+              setIsModalOpen(false);
+              resetForm();
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="product-form"
             variant="default"
             className="h-10"
-              disabled={isSaving || name.trim() === '' || categoryId.trim() === ''}
-            >
-              {isSaving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
-            </Button>
-          </ModalFooter>
-        </BaseModal>
-      </div>
-    </>
+            disabled={isSaving || name.trim() === '' || categoryId.trim() === ''}
+          >
+            {isSaving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+          </Button>
+        </ModalFooter>
+      </BaseModal>
+
+      <BaseModal
+        open={isCategoryModalOpen}
+        onOpenChange={(open) => {
+          setIsCategoryModalOpen(open);
+          if (!open) {
+            resetCategoryForm();
+          }
+        }}
+        size="md"
+      >
+        <ModalHeader title={categoryEditingId ? 'Editar Categoria' : 'Nova Categoria'} />
+        <ModalBody>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSaveCategory();
+            }}
+            className="space-y-4"
+            id="category-form"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="categoryName">Nome</Label>
+              <Input
+                id="categoryName"
+                value={categoryName}
+                onChange={(event) => setCategoryName(event.target.value)}
+                className="h-11"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="categoryDescription">Descrição (opcional)</Label>
+              <Input
+                id="categoryDescription"
+                value={categoryDescription}
+                onChange={(event) => setCategoryDescription(event.target.value)}
+                className="h-11"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="categorySortOrder">Ordem</Label>
+                <Input
+                  id="categorySortOrder"
+                  value={categorySortOrder}
+                  onChange={(event) => setCategorySortOrder(event.target.value)}
+                  inputMode="numeric"
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="categoryStatus">Status</Label>
+                <select
+                  id="categoryStatus"
+                  value={categoryStatus}
+                  onChange={(event) =>
+                    setCategoryStatus(event.target.value === 'inactive' ? 'inactive' : 'active')
+                  }
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="active">Ativa</option>
+                  <option value="inactive">Inativa</option>
+                </select>
+              </div>
+            </div>
+          </form>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10"
+            onClick={() => {
+              setIsCategoryModalOpen(false);
+              resetCategoryForm();
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="category-form"
+            variant="default"
+            className="h-10"
+            disabled={isSavingCategory || categoryName.trim() === ''}
+          >
+            {isSavingCategory ? 'Salvando...' : categoryEditingId ? 'Salvar' : 'Criar'}
+          </Button>
+        </ModalFooter>
+      </BaseModal>
+    </div>
   );
 }
 

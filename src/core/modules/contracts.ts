@@ -16,6 +16,11 @@ export interface ModuleRegisterPayload {
     icon: string;
     category: string;
   };
+  type?: string;
+  scope?: string;
+  mobileFirst?: boolean;
+  requiresAuth?: boolean;
+  canDisable?: boolean;
 }
 
 export interface ModulePermission {

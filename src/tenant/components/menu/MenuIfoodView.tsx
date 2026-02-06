@@ -1,0 +1,455 @@
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Search, Plus, Filter, ArrowUpDown } from 'lucide-react';
+import { MenuIfoodHeader } from './MenuIfoodHeader';
+import { MenuCategoryHeader } from './MenuCategoryHeader';
+import { MenuProductCard } from './MenuProductCard';
+import { MenuFloatingActions } from './MenuFloatingActions';
+import { MenuCategoryBar } from '@/src/tenant/components/menu/MenuCategoryBar';
+import { BaseModal } from '@/components/modal/BaseModal';
+import { ModalHeader } from '@/components/modal/ModalHeader';
+import { ModalBody } from '@/components/modal/ModalBody';
+import { ModalFooter } from '@/components/modal/ModalFooter';
+import { toast } from '@/hooks/use-toast';
+import type { 
+  MenuOnlineCategoryDTO, 
+  MenuOnlineProductDTO, 
+  MenuOnlineModifierGroupDTO, 
+} from '@/src/types/menu-online';
+
+interface MenuIfoodViewProps {
+  categories: MenuOnlineCategoryDTO[];
+  products: MenuOnlineProductDTO[];
+  modifierGroups: MenuOnlineModifierGroupDTO[];
+  isLoading?: boolean;
+  onEditProduct: (product: MenuOnlineProductDTO) => void;
+  onEditCategory: (category: MenuOnlineCategoryDTO) => void;
+  onNewProduct: () => void;
+  onNewCategory: () => void;
+  onToggleProductStatus: (product: MenuOnlineProductDTO) => Promise<void>;
+  onToggleCategoryStatus: (category: MenuOnlineCategoryDTO) => Promise<void>;
+  onDeleteProduct: (productId: string) => void;
+  onDeleteCategory: (categoryId: string) => void;
+  onDuplicateProduct: (product: MenuOnlineProductDTO) => void;
+  onDuplicateCategory: (category: MenuOnlineCategoryDTO) => void;
+  onToggleAllProductsInCategory: (categoryId: string, enabled: boolean) => Promise<void>;
+  onNewModifierGroup: () => void;
+}
+
+export function MenuIfoodView({
+  categories,
+  products,
+  modifierGroups,
+  isLoading = false,
+  onEditProduct,
+  onEditCategory,
+  onNewProduct,
+  onNewCategory,
+  onToggleProductStatus,
+  onDeleteProduct,
+  onDeleteCategory,
+  onDuplicateProduct,
+  onDuplicateCategory,
+  onToggleAllProductsInCategory,
+  onNewModifierGroup,
+}: MenuIfoodViewProps) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'complements'>('products');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('all');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
+
+  const stats = {
+    categories: categories.length,
+    products: products.length,
+    complements: modifierGroups.length,
+  };
+
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    categories.forEach((cat) => map.set(cat.id, cat.name));
+    return map;
+  }, [categories]);
+
+  const productCountsByCategory = useMemo(() => {
+    const counts: Record<string, number> = {};
+    categories.forEach((category) => {
+      counts[category.id] = products.filter((product) => product.categoryId === category.id).length;
+    });
+    return counts;
+  }, [categories, products]);
+
+  const filteredProducts = useMemo(() => {
+    let filtered = products;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((product) => 
+        product.name.toLowerCase().includes(query) ||
+        product.description?.toLowerCase().includes(query) ||
+        categoryNameById.get(product.categoryId)?.toLowerCase().includes(query),
+      );
+    }
+
+    if (activeCategoryId !== 'all') {
+      filtered = filtered.filter((product) => product.categoryId === activeCategoryId);
+    }
+
+    return filtered;
+  }, [products, searchQuery, categoryNameById, activeCategoryId]);
+
+  const productsByCategory = useMemo(() => {
+    const grouped = new Map<string, MenuOnlineProductDTO[]>();
+    
+    filteredProducts.forEach((product) => {
+      const categoryId = product.categoryId;
+      if (!grouped.has(categoryId)) {
+        grouped.set(categoryId, []);
+      }
+      grouped.get(categoryId)!.push(product);
+    });
+
+    return grouped;
+  }, [filteredProducts]);
+
+  const categoryStats = useMemo(() => {
+    const statsByCategory = new Map<string, { total: number; active: number; inactive: number }>();
+    
+    categories.forEach((category) => {
+      const categoryProducts = products.filter((product) => product.categoryId === category.id);
+      const active = categoryProducts.filter((product) => product.status === 'active').length;
+      const inactive = categoryProducts.filter((product) => product.status === 'inactive').length;
+      
+      statsByCategory.set(category.id, {
+        total: categoryProducts.length,
+        active,
+        inactive,
+      });
+    });
+
+    return statsByCategory;
+  }, [categories, products]);
+
+  useEffect(() => {
+    const categoriesWithProducts = new Set(productsByCategory.keys());
+    setExpandedCategories((prev) => new Set([...prev, ...categoriesWithProducts]));
+  }, [productsByCategory]);
+
+  const handleToggleCategoryExpanded = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleAllProducts = async (categoryId: string, enabled: boolean) => {
+    try {
+      await onToggleAllProductsInCategory(categoryId, enabled);
+      toast({
+        title: 'Produtos atualizados',
+        description: `Todos os produtos da categoria foram ${enabled ? 'ativados' : 'desativados'}`,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar produtos',
+        description: error instanceof Error ? error.message : 'Falha ao atualizar produtos',
+      });
+    }
+  };
+
+  const handleOpenModifiers = (productId: string) => {
+    const product = products.find((item) => item.id === productId);
+    if (product) {
+      onEditProduct(product);
+    }
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="space-y-6">
+            {/* Cards de estatísticas */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Categorias</p>
+                      <p className="text-2xl font-bold">{stats.categories}</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={onNewCategory}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nova
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+
+      case 'products':
+        return (
+          <div className="space-y-4">
+            <MenuCategoryBar
+              categories={categories}
+              activeCategoryId={activeCategoryId}
+              onCategoryClick={setActiveCategoryId}
+              showAllCategory
+              productCounts={productCountsByCategory}
+            />
+
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar item..."
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFilterCategoryId(activeCategoryId);
+                    setIsFilterModalOpen(true);
+                  }}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtros
+                </Button>
+                <Button size="sm" onClick={onNewProduct}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Produto
+                </Button>
+              </div>
+            </div>
+
+            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+              <ArrowUpDown className="h-4 w-4" />
+              <span>Reordenar categorias</span>
+            </div>
+
+            <ScrollArea className="h-[600px]">
+              <div className="space-y-6">
+                {Array.from(productsByCategory.entries())
+                  .sort(([categoryIdA], [categoryIdB]) => {
+                    const categoryA = categories.find((category) => category.id === categoryIdA);
+                    const categoryB = categories.find((category) => category.id === categoryIdB);
+                    return (categoryA?.sortOrder ?? 0) - (categoryB?.sortOrder ?? 0);
+                  })
+                  .map(([categoryId, categoryProducts]) => {
+                    const category = categories.find((categoryItem) => categoryItem.id === categoryId);
+                    if (!category) return null;
+
+                    const categoryStatsEntry = categoryStats.get(categoryId) || { total: 0, active: 0, inactive: 0 };
+                    const isExpanded = expandedCategories.has(categoryId);
+
+                    return (
+                      <div key={categoryId} className="space-y-4">
+                        <MenuCategoryHeader
+                          category={category}
+                          isExpanded={isExpanded}
+                          onExpandedChange={() => handleToggleCategoryExpanded(categoryId)}
+                          onToggleAllProducts={handleToggleAllProducts}
+                          onEditCategory={onEditCategory}
+                          onDeleteCategory={onDeleteCategory}
+                          onDuplicateCategory={onDuplicateCategory}
+                          productStats={categoryStatsEntry}
+                        />
+
+                        {isExpanded && (
+                          <div className="space-y-3 px-4 md:px-6">
+                            {categoryProducts
+                              .sort((a, b) => a.sortOrder - b.sortOrder)
+                              .map((product) => (
+                                <MenuProductCard
+                                  key={product.id}
+                                  product={product}
+                                  categoryName={categoryNameById.get(product.categoryId) || ''}
+                                  onToggleStatus={onToggleProductStatus}
+                                  onEditProduct={onEditProduct}
+                                  onDeleteProduct={onDeleteProduct}
+                                  onDuplicateProduct={onDuplicateProduct}
+                                  onOpenModifiers={handleOpenModifiers}
+                                />
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {filteredProducts.length === 0 && !isLoading && (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">
+                      {searchQuery 
+                        ? 'Nenhum produto encontrado para esta busca'
+                        : 'Nenhum produto cadastrado'
+                      }
+                    </p>
+                    <Button size="sm" className="mt-4" onClick={onNewProduct}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar primeiro produto
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        );
+
+      case 'complements':
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-medium text-foreground">Complementos</h2>
+                <p className="text-xs text-muted-foreground">
+                  Gestão de grupos de modificadores do cardápio.
+                </p>
+              </div>
+              <Button size="sm" onClick={onNewModifierGroup}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo grupo
+              </Button>
+            </div>
+
+            <ScrollArea className="h-[600px]">
+              <div className="space-y-3">
+                {modifierGroups.map((group) => (
+                  <Card key={group.id}>
+                    <CardContent className="flex items-center justify-between gap-4 p-4">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium leading-none">{group.name}</p>
+                        {group.description && (
+                          <p className="text-xs text-muted-foreground">
+                            {group.description}
+                          </p>
+                        )}
+                        <p className="text-[11px] text-muted-foreground">
+                          Mínimo {group.minSelect} · Máximo {group.maxSelect} ·{' '}
+                          {group.isRequired ? 'Obrigatório' : 'Opcional'}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          {group.status === 'active' ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {modifierGroups.length === 0 && (
+                  <div className="text-center py-12 text-sm text-muted-foreground">
+                    Nenhum grupo de complementos cadastrado.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="h-screen flex flex-col">
+      <MenuIfoodHeader
+        stats={stats}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+      
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full p-4 md:p-6">
+          {renderTabContent()}
+        </div>
+      </div>
+
+      <MenuFloatingActions />
+
+      <BaseModal open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen} size="sm">
+        <ModalHeader title="Filtros" />
+        <ModalBody>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">Filtrar por categoria</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFilterCategoryId('all')}
+                  className={`
+                    rounded-full border px-3 py-1 text-xs font-medium
+                    ${filterCategoryId === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'}
+                  `}
+                >
+                  Todos
+                </button>
+                {categories
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setFilterCategoryId(category.id)}
+                      className={`
+                        rounded-full border px-3 py-1 text-xs font-medium
+                        ${filterCategoryId === category.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'}
+                      `}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9"
+            onClick={() => {
+              setFilterCategoryId('all');
+              setActiveCategoryId('all');
+              setIsFilterModalOpen(false);
+            }}
+          >
+            Limpar
+          </Button>
+          <Button
+            type="button"
+            className="h-9"
+            onClick={() => {
+              setActiveCategoryId(filterCategoryId);
+              setIsFilterModalOpen(false);
+            }}
+          >
+            Aplicar filtros
+          </Button>
+        </ModalFooter>
+      </BaseModal>
+    </div>
+  );
+}

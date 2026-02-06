@@ -6,9 +6,7 @@ import { HomePage } from '@/src/tenant/pages/Home';
 import { HelloModulePage } from '@/src/tenant/pages/HelloModule';
 import { OnboardPage } from '@/src/tenant/pages/Onboard';
 import { MenuOnlinePage } from '@/src/tenant/pages/MenuOnline';
-import { MenuOnlineCategoriesPage } from '@/src/tenant/pages/MenuOnlineCategories';
 import { MenuOnlineProductsPage } from '@/src/tenant/pages/MenuOnlineProducts';
-import { MenuOnlineModifiersPage } from '@/src/tenant/pages/MenuOnlineModifiers';
 import { MenuOnlineSettingsPage } from '@/src/tenant/pages/MenuOnlineSettings';
 import { MenuOnlinePreviewPage } from '@/src/tenant/pages/MenuOnlinePreview';
 import { MenuOnlinePromotionsPage } from '@/src/tenant/pages/MenuOnlinePromotions';
@@ -17,12 +15,14 @@ import { OrdersPage } from '@/src/tenant/pages/Orders';
 import { OrdersKanbanPage } from '@/src/tenant/pages/OrdersKanban';
 import { OrderDetailsPage } from '@/src/tenant/pages/OrderDetails';
 import { SoundNotificationsSettingsPage } from '@/src/tenant/pages/SoundNotificationsSettings';
+import { StoreSettingsPage } from '@/src/tenant/pages/StoreSettingsPage';
 import { TenantSettingsPage } from '@/src/tenant/pages/TenantSettings';
 import { CheckoutPage } from '@/src/tenant/pages/Checkout';
 import { OrderSuccessPage } from '@/src/tenant/pages/OrderSuccess';
 import { PaymentPage } from '@/src/tenant/pages/PaymentPage';
 import { PaymentStatusPage } from '@/src/tenant/pages/PaymentStatus';
 import { FinancialDashboardPage, FinancialOrdersPage } from '@/src/tenant/pages/Financial';
+import { DesignerMenuPage } from '@/src/tenant/pages/DesignerMenuPage';
 import { ThemeProvider } from '@/src/tenant/context/ThemeContext';
 import { PlanProvider } from '@/src/tenant/context/PlanContext';
 import { PlanGuard } from '@/src/tenant/components/PlanGuard';
@@ -121,22 +121,10 @@ function TenantRouter() {
         <MenuOnlinePage />
       </PlanGuard>
     );
-  } else if (restPath === '/menu-online/categories') {
-    page = (
-      <PlanGuard moduleId="menu-online">
-        <MenuOnlineCategoriesPage />
-      </PlanGuard>
-    );
-  } else if (restPath === '/menu-online/products') {
+  } else if (restPath === '/menu-online/categories' || restPath === '/menu-online/products') {
     page = (
       <PlanGuard moduleId="menu-online">
         <MenuOnlineProductsPage />
-      </PlanGuard>
-    );
-  } else if (restPath === '/menu-online/modifiers') {
-    page = (
-      <PlanGuard moduleId="menu-online">
-        <MenuOnlineModifiersPage />
       </PlanGuard>
     );
   } else if (restPath === '/menu-online/settings') {
@@ -197,6 +185,18 @@ function TenantRouter() {
     page = (
       <PlanGuard moduleId="checkout">
         <CheckoutPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/store-settings') {
+    page = (
+      <PlanGuard moduleId="store-settings">
+        <StoreSettingsPage />
+      </PlanGuard>
+    );
+  } else if (restPath === '/designer-menu') {
+    page = (
+      <PlanGuard moduleId="designer-menu">
+        <DesignerMenuPage />
       </PlanGuard>
     );
   } else if (rest[0] === 'payments' && rest.length >= 2) {

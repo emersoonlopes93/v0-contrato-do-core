@@ -1,14 +1,12 @@
 'use client';
 
-import React, { useState } from "react"
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import React from "react"
 import { TenantHeader } from './TenantHeader';
 import { TenantSidebar } from './TenantSidebar';
 import { TenantFooter } from './TenantFooter';
 import { DesktopHeader } from './DesktopHeader';
 import { PlanUsageIndicator } from './PlanUsageIndicator';
+import { MobileBottomNav } from './MobileBottomNav';
 
 /**
  * Tenant Layout - Layout Base Premium
@@ -45,52 +43,20 @@ export function TenantLayout({
   showBackButton,
   onBack
 }: TenantLayoutProps) {
-  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="flex h-screen flex-col bg-background">
+      {/* Mobile: Header com TenantHeader */}
       <div className="md:hidden">
-        <div className="flex h-14 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 shadow-sm">
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="transition-transform duration-200 hover:scale-105"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent 
-              side="left" 
-              className="w-72 flex flex-col p-0 transition-all duration-300"
-            >
-              <TenantHeader />
-
-              <div className="flex-1 overflow-y-auto p-4">
-                <TenantSidebar />
-              </div>
-
-              <div className="border-t p-4 bg-muted/20">
-                <PlanUsageIndicator />
-              </div>
-
-              <TenantFooter />
-            </SheetContent>
-          </Sheet>
-          <span className="ml-3 font-semibold text-sm">{pageTitle || 'Menu'}</span>
-        </div>
-
         <TenantHeader />
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop: Sidebar Fixa Premium */}
-        <aside className="hidden w-72 border-r bg-background shadow-sm md:flex md:flex-col">
+        {/* Tablet e Desktop: Sidebar Fixa Premium */}
+        <aside className="hidden w-72 border-r bg-background shadow-sm lg:flex lg:flex-col">
           {/* Header institucional */}
           <TenantHeader />
           
-          {/* Menu de navegação com scroll suave */}
           <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
             <TenantSidebar />
           </div>
@@ -106,8 +72,8 @@ export function TenantLayout({
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Desktop Header */}
-          <div className="hidden md:block">
+          {/* Tablet e Desktop Header */}
+          <div className="hidden lg:block">
             <DesktopHeader 
               title={pageTitle}
               actions={headerActions}
@@ -116,14 +82,17 @@ export function TenantLayout({
             />
           </div>
 
-          {/* Content com scroll */}
-          <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-muted/5 to-background">
+          {/* Content com scroll - Mobile e Tablet com padding bottom para o menu inferior */}
+          <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-muted/5 to-background lg:pb-0 pb-16">
             <div className="p-4 md:p-6 lg:p-8">
               {children}
             </div>
           </main>
         </div>
       </div>
+
+      {/* Mobile: Menu Inferior */}
+      <MobileBottomNav />
     </div>
   );
 }

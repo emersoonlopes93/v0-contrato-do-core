@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 Follow all rules strictly. If a request violates them or exceeds scope, STOP and explain.
 LANGUAGE
 - Be concise and objective.

@@ -42,6 +42,18 @@ type SidebarSection = {
   items: SidebarItem[];
 };
 
+const sidebarSectionIconColors: Record<SidebarSectionId, string> = {
+  reports: 'bg-amber-500/10 text-amber-500',
+  orders: 'bg-primary/10 text-primary',
+  sounds: 'bg-indigo-500/10 text-indigo-500',
+  menu: 'bg-rose-500/10 text-rose-500',
+  delivery: 'bg-sky-500/10 text-sky-500',
+  support: 'bg-emerald-500/10 text-emerald-500',
+  store: 'bg-teal-500/10 text-teal-500',
+  integrations: 'bg-cyan-500/10 text-cyan-500',
+  finance: 'bg-violet-500/10 text-violet-500',
+};
+
 function isRouteActive(href?: string): boolean {
   if (!href) return false;
   if (typeof window === 'undefined') return false;
@@ -53,17 +65,7 @@ export function TenantSidebar() {
   const { isModuleEnabled } = useSession();
   const basePath = `/tenant/${tenantSlug}`;
 
-  const [openSections, setOpenSections] = useState<Record<SidebarSectionId, boolean>>({
-    reports: false,
-    orders: false,
-    sounds: false,
-    menu: false,
-    delivery: false,
-    support: false,
-    store: false,
-    integrations: false,
-    finance: false,
-  });
+  const [openSections, setOpenSections] = useState<Partial<Record<SidebarSectionId, boolean>>>({});
 
   const sections: SidebarSection[] = [
     {
@@ -145,22 +147,10 @@ export function TenantSidebar() {
           isActive: isRouteActive(`${basePath}/menu-online`) && !isRouteActive(`${basePath}/menu-online/`),
         },
         {
-          label: 'Categorias',
-          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/categories` : undefined,
-          disabled: !isModuleEnabled('menu-online'),
-          isActive: isRouteActive(`${basePath}/menu-online/categories`),
-        },
-        {
           label: 'Produtos',
           href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/products` : undefined,
           disabled: !isModuleEnabled('menu-online'),
           isActive: isRouteActive(`${basePath}/menu-online/products`),
-        },
-        {
-          label: 'Complementos',
-          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/modifiers` : undefined,
-          disabled: !isModuleEnabled('menu-online'),
-          isActive: isRouteActive(`${basePath}/menu-online/modifiers`),
         },
         {
           label: 'Promoções',
@@ -179,6 +169,12 @@ export function TenantSidebar() {
           href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/preview` : undefined,
           disabled: !isModuleEnabled('menu-online'),
           isActive: isRouteActive(`${basePath}/menu-online/preview`),
+        },
+        {
+          label: 'Designer do Cardápio',
+          href: isModuleEnabled('designer-menu') ? `${basePath}/designer-menu` : undefined,
+          disabled: !isModuleEnabled('designer-menu'),
+          isActive: isRouteActive(`${basePath}/designer-menu`),
         },
       ],
     },
@@ -203,13 +199,14 @@ export function TenantSidebar() {
     },
     {
       id: 'store',
-      label: 'Administrar Loja',
+      label: 'Configurações da Loja',
       icon: <Store className="h-4 w-4" />,
       items: [
         {
           label: 'Dados da Loja',
-          href: `${basePath}/settings`,
-          isActive: isRouteActive(`${basePath}/settings`),
+          href: isModuleEnabled('store-settings') ? `${basePath}/store-settings` : undefined,
+          disabled: !isModuleEnabled('store-settings'),
+          isActive: isRouteActive(`${basePath}/store-settings`),
         },
         { label: 'Horários', href: undefined, disabled: true },
         { label: 'Área de Entrega', href: undefined, disabled: true },
@@ -242,29 +239,39 @@ export function TenantSidebar() {
     },
   ];
 
+  const visibleSections = sections.filter((section) =>
+    section.items.some((item) => item.href && !item.disabled),
+  );
+
   const toggleSection = (id: SidebarSectionId) => {
-    setOpenSections((prev) => {
-      const next: Record<SidebarSectionId, boolean> = { ...prev };
-      (Object.keys(next) as SidebarSectionId[]).forEach((key) => {
-        next[key] = key === id ? !prev[id] : false;
-      });
-      return next;
-    });
+    setOpenSections((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   return (
     <nav className="space-y-1 text-sm">
-      {sections.map((section) => {
-        const isOpen = openSections[section.id];
+      {visibleSections.map((section) => {
+        const hasActiveItem = section.items.some((item) => item.isActive);
+        const isOpen = openSections[section.id] ?? hasActiveItem;
+        const iconClasses =
+          sidebarSectionIconColors[section.id] ?? 'bg-muted text-muted-foreground';
+        const containerClasses =
+          hasActiveItem
+            ? 'rounded-lg transition-colors'
+            : 'rounded-lg border border-transparent hover:border-border-soft transition-colors';
         return (
-          <div key={section.id} className="rounded-lg border border-transparent hover:border-border-soft transition-colors">
+          <div key={section.id} className={containerClasses}>
             <button
               type="button"
               onClick={() => toggleSection(section.id)}
-              className="flex w-full min-h-12 items-center justify-between px-3 text-left font-semibold text-foreground"
+              className="flex w-full min-h-12 items-center justify-between px-3 text-left font-semibold text-foreground hover:bg-muted/40 active:scale-[0.98] transition-colors duration-150"
             >
               <span className="flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <span
+                  className={`flex h-9 w-9 items-center justify-center rounded-md text-xs font-semibold ${iconClasses}`}
+                >
                   {section.icon}
                 </span>
                 <span>{section.label}</span>
@@ -296,11 +303,17 @@ export function TenantSidebar() {
                       href={item.href}
                       className={
                         isActive
-                          ? `${commonClasses} bg-primary-soft text-primary border border-border-soft`
+                          ? `${commonClasses} text-primary font-semibold`
                           : `${commonClasses} text-muted-foreground hover:bg-accent hover:text-accent-foreground`
                       }
                     >
-                      <span className="h-2 w-2 rounded-full bg-current" />
+                      <span
+                        className={
+                          isActive
+                            ? 'h-2 w-2 rounded-full bg-primary'
+                            : 'h-2 w-2 rounded-full bg-muted-foreground/40'
+                        }
+                      />
                       <span>{item.label}</span>
                     </a>
                   );

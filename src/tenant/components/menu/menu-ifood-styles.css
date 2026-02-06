@@ -1,0 +1,227 @@
+/* Estilos para a UX iFood do Menu */
+
+/* Animações suaves */
+.menu-ifood-transition {
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-ifood-transition-slow {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover effects */
+.menu-ifood-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.menu-ifood-card:active {
+  transform: translateY(0);
+}
+
+/* Scroll suave */
+.menu-ifood-scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Skeleton loading */
+.menu-ifood-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: menu-ifood-loading 1.5s infinite;
+}
+
+@keyframes menu-ifood-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Estados de produtos inativos */
+.menu-ifood-product-inactive {
+  opacity: 0.6;
+  filter: grayscale(0.3);
+}
+
+.menu-ifood-product-inactive:hover {
+  opacity: 0.8;
+  filter: grayscale(0.1);
+}
+
+/* Botões de ação hover */
+.menu-ifood-action-buttons {
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+}
+
+.menu-ifood-card:hover .menu-ifood-action-buttons {
+  opacity: 1;
+}
+
+/* Switch MASTER indeterminate */
+.menu-ifood-switch-indeterminate {
+  background-color: hsl(var(--muted));
+}
+
+.menu-ifood-switch-indeterminate[data-state="indeterminate"]::after {
+  background-color: hsl(var(--muted-foreground));
+  width: 40%;
+  left: 30%;
+}
+
+/* Tabs animadas */
+.menu-ifood-tab {
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-ifood-tab::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: hsl(var(--primary));
+  transform: scaleX(0);
+  transition: transform 150ms ease-in-out;
+}
+
+.menu-ifood-tab[data-state="active"]::before {
+  transform: scaleX(1);
+}
+
+/* Barra de categorias scroll */
+.menu-ifood-category-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.menu-ifood-category-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Efeito de ripple nos botões */
+.menu-ifood-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-ifood-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.menu-ifood-ripple:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Animação de entrada para cards */
+@keyframes menu-ifood-slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-ifood-slide-in {
+  animation: menu-ifood-slideIn 200ms ease-out;
+}
+
+/* Bottom Navigation Mobile */
+.h-safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  min-height: env(safe-area-inset-bottom, 0);
+}
+
+/* Performance optimizations */
+.menu-ifood-view * {
+  will-change: auto;
+}
+
+.menu-ifood-view .menu-product-card {
+  contain: layout style paint;
+}
+
+.menu-ifood-view .menu-category-header {
+  contain: layout style;
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .menu-ifood-view * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .menu-ifood-transition {
+    transition: all 100ms ease-in-out;
+  }
+  
+  .menu-ifood-card:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .menu-ifood-skeleton {
+    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+    background-size: 200% 100%;
+  }
+}
+
+/* Focus acessível */
+.menu-ifood-focus:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Estados de drag and drop */
+.menu-ifood-dragging {
+  opacity: 0.5;
+  transform: rotate(2deg) scale(0.95);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.menu-ifood-drop-zone {
+  border: 2px dashed hsl(var(--primary));
+  background: hsl(var(--primary) / 0.05);
+}
+
+/* Animação de sucesso */
+@keyframes menu-ifood-success {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.menu-ifood-success {
+  animation: menu-ifood-success 300ms ease-in-out;
+}

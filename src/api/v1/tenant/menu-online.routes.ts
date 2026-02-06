@@ -2286,7 +2286,22 @@ async function handlePublicGetOrder(req: Request, res: Response): Promise<void> 
 
     const order = await prisma.order.findFirst({
       where: { tenant_id: tenant.id, public_order_code: code },
-      include: { items: { include: { modifiers: true } } },
+      select: {
+        id: true,
+        public_order_code: true,
+        status: true,
+        order_number: true,
+        items: {
+          select: {
+            name: true,
+            quantity: true,
+            total_price: true,
+          },
+        },
+        subtotal: true,
+        discount: true,
+        total: true,
+      },
     });
     if (!order) {
       res.status = 404;
@@ -2669,23 +2684,6 @@ async function handlePublicCheckout(req: Request, res: Response): Promise<void> 
     });
 
     const publicOrderCode = String(created.orderNumber);
-    await prisma.order.update({
-      where: { id: created.id },
-      data: {
-        public_order_code: publicOrderCode,
-        subtotal,
-        discount,
-        cashback_used: cashbackUsed,
-        customer_snapshot:
-          input.customerName || input.customerPhone
-            ? ({ name: input.customerName, phone: input.customerPhone } as Prisma.JsonObject)
-            : Prisma.JsonNull,
-        delivery_info:
-          input.deliveryType
-            ? ({ type: input.deliveryType } as Prisma.JsonObject)
-            : Prisma.JsonNull,
-      },
-    });
 
     const data = {
       orderId: created.id,

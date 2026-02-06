@@ -30,9 +30,11 @@ import ordersModule from '@/src/modules/orders-module/src';
 import menuOnlineModule from '@/src/modules/menu-online/src';
 import soundNotificationsModule from '@/src/modules/sound-notifications/src';
 import settingsModule from '@/src/modules/settings/src';
+import storeSettingsModule from '@/src/modules/store-settings/src';
 import checkoutModule from '@/src/modules/checkout/src';
 import paymentsModule from '@/src/modules/payments/src';
 import financialModule from '@/src/modules/financial/src';
+import designerMenuModule from '@/src/modules/designer-menu/src';
 
 // Tenant Controllers
 import * as helloController from './tenant/hello/hello.controller';
@@ -313,6 +315,9 @@ void soundNotificationsModule.register(moduleContext);
 void globalModuleRegistry.register(settingsModule.manifest);
 void settingsModule.register(moduleContext);
 
+void globalModuleRegistry.register(storeSettingsModule.manifest);
+void storeSettingsModule.register(moduleContext);
+
 void globalModuleRegistry.register(checkoutModule.manifest);
 void checkoutModule.register(moduleContext);
 
@@ -321,6 +326,9 @@ void paymentsModule.register(moduleContext);
 
 void globalModuleRegistry.register(financialModule.manifest);
 void financialModule.register(moduleContext);
+
+void globalModuleRegistry.register(designerMenuModule.manifest);
+void designerMenuModule.register(moduleContext);
 
 /**
  * Execute middleware chain

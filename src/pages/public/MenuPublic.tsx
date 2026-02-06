@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, Minus, Plus, Search, ShoppingBag, X } from 'lucide-react';
+import { ChevronRight, Minus, Plus, Search, ShoppingBag, X, ShieldCheck, Truck, Store, CreditCard, Banknote, QrCode } from 'lucide-react';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { MenuOnlineCategoryDTO, MenuOnlinePriceSimulationResponse, MenuOnlineProductDTO, MenuOnlinePublicMenuDTO } from '@/src/types/menu-online';
 import { ProductCard } from '@/src/tenant/components/cards';
@@ -15,6 +15,12 @@ import { ModalHeader } from '@/components/modal/ModalHeader';
 import { ModalBody } from '@/components/modal/ModalBody';
 import { ModalFooter } from '@/components/modal/ModalFooter';
 import { getContrastRatioFromHsl, parseHslTriplet } from '@/lib/color';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import type { DesignerMenuConfigDTO } from '@/src/types/designer-menu';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -36,6 +42,8 @@ type PublicWhiteLabelConfig = {
   backgroundColor?: string;
   theme?: 'light' | 'dark';
 };
+
+type DesignerMenuRuntimeConfig = DesignerMenuConfigDTO;
 
 const DEFAULT_LIGHT_BACKGROUND = '0 0% 100%';
 const DEFAULT_DARK_BACKGROUND = '222 47% 11%';
@@ -123,6 +131,23 @@ function clearPublicWhiteLabelFromDOM(): void {
 function formatMoney(value: number, currency: string): string {
   if (!Number.isFinite(value)) return `${currency} —`;
   return `${currency} ${value.toFixed(2)}`;
+}
+
+function loadDesignerConfigForTenant(tenantSlug: string): DesignerMenuRuntimeConfig | null {
+  const key = `designer-menu:${tenantSlug}`;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as { config?: DesignerMenuRuntimeConfig };
+    if (!parsed || !parsed.config) {
+      return null;
+    }
+    return parsed.config;
+  } catch {
+    return null;
+  }
 }
 
 function parseHHMMToMinutes(value: string): number | null {
@@ -241,9 +266,19 @@ export function MenuPublicPage() {
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'cash' | 'pix' | 'card'>('pix');
   const [checkoutSubmitting, setCheckoutSubmitting] = useState<boolean>(false);
   const [checkoutError, setCheckoutError] = useState<string>('');
+
+  // Delivery Fields
+  const [checkoutAddressZip, setCheckoutAddressZip] = useState<string>('');
+  const [checkoutAddressStreet, setCheckoutAddressStreet] = useState<string>('');
+  const [checkoutAddressNumber, setCheckoutAddressNumber] = useState<string>('');
+  const [checkoutAddressComplement, setCheckoutAddressComplement] = useState<string>('');
+  const [checkoutAddressNeighborhood, setCheckoutAddressNeighborhood] = useState<string>('');
+  const [checkoutChangeFor, setCheckoutChangeFor] = useState<string>('');
+  const [checkoutObservations, setCheckoutObservations] = useState<string>('');
   const sectionRefs = React.useRef(new Map<string, HTMLElement | null>());
   const [postAddUpsellOpen, setPostAddUpsellOpen] = useState<boolean>(false);
   const [lastAddedProductId, setLastAddedProductId] = useState<string | null>(null);
+  const [designerConfig, setDesignerConfig] = useState<DesignerMenuRuntimeConfig | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -317,6 +352,40 @@ export function MenuPublicPage() {
 
     return () => {
       cancelled = true;
+    };
+  }, [tenantSlug]);
+
+  useEffect(() => {
+    if (!tenantSlug) {
+      setDesignerConfig(null);
+      return;
+    }
+
+    const loadConfig = () => {
+      const config = loadDesignerConfigForTenant(tenantSlug);
+      setDesignerConfig(config);
+    };
+
+    loadConfig();
+
+    // Escutar mudanças no localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `designer-menu:${tenantSlug}`) {
+        loadConfig();
+      }
+    };
+
+    // Escutar mudanças no mesmo tab (custom event)
+    const handleCustomStorageChange = () => {
+      loadConfig();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('designer-menu-updated', handleCustomStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('designer-menu-updated', handleCustomStorageChange);
     };
   }, [tenantSlug]);
 
@@ -464,8 +533,15 @@ export function MenuPublicPage() {
 
   const categoriesOrdered = useMemo<MenuOnlineCategoryDTO[]>(() => {
     if (!data) return [];
+    const uniqueCategories = new Map();
     return [...data.categories]
       .filter((c) => c.status === 'active' && c.visibleDelivery)
+      .filter((c) => {
+        // Prevenir categorias duplicadas
+        if (uniqueCategories.has(c.id)) return false;
+        uniqueCategories.set(c.id, true);
+        return true;
+      })
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [data]);
 
@@ -644,6 +720,13 @@ export function MenuPublicPage() {
         deliveryType: checkoutDeliveryType,
         customerName: checkoutCustomerName.trim() === '' ? null : checkoutCustomerName.trim(),
         customerPhone: checkoutCustomerPhone.trim() === '' ? null : checkoutCustomerPhone.trim(),
+        addressZip: checkoutAddressZip.trim() === '' ? null : checkoutAddressZip.trim(),
+        addressStreet: checkoutAddressStreet.trim() === '' ? null : checkoutAddressStreet.trim(),
+        addressNumber: checkoutAddressNumber.trim() === '' ? null : checkoutAddressNumber.trim(),
+        addressComplement: checkoutAddressComplement.trim() === '' ? null : checkoutAddressComplement.trim(),
+        addressNeighborhood: checkoutAddressNeighborhood.trim() === '' ? null : checkoutAddressNeighborhood.trim(),
+        changeFor: checkoutPaymentMethod === 'cash' ? (checkoutChangeFor.trim() === '' ? null : Number(checkoutChangeFor)) : null,
+        observations: checkoutObservations.trim() === '' ? null : checkoutObservations.trim(),
         items: cart.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -694,13 +777,13 @@ export function MenuPublicPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto flex w-full max-w-3xl flex-col">
-        <header className="border-b bg-gradient-to-b from-background to-background-surface">
-          <div className="border-b bg-background-surface px-4 py-2.5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Pedidos Online
-            </p>
-          </div>
+      <div className="mx-auto flex w-full max-w-4xl flex-col">
+        <header
+          className={cn(
+            'border-b bg-gradient-to-b from-background to-background-surface',
+            designerConfig?.headerVariant === 'solid-primary' && 'bg-primary text-primary-foreground',
+          )}
+        >
           <div className="space-y-3 px-4 py-4">
             <div className="flex items-center gap-2.5">
               <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary-soft">
@@ -757,10 +840,12 @@ export function MenuPublicPage() {
               )}
             </div>
           </div>
+        </header>
 
-          {data && (
-            <div className="border-t bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20">
-              <div className="px-4 py-3 space-y-3">
+        {data && (
+          <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 sticky top-0 z-20 shadow-sm">
+            <div className="px-4 py-3 space-y-3">
+              {designerConfig?.showSearchBar === false ? null : (
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
@@ -770,35 +855,35 @@ export function MenuPublicPage() {
                     className="h-11 w-full rounded-full border bg-background pl-10 pr-3 text-sm"
                   />
                 </div>
+              )}
 
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {categoriesOrdered.map((category) => (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => {
-                        const el = sectionRefs.current.get(category.id);
-                        if (el) {
-                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                          setActiveCategoryId(category.id);
-                        }
-                      }}
-                      className={
-                        activeCategoryId === category.id
-                          ? 'whitespace-nowrap rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground'
-                          : 'whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold text-foreground'
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {categoriesOrdered.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => {
+                      const el = sectionRefs.current.get(category.id);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        setActiveCategoryId(category.id);
                       }
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-                </div>
+                    }}
+                    className={
+                      activeCategoryId === category.id
+                        ? 'whitespace-nowrap rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground'
+                        : 'whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold text-foreground'
+                    }
+                  >
+                    {category.name}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
-        </header>
+          </div>
+        )}
 
-        <main className="flex-1 space-y-6 px-4 py-6">
+        <main className="flex-1 space-y-4 px-4 py-4 md:space-y-5 md:py-5">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -810,12 +895,14 @@ export function MenuPublicPage() {
           )}
 
           {!isLoading && !error && data && (
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-5">
               {popularProducts.length > 0 && (
-                <section className="space-y-3">
+                <section className="space-y-2.5 md:space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-base font-semibold">Sugestões populares</h2>
-                    <span className="text-xs text-muted-foreground">Pra decidir mais rápido</span>
+                    <h2 className="text-sm font-semibold md:text-base">Sugestões populares</h2>
+                    <span className="text-[11px] text-muted-foreground md:text-xs">
+                      Pra decidir mais rápido
+                    </span>
                   </div>
                   <div className="flex gap-3 overflow-x-auto pb-2">
                     {popularProducts.map((product) => {
@@ -826,7 +913,7 @@ export function MenuPublicPage() {
                       const mainPrice = defaultVariation ? defaultVariation.price : product.basePrice;
                       const firstImage = data.settings.showImages ? product.images[0]?.url ?? null : null;
                       return (
-                        <div key={product.id} className="min-w-[260px] max-w-[260px]">
+                        <div key={product.id} className="min-w-[220px] max-w-[220px]">
                           <ProductCard
                             variant="public"
                             name={product.name}
@@ -837,6 +924,8 @@ export function MenuPublicPage() {
                             currency={currency}
                             promoPrice={isPromoActive(product) ? product.promoPrice : null}
                             onClick={() => openProduct(product)}
+                            showAddButton={designerConfig?.showAddButton ?? true}
+                            imageStyle={designerConfig?.imageStyle}
                           />
                         </div>
                       );
@@ -861,15 +950,17 @@ export function MenuPublicPage() {
                   return (
                     <section
                       key={category.id}
-                      className="space-y-3 scroll-mt-28"
+                      className="space-y-2.5 scroll-mt-28 md:space-y-3"
                       ref={(el) => {
                         sectionRefs.current.set(category.id, el);
                       }}
                       data-category-id={category.id}
                     >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <h2 className="text-lg font-semibold">{category.name}</h2>
-                        <span className="text-xs text-muted-foreground">{products.length} itens</span>
+                      <div className="flex items-baseline justify-between gap-2.5">
+                        <h2 className="text-base font-semibold md:text-lg">{category.name}</h2>
+                        <span className="text-[11px] text-muted-foreground md:text-xs">
+                          {products.length} itens
+                        </span>
                       </div>
                       {category.description && (
                         <p className="text-sm text-muted-foreground">{category.description}</p>
@@ -879,7 +970,13 @@ export function MenuPublicPage() {
                           Nenhum produto nesta categoria.
                         </div>
                       ) : (
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div
+                          className={
+                            designerConfig?.layoutMode === 'list'
+                              ? 'space-y-3'
+                              : 'grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                          }
+                        >
                           {products.map((product) => {
                             const defaultVariation =
                               product.priceVariations.find((v) => v.isDefault && v.status === 'active') ??
@@ -894,19 +991,21 @@ export function MenuPublicPage() {
                               : null;
 
                             return (
-                              <ProductCard
-                                key={product.id}
-                                variant="public"
-                                name={product.name}
-                                description={product.description}
-                                price={mainPrice}
-                                imageUrl={firstImage}
-                                status={product.status}
-                                currency={currency}
-                                priceLabel={mainPriceLabel ?? undefined}
-                                promoPrice={isPromoActive(product) ? product.promoPrice : null}
-                                onClick={() => openProduct(product)}
-                              />
+                            <ProductCard
+                              key={product.id}
+                              variant="public"
+                              name={product.name}
+                              description={product.description}
+                              price={mainPrice}
+                              imageUrl={firstImage}
+                              status={product.status}
+                              currency={currency}
+                              priceLabel={mainPriceLabel ?? undefined}
+                              promoPrice={isPromoActive(product) ? product.promoPrice : null}
+                              onClick={() => openProduct(product)}
+                              showAddButton={designerConfig?.showAddButton ?? true}
+                              imageStyle={designerConfig?.imageStyle}
+                            />
                             );
                           })}
                         </div>
@@ -1427,6 +1526,8 @@ export function MenuPublicPage() {
                             setPostAddUpsellOpen(false);
                             openProduct(product);
                           }}
+                          showAddButton={designerConfig?.showAddButton ?? true}
+                          imageStyle={designerConfig?.imageStyle}
                         />
                       </div>
                     );
