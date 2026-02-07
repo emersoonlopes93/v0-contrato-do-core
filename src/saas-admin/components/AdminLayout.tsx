@@ -1,11 +1,14 @@
 import React from 'react';
 import { 
   LayoutDashboard, 
-  Building2, 
-  CreditCard, 
+  ShoppingBag,
+  Utensils,
+  Users,
   Puzzle, 
   Palette, 
-  FileText,
+  Plug,
+  DollarSign,
+  Settings,
   Menu,
   X,
   LogOut,
@@ -14,11 +17,14 @@ import {
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
-  { href: '/admin/plans', label: 'Plans', icon: CreditCard },
-  { href: '/admin/modules', label: 'Modules', icon: Puzzle },
-  { href: '/admin/white-label', label: 'White Label', icon: Palette },
-  { href: '/admin/audit', label: 'Audit Logs', icon: FileText },
+  { href: '/admin/orders', label: 'Pedidos', icon: ShoppingBag },
+  { href: '/admin/menu', label: 'Cardápio', icon: Utensils },
+  { href: '/admin/customers', label: 'Clientes', icon: Users },
+  { href: '/admin/modules', label: 'Módulos', icon: Puzzle, highlight: true },
+  { href: '/admin/store-designer', label: 'Designer da Loja', icon: Palette },
+  { href: '/admin/integrations', label: 'Integrações', icon: Plug },
+  { href: '/admin/finance', label: 'Financeiro', icon: DollarSign },
+  { href: '/admin/settings', label: 'Configurações', icon: Settings },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
