@@ -42,7 +42,7 @@ describe('AdminTenantsPage', () => {
     });
 
     // Check plans select
-    const select = screen.getByRole('combobox');
+    const [select] = screen.getAllByRole('combobox');
     expect(select).toBeInTheDocument();
     expect(screen.getByText('Basic')).toBeInTheDocument();
     expect(screen.getByText('Pro')).toBeInTheDocument();
@@ -57,20 +57,21 @@ describe('AdminTenantsPage', () => {
     await waitFor(() => expect(screen.getByText('Acme')).toBeInTheDocument());
 
     // Fill form
-    fireEvent.change(screen.getByPlaceholderText('Nome do tenant'), {
+    fireEvent.change(screen.getByPlaceholderText('Ex: Minha Empresa'), {
       target: { value: 'New Tenant' },
     });
-    fireEvent.change(screen.getByPlaceholderText('slug'), {
+    fireEvent.change(screen.getByPlaceholderText('minha-empresa'), {
       target: { value: 'new-tenant' },
     });
     
     // Select plan (should default to first, but let's change it)
-    fireEvent.change(screen.getByRole('combobox'), {
+    const [planSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(planSelect, {
       target: { value: 'plan-2' },
     });
 
     // Submit
-    fireEvent.click(screen.getByText('Criar'));
+    fireEvent.click(screen.getByText('Criar Tenant'));
 
     await waitFor(() => {
       expect(mockedAdminApi.post).toHaveBeenCalledWith('/tenants', {

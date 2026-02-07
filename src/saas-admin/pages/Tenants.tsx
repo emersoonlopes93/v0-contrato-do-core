@@ -1,5 +1,6 @@
 import React from 'react';
-import { adminApi } from '../lib/adminApi';
+import { adminApi } from '@/src/saas-admin/lib/adminApi';
+import { toast } from '@/hooks/use-toast';
 import {
   Building2,
   Plus,
@@ -16,39 +17,28 @@ import {
   Calendar,
   Settings
 } from 'lucide-react';
-
-interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  status: string;
-  created_at?: string;
-  onboarded?: boolean;
-}
-
-interface Plan {
-  id: string;
-  name: string;
-}
+import type { SaaSAdminPlanDTO, SaaSAdminTenantDTO, SaaSAdminTenantStatus } from '@/src/types/saas-admin';
 
 export function AdminTenantsPage() {
-  const [tenants, setTenants] = React.useState<Tenant[]>([]);
-  const [plans, setPlans] = React.useState<Plan[]>([]);
+  const [tenants, setTenants] = React.useState<SaaSAdminTenantDTO[]>([]);
+  const [plans, setPlans] = React.useState<SaaSAdminPlanDTO[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [name, setName] = React.useState('');
   const [slug, setSlug] = React.useState('');
   const [planId, setPlanId] = React.useState('');
-  const [feedback, setFeedback] = React.useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<SaaSAdminTenantStatus | 'all'>('all');
+  const [page, setPage] = React.useState(1);
+  const pageSize = 10;
 
   async function fetchTenants() {
     setLoading(true);
     try {
-      const data = await adminApi.get<Tenant[]>('/tenants');
+      const data = await adminApi.get<SaaSAdminTenantDTO[]>('/tenants');
       setTenants(data);
     } catch (e: unknown) {
-      const message =
-        e instanceof Error ? e.message : 'Erro ao carregar tenants';
-      setFeedback(message);
+      const message = e instanceof Error ? e.message : 'Erro ao carregar tenants';
+      toast({ title: 'Falha ao carregar tenants', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -56,13 +46,14 @@ export function AdminTenantsPage() {
 
   async function fetchPlans() {
     try {
-      const data = await adminApi.get<Plan[]>('/plans');
+      const data = await adminApi.get<SaaSAdminPlanDTO[]>('/plans');
       setPlans(data);
       if (data.length > 0) {
         setPlanId(data[0].id);
       }
     } catch (e: unknown) {
-      console.error('Failed to fetch plans', e);
+      const message = e instanceof Error ? e.message : 'Erro ao carregar planos';
+      toast({ title: 'Falha ao carregar planos', description: message, variant: 'destructive' });
     }
   }
 
@@ -73,36 +64,78 @@ export function AdminTenantsPage() {
 
   async function createTenant(e: React.FormEvent) {
     e.preventDefault();
-    setFeedback(null);
     try {
       await adminApi.post('/tenants', { name, slug, planId });
       setName('');
       setSlug('');
-      // Reset planId to first plan if available
       if (plans.length > 0) {
         setPlanId(plans[0].id);
       }
       await fetchTenants();
-      setFeedback('Tenant criado com sucesso');
+      toast({ title: 'Tenant criado', description: 'Tenant criado com sucesso' });
     } catch (e: unknown) {
-      const message =
-        e instanceof Error ? e.message : 'Erro ao criar tenant';
-      setFeedback(message);
+      const message = e instanceof Error ? e.message : 'Erro ao criar tenant';
+      toast({ title: 'Falha ao criar tenant', description: message, variant: 'destructive' });
     }
   }
 
   async function updateStatus(id: string, status: 'active' | 'suspended') {
-    setFeedback(null);
+    const confirmText = status === 'active' ? 'Reativar este tenant?' : 'Suspender este tenant?';
+    if (!window.confirm(confirmText)) {
+      return;
+    }
+
     try {
       await adminApi.patch(`/tenants/${id}/status`, { status });
       await fetchTenants();
-      setFeedback('Status atualizado');
+      toast({ title: 'Status atualizado', description: 'Status atualizado com sucesso' });
     } catch (e: unknown) {
-      const message =
-        e instanceof Error ? e.message : 'Erro ao atualizar status';
-      setFeedback(message);
+      const message = e instanceof Error ? e.message : 'Erro ao atualizar status';
+      toast({ title: 'Falha ao atualizar status', description: message, variant: 'destructive' });
     }
   }
+
+  function handleImpersonate(tenant: SaaSAdminTenantDTO) {
+    if (!window.confirm(`Acessar tenant ${tenant.name}?`)) {
+      return;
+    }
+    toast({
+      title: 'Ação indisponível',
+      description: 'Impersonate ainda não está habilitado',
+      variant: 'destructive',
+    });
+  }
+
+  function handleResetTenant(tenant: SaaSAdminTenantDTO) {
+    if (!window.confirm(`Resetar configurações do tenant ${tenant.name}?`)) {
+      return;
+    }
+    toast({
+      title: 'Ação indisponível',
+      description: 'Reset de configurações ainda não está habilitado',
+      variant: 'destructive',
+    });
+  }
+
+  const filteredTenants = React.useMemo(() => {
+    const normalized = searchTerm.trim().toLowerCase();
+    return tenants.filter((tenant) => {
+      const matchesSearch =
+        normalized.length === 0 ||
+        tenant.name.toLowerCase().includes(normalized) ||
+        tenant.slug.toLowerCase().includes(normalized);
+      const matchesStatus = statusFilter === 'all' || tenant.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [tenants, searchTerm, statusFilter]);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTenants.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedTenants = filteredTenants.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const path = window.location.pathname;
   const selectedTenantId = path.startsWith('/admin/tenants/')
@@ -115,7 +148,7 @@ export function AdminTenantsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -197,20 +230,6 @@ export function AdminTenantsPage() {
               </button>
             </div>
           </div>
-          {feedback && (
-            <div className={`flex items-center gap-2 p-4 rounded-xl ${
-              feedback.includes('sucesso') 
-                ? 'bg-success/10 text-success border border-success/20' 
-                : 'bg-danger/10 text-danger border border-danger/20'
-            }`}>
-              {feedback.includes('sucesso') ? (
-                <CheckCircle className="h-4 w-4 flex-shrink-0" />
-              ) : (
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              )}
-              <span className="text-sm">{feedback}</span>
-            </div>
-          )}
         </form>
       </div>
 
@@ -224,7 +243,7 @@ export function AdminTenantsPage() {
             </h2>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Building2 className="h-4 w-4" />
@@ -271,6 +290,26 @@ export function AdminTenantsPage() {
                   </p>
                 </div>
               </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Plano</span>
+                </div>
+                <p className="font-semibold text-foreground">
+                  {selectedTenant.plan?.name ?? 'Não definido'}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  <span>Último acesso</span>
+                </div>
+                <p className="font-semibold text-foreground">
+                  {selectedTenant.last_access_at
+                    ? new Date(selectedTenant.last_access_at).toLocaleString('pt-BR')
+                    : '-'}
+                </p>
+              </div>
             </div>
             {selectedTenant.created_at && (
               <div className="mt-6 pt-6 border-t border-border/20">
@@ -293,7 +332,7 @@ export function AdminTenantsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Todos os Tenants ({tenants.length})
+              Todos os Tenants ({filteredTenants.length})
             </h2>
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -301,13 +340,24 @@ export function AdminTenantsPage() {
                 <input
                   type="text"
                   placeholder="Buscar tenants..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 rounded-xl border border-border/40 bg-background/50 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 />
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border/40 bg-background/50 hover:bg-accent transition-colors duration-200">
-                <Filter className="h-4 w-4" />
-                <span className="hidden sm:inline">Filtrar</span>
-              </button>
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as SaaSAdminTenantStatus | 'all')}
+                  className="pl-10 pr-8 py-2 rounded-xl border border-border/40 bg-background/50 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                >
+                  <option value="all">Todos os status</option>
+                  <option value="active">Ativo</option>
+                  <option value="suspended">Suspenso</option>
+                  <option value="pending">Onboarding</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -319,7 +369,7 @@ export function AdminTenantsPage() {
               <p className="text-muted-foreground">Carregando tenants...</p>
             </div>
           </div>
-        ) : tenants.length === 0 ? (
+        ) : filteredTenants.length === 0 ? (
           <div className="flex items-center justify-center p-12">
             <div className="flex flex-col items-center gap-4 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
@@ -339,12 +389,14 @@ export function AdminTenantsPage() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Tenant</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Onboarding</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Plano</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Último acesso</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden sm:table-cell">Criado em</th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
-                {tenants.map((t) => (
+                {pagedTenants.map((t) => (
                   <tr key={t.id} className="hover:bg-muted/30 transition-colors duration-150">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -384,6 +436,16 @@ export function AdminTenantsPage() {
                         </div>
                       )}
                     </td>
+                    <td className="px-6 py-4 hidden lg:table-cell">
+                      <span className="text-sm text-muted-foreground">
+                        {t.plan?.name ?? '-'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 hidden lg:table-cell">
+                      <span className="text-sm text-muted-foreground">
+                        {t.last_access_at ? new Date(t.last_access_at).toLocaleString('pt-BR') : '-'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 hidden sm:table-cell">
                       {t.created_at ? (
                         <span className="text-sm text-muted-foreground">
@@ -395,6 +457,15 @@ export function AdminTenantsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleImpersonate(t)}
+                          className="flex items-center gap-1 rounded-lg border border-border/40 px-3 py-2 text-xs font-medium hover:bg-accent transition-colors duration-200"
+                          title="Acessar tenant"
+                        >
+                          <UserCheck className="h-3 w-3" />
+                          <span className="hidden sm:inline">Acessar</span>
+                        </button>
                         {t.status !== 'active' && (
                           <button
                             onClick={() => updateStatus(t.id, 'active')}
@@ -423,12 +494,52 @@ export function AdminTenantsPage() {
                           <Eye className="h-3 w-3" />
                           <span className="hidden sm:inline">Detalhes</span>
                         </a>
+                        <a
+                          href={`/admin/modules?tenantId=${t.id}`}
+                          className="flex items-center gap-1 rounded-lg border border-border/40 px-3 py-2 text-xs font-medium hover:bg-accent transition-colors duration-200"
+                          title="Ver módulos ativos"
+                        >
+                          <Settings className="h-3 w-3" />
+                          <span className="hidden sm:inline">Módulos</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleResetTenant(t)}
+                          className="flex items-center gap-1 rounded-lg bg-danger px-3 py-2 text-xs font-medium text-danger-foreground hover:bg-danger/90 transition-colors duration-200"
+                          title="Resetar configurações"
+                        >
+                          <AlertCircle className="h-3 w-3" />
+                          <span className="hidden sm:inline">Resetar</span>
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            <div className="flex items-center justify-between border-t border-border/20 px-6 py-4">
+              <span className="text-sm text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-lg border border-border/40 px-3 py-2 text-xs font-medium hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-lg border border-border/40 px-3 py-2 text-xs font-medium hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

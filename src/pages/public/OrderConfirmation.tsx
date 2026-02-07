@@ -3,9 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-type ApiSuccessResponse<T> = { success: true; data: T };
-type ApiErrorResponse = { error: string; message: string };
+import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
+import type { MenuOnlinePublicOrderSummaryDTO } from '@/src/types/menu-online';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -17,19 +16,11 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-type PublicOrderSummary = {
-  orderId: string;
-  publicOrderCode: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
-  items: Array<{ name: string; quantity: number; total: number }>;
-  totals: { subtotal: number; discount: number; total: number; currency: string };
-};
-
 export default function OrderConfirmationPage() {
   const params = useParams();
   const tenantSlug = params.slug ?? '';
   const code = params.code ?? '';
-  const [data, setData] = useState<PublicOrderSummary | null>(null);
+  const [data, setData] = useState<MenuOnlinePublicOrderSummaryDTO | null>(null);
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -49,7 +40,7 @@ export default function OrderConfirmationPage() {
           setError('Falha ao carregar pedido');
           return;
         }
-        if (isApiSuccessResponse<PublicOrderSummary>(raw)) {
+        if (isApiSuccessResponse<MenuOnlinePublicOrderSummaryDTO>(raw)) {
           setData(raw.data);
           return;
         }
@@ -118,4 +109,3 @@ export default function OrderConfirmationPage() {
     </div>
   );
 }
-

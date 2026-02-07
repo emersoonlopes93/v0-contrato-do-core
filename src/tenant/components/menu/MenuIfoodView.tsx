@@ -195,8 +195,8 @@ export function MenuIfoodView({
       case 'products':
         return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative w-full flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar item..."
@@ -205,25 +205,26 @@ export function MenuIfoodView({
                   className="pl-10"
                 />
               </div>
-
-              <Button
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                onClick={() => {
-                  setFilterCategoryId(activeCategoryId);
-                  setIsFilterModalOpen(true);
-                }}
-              >
-                <Filter className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                className="shrink-0"
-                onClick={onNewProduct}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => {
+                    setFilterCategoryId(activeCategoryId);
+                    setIsFilterModalOpen(true);
+                  }}
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  className="shrink-0"
+                  onClick={onNewProduct}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
@@ -267,7 +268,7 @@ export function MenuIfoodView({
                         />
 
                         {isExpanded && (
-                          <div className="space-y-3 px-4 md:px-6">
+                          <div className="space-y-3">
                             {categoryProducts
                               .sort((a, b) => a.sortOrder - b.sortOrder)
                               .map((product) => (
@@ -373,7 +374,7 @@ export function MenuIfoodView({
       />
       
       <div className="flex-1 overflow-hidden">
-        <div className="h-full p-4 md:p-6">
+        <div className="h-full py-4 md:py-6">
           {renderTabContent()}
         </div>
       </div>

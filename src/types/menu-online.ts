@@ -385,6 +385,14 @@ export type MenuOnlineCheckoutResponse = {
   status: 'pending' | 'confirmed' | 'cancelled';
 };
 
+export type MenuOnlinePublicOrderSummaryDTO = {
+  orderId: string;
+  publicOrderCode: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  items: Array<{ name: string; quantity: number; total: number }>;
+  totals: { subtotal: number; discount: number; total: number; currency: string };
+};
+
 export type MenuOnlineCreateModifierGroupRequest = {
   name: string;
   description?: string | null;

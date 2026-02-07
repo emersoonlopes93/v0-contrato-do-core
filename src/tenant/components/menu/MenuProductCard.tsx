@@ -131,10 +131,9 @@ export function MenuProductCard({
           {/* Header: Nome + Status + Ações */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="truncate text-base font-semibold">{product.name}</h4>
-                
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-2 min-w-0 overflow-hidden flex-nowrap">
+                <h4 className="min-w-0 truncate text-base font-semibold">{product.name}</h4>
+                <div className="flex items-center gap-1 shrink-0">
                   {hasPromo && (
                     <Badge className="bg-warning-soft text-warning border-warning/40 text-[10px] px-1.5 py-0.5">
                       <Star className="mr-1 h-3 w-3" />
@@ -165,6 +164,7 @@ export function MenuProductCard({
                   onCheckedChange={handleToggleStatus}
                   disabled={isToggling}
                   aria-label="Ativar/desativar produto"
+                  className="h-6 w-11"
                 />
                 <span className={`
                   text-xs font-medium

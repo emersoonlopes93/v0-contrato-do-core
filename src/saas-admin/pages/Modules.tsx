@@ -1,10 +1,10 @@
 import React from 'react';
-import { adminApi } from '../lib/adminApi';
+import { adminApi } from '@/src/saas-admin/lib/adminApi';
+import { toast } from '@/hooks/use-toast';
 import {
   Puzzle,
   Building2,
   Search,
-  Filter,
   CheckCircle,
   XCircle,
   Power,
@@ -13,13 +13,9 @@ import {
   Shield,
   Calendar,
   Settings,
-  Info,
   Loader2,
-  Star,
-  Zap,
   TrendingUp,
   Package,
-  Users,
   Megaphone,
   Bot,
   Plug,
@@ -27,101 +23,123 @@ import {
   Eye,
   Crown,
   FlaskConical,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react';
+import type { SaaSAdminModuleDTO, SaaSAdminTenantDTO } from '@/src/types/saas-admin';
+import { BaseModal } from '@/components/modal/BaseModal';
+import { ModalHeader } from '@/components/modal/ModalHeader';
+import { ModalBody } from '@/components/modal/ModalBody';
+import { ModalFooter } from '@/components/modal/ModalFooter';
 
-interface ModuleDef {
-  id: string;
-  name: string;
-  version: string;
-  description?: string;
+type ModuleDef = SaaSAdminModuleDTO & {
   category: 'essential' | 'sales' | 'marketing' | 'operations' | 'automation' | 'integrations' | 'advanced';
   status: 'active' | 'inactive' | 'premium' | 'beta';
-  permissions: { id: string; name: string; description: string }[] | string[] | undefined;
-  eventTypes: { id: string; name: string; description: string }[] | string[] | undefined;
-  slug: string;
-  isActiveForTenant: boolean;
   hasPreview?: boolean;
   price?: string;
-}
-
-interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-}
+  typeLabel: 'Core' | 'Feature' | 'Experimental';
+};
 
 const moduleCategories = {
   essential: {
     name: 'Essenciais',
     description: 'Ferramentas fundamentais para sua operação',
     icon: Package,
-    color: 'blue'
   },
   sales: {
     name: 'Vendas',
     description: 'Aumente suas conversões e receita',
     icon: TrendingUp,
-    color: 'green'
   },
   marketing: {
     name: 'Marketing',
     description: 'Ferramentas para atrair e reter clientes',
     icon: Megaphone,
-    color: 'purple'
   },
   operations: {
     name: 'Operação',
     description: 'Otimize seus processos operacionais',
     icon: Cog,
-    color: 'orange'
   },
   automation: {
     name: 'Automação / IA',
     description: 'Automatize tarefas com inteligência artificial',
     icon: Bot,
-    color: 'pink'
   },
   integrations: {
     name: 'Integrações',
     description: 'Conecte com outras plataformas',
     icon: Plug,
-    color: 'cyan'
   },
   advanced: {
     name: 'Avançado',
     description: 'Recursos avançados para empresas maduras',
     icon: Settings,
-    color: 'slate'
   }
 };
 
 const statusConfig = {
   active: {
     label: 'Ativo',
-    color: 'success',
-    icon: CheckCircle
+    icon: CheckCircle,
+    bg: 'bg-success/10',
+    text: 'text-success',
+    border: 'border-success/20',
   },
   inactive: {
     label: 'Inativo',
-    color: 'muted',
-    icon: XCircle
+    icon: XCircle,
+    bg: 'bg-muted',
+    text: 'text-muted-foreground',
+    border: 'border-border/40',
   },
   premium: {
     label: 'Premium',
-    color: 'warning',
-    icon: Crown
+    icon: Crown,
+    bg: 'bg-warning/10',
+    text: 'text-warning',
+    border: 'border-warning/20',
   },
   beta: {
     label: 'Beta',
-    color: 'info',
-    icon: FlaskConical
-  }
+    icon: FlaskConical,
+    bg: 'bg-info/10',
+    text: 'text-info',
+    border: 'border-info/20',
+  },
 };
+
+const categoryColors = {
+  essential: { bg: 'bg-primary/10', text: 'text-primary' },
+  sales: { bg: 'bg-success/10', text: 'text-success' },
+  marketing: { bg: 'bg-info/10', text: 'text-info' },
+  operations: { bg: 'bg-warning/10', text: 'text-warning' },
+  automation: { bg: 'bg-primary/10', text: 'text-primary' },
+  integrations: { bg: 'bg-secondary/20', text: 'text-foreground' },
+  advanced: { bg: 'bg-muted', text: 'text-muted-foreground' },
+};
+
+const GLOBAL_MODULES_KEY = 'saas_admin_global_modules';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readGlobalModules(): Record<string, boolean> {
+  const raw = localStorage.getItem(GLOBAL_MODULES_KEY);
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return {};
+    const entries = Object.entries(parsed).filter(([, v]) => typeof v === 'boolean');
+    return Object.fromEntries(entries) as Record<string, boolean>;
+  } catch {
+    return {};
+  }
+}
 
 export function AdminModulesPage() {
   const [modules, setModules] = React.useState<ModuleDef[]>([]);
-  const [tenants, setTenants] = React.useState<Tenant[]>([]);
+  const [tenants, setTenants] = React.useState<SaaSAdminTenantDTO[]>([]);
   const [selectedTenantId, setSelectedTenantId] = React.useState<string>('');
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -129,18 +147,37 @@ export function AdminModulesPage() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
   const [expandedCategory, setExpandedCategory] = React.useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = React.useState<'all' | ModuleDef['status']>('all');
+  const [typeFilter, setTypeFilter] = React.useState<'all' | ModuleDef['typeLabel']>('all');
+  const [globalModules, setGlobalModules] = React.useState<Record<string, boolean>>(() => readGlobalModules());
+  const [detailsModule, setDetailsModule] = React.useState<ModuleDef | null>(null);
+  const [detailsTenants, setDetailsTenants] = React.useState<SaaSAdminTenantDTO[]>([]);
+  const [detailsLoading, setDetailsLoading] = React.useState(false);
+  const [tenantCache, setTenantCache] = React.useState<Record<string, SaaSAdminTenantDTO[]>>({});
 
   const fetchModules = React.useCallback(
     async (tenantId?: string) => {
       setLoading(true);
       try {
         const params = tenantId ? { tenantId } : undefined;
-        const data = await adminApi.get<ModuleDef[]>('/modules', params);
-        setModules(data);
+        const data = await adminApi.get<SaaSAdminModuleDTO[]>('/modules', params);
+        const enriched: ModuleDef[] = data.map((m) => {
+          const typeLabel: ModuleDef['typeLabel'] =
+            m.type === 'core' ? 'Core' : m.type === 'experimental' ? 'Experimental' : 'Feature';
+          const globalEnabled = globalModules[m.id] ?? true;
+          return {
+            ...m,
+            category: 'essential',
+            status: globalEnabled ? (m.isActiveForTenant ? 'active' : 'inactive') : 'inactive',
+            typeLabel,
+          };
+        });
+        setModules(enriched);
         setError(null);
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Falha ao carregar módulos';
         setError(message);
+        toast({ title: 'Falha ao carregar módulos', description: String(message), variant: 'destructive' });
       } finally {
         setLoading(false);
       }
@@ -151,12 +188,18 @@ export function AdminModulesPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const tenantsData = await adminApi.get<Tenant[]>('/tenants');
+        const tenantsData = await adminApi.get<SaaSAdminTenantDTO[]>('/tenants');
         setTenants(tenantsData);
       } catch {
         setTenants([]);
-      } finally {
-        fetchModules();
+      }
+      const params = new URLSearchParams(window.location.search);
+      const tenantId = params.get('tenantId');
+      if (tenantId) {
+        setSelectedTenantId(tenantId);
+        await fetchModules(tenantId);
+      } else {
+        await fetchModules();
       }
     })();
   }, [fetchModules]);
@@ -169,6 +212,7 @@ export function AdminModulesPage() {
 
   const toggleModule = async (moduleId: string, isActive: boolean) => {
     if (!selectedTenantId) {
+      toast({ title: 'Selecione um tenant', description: 'Escolha um tenant para gerenciar módulos' });
       return;
     }
 
@@ -180,95 +224,80 @@ export function AdminModulesPage() {
 
       await adminApi.post(endpoint, {});
       await fetchModules(selectedTenantId);
+      toast({
+        title: isActive ? 'Módulo desativado' : 'Módulo ativado',
+        description: `Módulo ${moduleId} ${isActive ? 'desativado' : 'ativado'} para o tenant`,
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Falha ao atualizar módulo';
       setError(message);
+      toast({ title: 'Erro ao atualizar módulo', description: String(message), variant: 'destructive' });
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // Mock data para demonstração - substituir com dados reais
-  const mockModules: ModuleDef[] = [
-    {
-      id: 'core-pos',
-      name: 'PDV Core',
-      version: '2.1.0',
-      description: 'Sistema completo de ponto de venda com gestão de pedidos e pagamentos',
-      category: 'essential',
-      status: 'active',
-      isActiveForTenant: true,
-      hasPreview: true,
-      price: 'Grátis',
-      permissions: [],
-      eventTypes: [],
-      slug: 'core-pos'
-    },
-    {
-      id: 'delivery-manager',
-      name: 'Gestor de Entregas',
-      version: '1.5.2',
-      description: 'Controle completo de entregadores com roteirização e tracking em tempo real',
-      category: 'operations',
-      status: 'active',
-      isActiveForTenant: true,
-      hasPreview: true,
-      price: 'R$ 99/mês',
-      permissions: [],
-      eventTypes: [],
-      slug: 'delivery-manager'
-    },
-    {
-      id: 'loyalty-program',
-      name: 'Programa de Fidelidade',
-      version: '3.0.0',
-      description: 'Crie programas de pontos e recompensas para fidelizar clientes',
-      category: 'marketing',
-      status: 'premium',
-      isActiveForTenant: false,
-      hasPreview: true,
-      price: 'R$ 199/mês',
-      permissions: [],
-      eventTypes: [],
-      slug: 'loyalty-program'
-    },
-    {
-      id: 'ai-assistant',
-      name: 'Assistente IA',
-      version: '1.0.0-beta',
-      description: 'Assistente inteligente para automação de atendimento e previsões',
-      category: 'automation',
-      status: 'beta',
-      isActiveForTenant: false,
-      hasPreview: false,
-      price: 'Em breve',
-      permissions: [],
-      eventTypes: [],
-      slug: 'ai-assistant'
-    },
-    {
-      id: 'analytics-pro',
-      name: 'Analytics Pro',
-      version: '2.3.1',
-      description: 'Análise avançada de dados com dashboards personalizáveis e ML',
-      category: 'advanced',
-      status: 'premium',
-      isActiveForTenant: false,
-      hasPreview: true,
-      price: 'R$ 299/mês',
-      permissions: [],
-      eventTypes: [],
-      slug: 'analytics-pro'
-    }
-  ];
-
-  // Simular carregamento
   React.useEffect(() => {
-    setTimeout(() => {
-      setModules(mockModules);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    localStorage.setItem(GLOBAL_MODULES_KEY, JSON.stringify(globalModules));
+  }, [globalModules]);
+
+  const moduleDependencies = React.useMemo<Record<string, string[]>>(() => ({}), []);
+
+  const toggleGlobalModule = (module: ModuleDef) => {
+    if (module.canDisable === false) {
+      toast({ title: 'Módulo Core', description: 'Módulos Core não podem ser desativados' });
+      return;
+    }
+
+    const current = globalModules[module.id] ?? true;
+    if (current && moduleDependencies[module.id] && moduleDependencies[module.id].length > 0) {
+      toast({
+        title: 'Desativação bloqueada',
+        description: 'Dependências ativas impedem a desativação',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const updated = { ...globalModules, [module.id]: !current };
+    setGlobalModules(updated);
+    toast({
+      title: !current ? 'Módulo global ativado' : 'Módulo global desativado',
+      description: module.name,
+    });
+  };
+
+  const openDetails = async (module: ModuleDef) => {
+    setDetailsModule(module);
+    if (tenantCache[module.id]) {
+      setDetailsTenants(tenantCache[module.id]);
+      return;
+    }
+    setDetailsLoading(true);
+    try {
+      const responses = await Promise.all(
+        tenants.map(async (tenant) => {
+          const list = await adminApi.get<SaaSAdminModuleDTO[]>('/modules', { tenantId: tenant.id });
+          const active = list.find((item) => item.id === module.id)?.isActiveForTenant ?? false;
+          return active ? tenant : null;
+        })
+      );
+      const activeTenants = responses.filter((tenant): tenant is SaaSAdminTenantDTO => tenant !== null);
+      setDetailsTenants(activeTenants);
+      setTenantCache((prev) => ({ ...prev, [module.id]: activeTenants }));
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Erro ao carregar tenants';
+      toast({ title: 'Falha ao carregar tenants', description: String(message), variant: 'destructive' });
+      setDetailsTenants([]);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const closeDetails = () => {
+    setDetailsModule(null);
+    setDetailsTenants([]);
+  };
 
   // Filtros
   const filteredModules = React.useMemo(() => {
@@ -276,9 +305,11 @@ export function AdminModulesPage() {
       const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            module.description?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'all' || module.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const matchesStatus = statusFilter === 'all' || module.status === statusFilter;
+      const matchesType = typeFilter === 'all' || module.typeLabel === typeFilter;
+      return matchesSearch && matchesCategory && matchesStatus && matchesType;
     });
-  }, [modules, searchTerm, selectedCategory]);
+  }, [modules, searchTerm, selectedCategory, statusFilter, typeFilter]);
 
   // Agrupar por categoria
   const modulesByCategory = React.useMemo(() => {
@@ -307,14 +338,11 @@ export function AdminModulesPage() {
             
             {/* Tenant Selector */}
             <div className="flex items-center gap-4">
-              <div className="relative">
+            <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <select
                   value={selectedTenantId}
-                  onChange={(e) => {
-                    setSelectedTenantId(e.target.value);
-                    // fetchModules(e.target.value || undefined);
-                  }}
+                onChange={handleTenantChange}
                   className="w-full pl-10 pr-4 py-3 rounded-xl border border-border/40 bg-background/50 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 appearance-none"
                 >
                   <option value="">Selecione um tenant</option>
@@ -341,7 +369,7 @@ export function AdminModulesPage() {
       <div className="container-responsive mx-auto px-4 py-8">
         {/* Search and Filters */}
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-1 gap-4">
+          <div className="flex flex-1 flex-col gap-4 lg:flex-row">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
@@ -364,6 +392,27 @@ export function AdminModulesPage() {
                 </option>
               ))}
             </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | ModuleDef['status'])}
+            className="px-4 py-3 rounded-xl border border-border/40 bg-background/50 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 appearance-none"
+          >
+            <option value="all">Todos os status</option>
+            <option value="active">Ativo</option>
+            <option value="inactive">Inativo</option>
+            <option value="premium">Premium</option>
+            <option value="beta">Beta</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as 'all' | ModuleDef['typeLabel'])}
+            className="px-4 py-3 rounded-xl border border-border/40 bg-background/50 text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-200 appearance-none"
+          >
+            <option value="all">Todos os tipos</option>
+            <option value="Core">Core</option>
+            <option value="Feature">Feature</option>
+            <option value="Experimental">Experimental</option>
+          </select>
           </div>
           
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -394,7 +443,8 @@ export function AdminModulesPage() {
             {Object.entries(moduleCategories).map(([categoryKey, category]) => {
               const categoryModules = modulesByCategory[categoryKey] || [];
               if (categoryModules.length === 0) return null;
-              
+              const CategoryIcon = category.icon;
+              const color = categoryColors[categoryKey as keyof typeof categoryColors];
               return (
                 <div key={categoryKey} className="space-y-6">
                   {/* Category Header */}
@@ -403,8 +453,8 @@ export function AdminModulesPage() {
                     onClick={() => setExpandedCategory(expandedCategory === categoryKey ? null : categoryKey)}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-${category.color}/10`}>
-                        <category.icon className={`h-6 w-6 text-${category.color}`} />
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${color.bg}`}>
+                        <CategoryIcon className={`h-6 w-6 ${color.text}`} />
                       </div>
                       <div>
                         <h2 className="text-xl font-semibold text-foreground">{category.name}</h2>
@@ -425,12 +475,13 @@ export function AdminModulesPage() {
                       {categoryModules.map((module) => {
                         const statusInfo = statusConfig[module.status];
                         const StatusIcon = statusInfo.icon;
+                        const globalEnabled = globalModules[module.id] ?? true;
                         
                         return (
                           <div key={module.id} className="group relative overflow-hidden rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-primary/30">
                             {/* Status Badge */}
                             <div className="absolute top-4 right-4 z-10">
-                              <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-${statusInfo.color}/10 text-${statusInfo.color} border border-${statusInfo.color}/20`}>
+                              <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.text} border ${statusInfo.border}`}>
                                 <StatusIcon className="h-3 w-3" />
                                 <span>{statusInfo.label}</span>
                               </div>
@@ -449,6 +500,9 @@ export function AdminModulesPage() {
                                     <div className="flex items-center gap-2 mt-1">
                                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
                                         v{module.version}
+                                      </span>
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                        {module.typeLabel}
                                       </span>
                                       {module.price && (
                                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
@@ -483,6 +537,10 @@ export function AdminModulesPage() {
                                   <Calendar className="h-4 w-4" />
                                   <span>{module.eventTypes ? `${module.eventTypes.length} eventos` : 'Padrão'}</span>
                                 </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Settings className="h-4 w-4" />
+                                  <span>{globalEnabled ? 'Global ativo' : 'Global inativo'}</span>
+                                </div>
                               </div>
 
                               {/* Actions */}
@@ -494,11 +552,25 @@ export function AdminModulesPage() {
                                   </button>
                                 )}
                                 
-                                <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border border-border/40 bg-background/50 hover:bg-accent transition-colors duration-200">
+                                <button
+                                  type="button"
+                                  onClick={() => openDetails(module)}
+                                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border border-border/40 bg-background/50 hover:bg-accent transition-colors duration-200"
+                                >
                                   <Settings className="h-4 w-4" />
-                                  <span>Configurar</span>
+                                  <span>Detalhes</span>
                                 </button>
                                 
+                                <button
+                                  type="button"
+                                  onClick={() => toggleGlobalModule(module)}
+                                  disabled={module.canDisable === false}
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border border-border/40 bg-background/50 hover:bg-accent transition-colors duration-200 ${module.canDisable === false ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                >
+                                  {globalEnabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                                  <span>{globalEnabled ? 'Global off' : 'Global on'}</span>
+                                </button>
+
                                 <button
                                   type="button"
                                   disabled={!selectedTenantId || isUpdating}
@@ -537,6 +609,84 @@ export function AdminModulesPage() {
           </div>
         )}
       </div>
+      <BaseModal open={Boolean(detailsModule)} onOpenChange={(open) => (!open ? closeDetails() : null)} size="lg">
+        <ModalHeader title={detailsModule?.name ?? 'Detalhes do módulo'} />
+        <ModalBody>
+          {detailsModule && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-border/40 p-4">
+                  <p className="text-sm text-muted-foreground">Versão</p>
+                  <p className="font-semibold text-foreground">v{detailsModule.version}</p>
+                </div>
+                <div className="rounded-xl border border-border/40 p-4">
+                  <p className="text-sm text-muted-foreground">Tipo</p>
+                  <p className="font-semibold text-foreground">{detailsModule.typeLabel}</p>
+                </div>
+                <div className="rounded-xl border border-border/40 p-4">
+                  <p className="text-sm text-muted-foreground">Status global</p>
+                  <p className="font-semibold text-foreground">
+                    {globalModules[detailsModule.id] ?? true ? 'Ativo' : 'Inativo'}
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border/40 p-4">
+                <p className="text-sm text-muted-foreground">Descrição</p>
+                <p className="text-sm text-foreground mt-2">{detailsModule.description ?? 'Sem descrição'}</p>
+              </div>
+              <div className="rounded-xl border border-border/40 p-4">
+                <p className="text-sm text-muted-foreground">Dependências</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(moduleDependencies[detailsModule.id] ?? []).length === 0 ? (
+                    <span className="text-sm text-muted-foreground">Sem dependências registradas</span>
+                  ) : (
+                    (moduleDependencies[detailsModule.id] ?? []).map((dep) => (
+                      <span key={dep} className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                        {dep}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="rounded-xl border border-border/40 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">Tenants usando o módulo</p>
+                  <span className="text-sm text-muted-foreground">{detailsTenants.length}</span>
+                </div>
+                {detailsLoading ? (
+                  <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando tenants...
+                  </div>
+                ) : detailsTenants.length === 0 ? (
+                  <p className="mt-4 text-sm text-muted-foreground">Nenhum tenant ativo no módulo</p>
+                ) : (
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {detailsTenants.map((tenant) => (
+                      <div key={tenant.id} className="flex items-center justify-between rounded-lg border border-border/40 px-3 py-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{tenant.name}</p>
+                          <p className="text-xs text-muted-foreground">{tenant.slug}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{tenant.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <button
+            type="button"
+            onClick={closeDetails}
+            className="rounded-lg border border-border/40 px-4 py-2 text-sm font-medium hover:bg-accent transition-colors duration-200"
+          >
+            Fechar
+          </button>
+        </ModalFooter>
+      </BaseModal>
     </div>
   );
 }

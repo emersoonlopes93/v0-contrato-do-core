@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, Minus, Plus, Search, ShoppingBag, X, ShieldCheck, Truck, Store, CreditCard, Banknote, QrCode } from 'lucide-react';
+import { ChevronRight, Minus, Plus, Search, ShoppingBag, X } from 'lucide-react';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { MenuOnlineCategoryDTO, MenuOnlinePriceSimulationResponse, MenuOnlineProductDTO, MenuOnlinePublicMenuDTO } from '@/src/types/menu-online';
 import { ProductCard } from '@/src/tenant/components/cards';
@@ -15,10 +15,6 @@ import { ModalHeader } from '@/components/modal/ModalHeader';
 import { ModalBody } from '@/components/modal/ModalBody';
 import { ModalFooter } from '@/components/modal/ModalFooter';
 import { getContrastRatioFromHsl, parseHslTriplet } from '@/lib/color';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { DesignerMenuConfigDTO } from '@/src/types/designer-menu';
 
@@ -1253,7 +1249,7 @@ export function MenuPublicPage() {
               animate={{ y: 0 }}
               exit={{ y: 80 }}
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-              className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-3xl rounded-t-3xl bg-background"
+              className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-3xl rounded-t-3xl bg-background flex max-h-[85vh] flex-col"
             >
               <div className="flex items-center justify-between border-b px-4 py-4">
                 <div className="min-w-0">
@@ -1275,203 +1271,262 @@ export function MenuPublicPage() {
                 </Button>
               </div>
 
-              <div className="max-h-[60vh] overflow-auto px-4 py-4 space-y-4">
+              <div className="flex-1 overflow-auto px-4 py-4 space-y-4">
                 {cart.length === 0 ? (
                   <div className="text-sm text-muted-foreground">Seu carrinho está vazio.</div>
                 ) : (
-                  <>
-                    <div className="space-y-3">
-                      {cart.map((item) => (
-                        <div key={item.id} className="rounded-xl border p-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="font-medium">
-                                {item.name}
-                                {item.variation ? <span className="text-muted-foreground"> · {item.variation.name}</span> : null}
-                              </div>
-                              {item.modifiers.length > 0 && (
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  {item.modifiers.map((m) => m.name).join(', ')}
-                                </div>
-                              )}
-                              {item.appliedCouponCode && (
-                                <div className="mt-1 text-xs text-success">
-                                  Cupom aplicado: {item.appliedCouponCode}
-                                </div>
-                              )}
-                              <div className="mt-2 text-sm font-semibold">{formatMoney(item.total, item.currency)}</div>
+                  <div className="space-y-3">
+                    {cart.map((item) => (
+                      <div key={item.id} className="rounded-xl border p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-medium">
+                              {item.name}
+                              {item.variation ? <span className="text-muted-foreground"> · {item.variation.name}</span> : null}
                             </div>
+                            {item.modifiers.length > 0 && (
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {item.modifiers.map((m) => m.name).join(', ')}
+                              </div>
+                            )}
+                            {item.appliedCouponCode && (
+                              <div className="mt-1 text-xs text-success">
+                                Cupom aplicado: {item.appliedCouponCode}
+                              </div>
+                            )}
+                            <div className="mt-2 text-sm font-semibold">{formatMoney(item.total, item.currency)}</div>
+                          </div>
 
-                            <Button type="button" variant="outline" size="icon" onClick={() => removeCartItem(item.id)}>
-                              <X className="h-4 w-4" />
+                          <Button type="button" variant="outline" size="icon" onClick={() => removeCartItem(item.id)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <div className="min-w-[2.5rem] text-center text-sm font-semibold">{item.quantity}</div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
+                            >
+                              <Plus className="h-4 w-4" />
                             </Button>
                           </div>
 
-                          <div className="mt-3 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <div className="min-w-[2.5rem] text-center text-sm font-semibold">{item.quantity}</div>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-
-                            <div className="text-sm font-semibold">{formatMoney(item.total * item.quantity, item.currency)}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="rounded-xl border p-3 space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span>{formatMoney(cartTotals.subtotal, currency)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Economia</span>
-                        <span>{formatMoney(cartTotals.discount, currency)}</span>
-                      </div>
-                      <div className="flex items-center justify-between font-semibold">
-                        <span>Total</span>
-                        <span>{formatMoney(cartTotals.total, currency)}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 rounded-xl border p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold">Checkout</div>
-                        <div className="text-xs text-muted-foreground">
-                          Etapa {checkoutStep}/3
+                          <div className="text-sm font-semibold">{formatMoney(item.total * item.quantity, item.currency)}</div>
                         </div>
                       </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCheckoutStep(1)}
-                          className={checkoutStep === 1 ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold'}
-                        >
-                          Dados
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCheckoutStep(2)}
-                          className={checkoutStep === 2 ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold'}
-                        >
-                          Entrega
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCheckoutStep(3)}
-                          className={checkoutStep === 3 ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold'}
-                        >
-                          Pagamento
-                        </button>
-                      </div>
-
-                      {checkoutError && (
-                        <Alert variant="destructive">
-                          <AlertDescription>{checkoutError}</AlertDescription>
-                        </Alert>
-                      )}
-
-                      {checkoutStep === 1 && (
-                        <div className="space-y-2">
-                          <input
-                            value={checkoutCustomerName}
-                            onChange={(e) => setCheckoutCustomerName(e.target.value)}
-                            className="h-11 w-full rounded-lg border px-3"
-                            placeholder="Seu nome"
-                            autoComplete="name"
-                          />
-                          <input
-                            value={checkoutCustomerPhone}
-                            onChange={(e) => setCheckoutCustomerPhone(e.target.value)}
-                            className="h-11 w-full rounded-lg border px-3"
-                            placeholder="Seu WhatsApp"
-                            autoComplete="tel"
-                            inputMode="tel"
-                          />
-                        </div>
-                      )}
-
-                      {checkoutStep === 2 && (
-                        <div className="space-y-2">
-                          <div className="text-xs text-muted-foreground">
-                            Reduza fricção: escolha como prefere receber.
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setCheckoutDeliveryType('delivery')}
-                              className={checkoutDeliveryType === 'delivery' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold'}
-                            >
-                              Delivery
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCheckoutDeliveryType('pickup')}
-                              className={checkoutDeliveryType === 'pickup' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold'}
-                            >
-                              Retirada
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {checkoutStep === 3 && (
-                        <div className="space-y-2">
-                          <div className="text-xs text-muted-foreground">Pagamento seguro</div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setCheckoutPaymentMethod('pix')}
-                              className={checkoutPaymentMethod === 'pix' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold'}
-                            >
-                              Pix
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCheckoutPaymentMethod('card')}
-                              className={checkoutPaymentMethod === 'card' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold'}
-                            >
-                              Cartão
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCheckoutPaymentMethod('cash')}
-                              className={checkoutPaymentMethod === 'cash' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold'}
-                            >
-                              Dinheiro
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <Button
-                        type="button"
-                        className="w-full"
-                        onClick={submitCheckout}
-                        disabled={checkoutSubmitting || checkoutCustomerPhone.trim() === '' || checkoutCustomerName.trim() === ''}
-                      >
-                        {checkoutSubmitting ? 'Enviando...' : 'Finalizar pedido'}
-                      </Button>
-                    </div>
-                  </>
+                    ))}
+                  </div>
                 )}
               </div>
+              {cart.length > 0 && (
+                <div className="border-t bg-background px-4 py-4 space-y-3">
+                  <div className="rounded-xl border p-3 space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>{formatMoney(cartTotals.subtotal, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Economia</span>
+                      <span>{formatMoney(cartTotals.discount, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between font-semibold">
+                      <span>Total</span>
+                      <span>{formatMoney(cartTotals.total, currency)}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-xl border p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold">Checkout</div>
+                      <div className="text-xs text-muted-foreground">
+                        Etapa {checkoutStep}/3
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutStep(1)}
+                        className={checkoutStep === 1 ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground h-11' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold h-11'}
+                      >
+                        Dados
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutStep(2)}
+                        className={checkoutStep === 2 ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground h-11' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold h-11'}
+                      >
+                        Entrega
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutStep(3)}
+                        className={checkoutStep === 3 ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground h-11' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold h-11'}
+                      >
+                        Pagamento
+                      </button>
+                    </div>
+
+                    {checkoutError && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{checkoutError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {checkoutStep === 1 && (
+                      <div className="space-y-2">
+                        <input
+                          value={checkoutCustomerName}
+                          onChange={(e) => setCheckoutCustomerName(e.target.value)}
+                          className="h-11 w-full rounded-lg border px-3"
+                          placeholder="Seu nome"
+                          autoComplete="name"
+                        />
+                        <input
+                          value={checkoutCustomerPhone}
+                          onChange={(e) => setCheckoutCustomerPhone(e.target.value)}
+                          className="h-11 w-full rounded-lg border px-3"
+                          placeholder="Seu WhatsApp"
+                          autoComplete="tel"
+                          inputMode="tel"
+                        />
+                      </div>
+                    )}
+
+                    {checkoutStep === 2 && (
+                      <div className="space-y-2">
+                        <div className="text-xs text-muted-foreground">
+                          Reduza fricção: escolha como prefere receber.
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCheckoutDeliveryType('delivery')}
+                            className={checkoutDeliveryType === 'delivery' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground h-11' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold h-11'}
+                          >
+                            Delivery
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCheckoutDeliveryType('pickup')}
+                            className={checkoutDeliveryType === 'pickup' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground h-11' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold h-11'}
+                          >
+                            Retirada
+                          </button>
+                        </div>
+                        {checkoutDeliveryType === 'delivery' && (
+                          <div className="mt-3 space-y-2">
+                            <input
+                              value={checkoutAddressZip}
+                              onChange={(e) => setCheckoutAddressZip(e.target.value)}
+                              className="h-11 w-full rounded-lg border px-3"
+                              placeholder="CEP"
+                              inputMode="numeric"
+                            />
+                            <input
+                              value={checkoutAddressStreet}
+                              onChange={(e) => setCheckoutAddressStreet(e.target.value)}
+                              className="h-11 w-full rounded-lg border px-3"
+                              placeholder="Rua"
+                              autoComplete="address-line1"
+                            />
+                            <div className="flex gap-2">
+                              <input
+                                value={checkoutAddressNumber}
+                                onChange={(e) => setCheckoutAddressNumber(e.target.value)}
+                                className="h-11 w-28 rounded-lg border px-3"
+                                placeholder="Número"
+                                inputMode="numeric"
+                              />
+                              <input
+                                value={checkoutAddressNeighborhood}
+                                onChange={(e) => setCheckoutAddressNeighborhood(e.target.value)}
+                                className="h-11 flex-1 rounded-lg border px-3"
+                                placeholder="Bairro"
+                                autoComplete="address-level2"
+                              />
+                            </div>
+                            <input
+                              value={checkoutAddressComplement}
+                              onChange={(e) => setCheckoutAddressComplement(e.target.value)}
+                              className="h-11 w-full rounded-lg border px-3"
+                              placeholder="Complemento (opcional)"
+                              autoComplete="address-line2"
+                            />
+                          </div>
+                        )}
+                        <textarea
+                          value={checkoutObservations}
+                          onChange={(e) => setCheckoutObservations(e.target.value)}
+                          className="min-h-[96px] w-full resize-none rounded-lg border px-3 py-2 text-sm"
+                          placeholder="Observações para o restaurante (opcional)"
+                        />
+                      </div>
+                    )}
+
+                    {checkoutStep === 3 && (
+                      <div className="space-y-2">
+                        <div className="text-xs text-muted-foreground">Pagamento seguro</div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCheckoutPaymentMethod('pix')}
+                            className={checkoutPaymentMethod === 'pix' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground h-11' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold h-11'}
+                          >
+                            Pix
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCheckoutPaymentMethod('card')}
+                            className={checkoutPaymentMethod === 'card' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground h-11' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold h-11'}
+                          >
+                            Cartão
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCheckoutPaymentMethod('cash')}
+                            className={checkoutPaymentMethod === 'cash' ? 'flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground h-11' : 'flex-1 rounded-lg border px-3 py-2 text-xs font-semibold h-11'}
+                          >
+                            Dinheiro
+                          </button>
+                        </div>
+                        {checkoutPaymentMethod === 'cash' && (
+                          <div className="space-y-2">
+                            <input
+                              value={checkoutChangeFor}
+                              onChange={(e) => setCheckoutChangeFor(e.target.value)}
+                              className="h-11 w-full rounded-lg border px-3"
+                              placeholder="Troco para (opcional)"
+                              inputMode="decimal"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={submitCheckout}
+                      disabled={checkoutSubmitting || checkoutCustomerPhone.trim() === '' || checkoutCustomerName.trim() === ''}
+                    >
+                      {checkoutSubmitting ? 'Enviando...' : 'Finalizar pedido'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}

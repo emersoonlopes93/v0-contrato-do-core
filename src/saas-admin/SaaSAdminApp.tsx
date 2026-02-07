@@ -8,6 +8,7 @@ import { AdminPlansPage } from './pages/Plans';
 import { AdminModulesPage } from './pages/Modules';
 import { AdminWhiteLabelPage } from './pages/WhiteLabel';
 import { AdminAuditLogsPage } from './pages/AuditLogs';
+import { AdminGlobalSettingsPage } from './pages/Settings';
 import './styles/saas-admin.css';
 
 export function SaaSAdminApp() {
@@ -26,6 +27,8 @@ export function SaaSAdminApp() {
     page = <AdminModulesPage />;
   } else if (path.startsWith('/admin/white-label')) {
     page = <AdminWhiteLabelPage />;
+  } else if (path.startsWith('/admin/settings')) {
+    page = <AdminGlobalSettingsPage />;
   } else if (path.startsWith('/admin/audit')) {
     page = <AdminAuditLogsPage />;
   } else {

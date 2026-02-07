@@ -37,9 +37,9 @@ export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHead
   };
 
   return (
-    <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b menu-ifood-transition">
+    <div className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b menu-ifood-transition">
       <div className="space-y-3 px-4 py-3 md:px-6 md:py-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 md:justify-between">
           <Button
             variant="ghost"
             size="icon"
@@ -49,7 +49,7 @@ export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHead
             <ArrowLeft className="h-4 w-4" />
           </Button>
 
-          <h1 className="text-xl font-bold text-center flex-1">Cardápio</h1>
+          <h1 className="min-w-0 flex-1 text-center text-xl font-bold">Cardápio</h1>
 
           <Button
             variant="outline"
@@ -64,7 +64,7 @@ export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHead
           </Button>
         </div>
 
-        <div className="w-full rounded-xl border bg-muted/40 px-3 py-2 flex items-center justify-between gap-3">
+        <div className="w-full min-h-[44px] rounded-xl border bg-muted/40 px-3 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <EyeOff className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium truncate">iFood</span>
@@ -75,13 +75,13 @@ export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHead
               checked={isIfoodMode}
               onCheckedChange={handleToggleUxMode}
               aria-label="Modo UX iFood"
-              className="menu-ifood-transition shrink-0"
+              className="menu-ifood-transition shrink-0 h-6 w-11"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-4 overflow-x-auto pb-1">
-          <nav className="flex gap-1" role="tablist">
+        <div className="flex items-center gap-4 overflow-x-auto pb-1 menu-ifood-category-bar">
+          <nav className="flex min-w-max gap-1" role="tablist">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -90,7 +90,7 @@ export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHead
                 aria-selected={activeTab === tab.id}
                 data-state={activeTab === tab.id ? 'active' : 'inactive'}
                 className={`
-                  relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+                  relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap
                   menu-ifood-transition
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring menu-ifood-focus
                   disabled:pointer-events-none disabled:opacity-50

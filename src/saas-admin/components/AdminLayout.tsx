@@ -1,4 +1,5 @@
 import React from 'react';
+import { Toaster } from '@/components/ui/toaster';
 import { 
   LayoutDashboard, 
   ShoppingBag,
@@ -190,6 +191,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
       )}
+      <Toaster />
     </div>
   );
 }
