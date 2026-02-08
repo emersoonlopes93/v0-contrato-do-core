@@ -96,6 +96,9 @@ function MenuOnlineProductsPageContent() {
   const [categoryDescription, setCategoryDescription] = useState<string>('');
   const [categorySortOrder, setCategorySortOrder] = useState<string>('0');
   const [categoryStatus, setCategoryStatus] = useState<MenuOnlineStatus>('active');
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState<boolean>(false);
+  const [isSavingCategoryOrder, setIsSavingCategoryOrder] = useState<boolean>(false);
+  const [categoryOrder, setCategoryOrder] = useState<MenuOnlineCategoryDTO[]>([]);
 
   // Carregar dados
   const load = async () => {
@@ -188,6 +191,77 @@ function MenuOnlineProductsPageContent() {
     setCategoryDescription('');
     setCategorySortOrder('0');
     setCategoryStatus('active');
+  };
+
+  const handleOpenCategoryReorder = () => {
+    const ordered = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+    setCategoryOrder(ordered);
+    setIsReorderModalOpen(true);
+  };
+
+  const moveCategory = (index: number, direction: 'up' | 'down') => {
+    setCategoryOrder((prev) => {
+      const next = [...prev];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= next.length) {
+        return prev;
+      }
+      const [item] = next.splice(index, 1);
+      next.splice(targetIndex, 0, item);
+      return next;
+    });
+  };
+
+  const handleSaveCategoryOrder = async () => {
+    if (!accessToken) return;
+
+    setIsSavingCategoryOrder(true);
+
+    try {
+      const updatedCategories: MenuOnlineCategoryDTO[] = [];
+
+      for (let index = 0; index < categoryOrder.length; index += 1) {
+        const category = categoryOrder[index];
+        const payload: MenuOnlineUpdateCategoryRequest = {
+          name: category.name,
+          description: category.description ?? null,
+          sortOrder: index,
+          status: category.status,
+        };
+
+        const res = await fetch(`/api/v1/tenant/menu-online/categories/${category.id}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const errorData = (await res.json()) as ApiErrorResponse;
+          throw new Error(errorData.message || 'Erro ao salvar ordem das categorias');
+        }
+
+        const data = (await res.json()) as ApiSuccessResponse<MenuOnlineCategoryDTO>;
+        updatedCategories.push(data.data);
+      }
+
+      setCategories(updatedCategories);
+      setIsReorderModalOpen(false);
+      toast({
+        title: 'Categorias reordenadas',
+        description: 'Ordem das categorias atualizada com sucesso.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: err instanceof Error ? err.message : 'Erro ao salvar ordem das categorias',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingCategoryOrder(false);
+    }
   };
 
   // Editar produto
@@ -715,6 +789,7 @@ function MenuOnlineProductsPageContent() {
             onDuplicateCategory={handleDuplicateCategory}
             onToggleAllProductsInCategory={handleToggleAllProductsInCategory}
             onNewModifierGroup={() => setIsModifierGroupModalOpen(true)}
+            onReorderCategories={handleOpenCategoryReorder}
           />
 
           <BaseModal
@@ -1436,6 +1511,72 @@ function MenuOnlineProductsPageContent() {
             disabled={isSavingCategory || categoryName.trim() === ''}
           >
             {isSavingCategory ? 'Salvando...' : categoryEditingId ? 'Salvar' : 'Criar'}
+          </Button>
+        </ModalFooter>
+      </BaseModal>
+
+      <BaseModal
+        open={isReorderModalOpen}
+        onOpenChange={(open) => {
+          setIsReorderModalOpen(open);
+        }}
+        size="sm"
+      >
+        <ModalHeader title="Reordenar categorias" />
+        <ModalBody>
+          <div className="space-y-2">
+            {categoryOrder.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-6">
+                Nenhuma categoria disponível.
+              </div>
+            ) : (
+              categoryOrder.map((category, index) => (
+                <div key={category.id} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+                  <span className="text-sm font-medium">{category.name}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8"
+                      disabled={index === 0}
+                      onClick={() => moveCategory(index, 'up')}
+                    >
+                      Subir
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8"
+                      disabled={index === categoryOrder.length - 1}
+                      onClick={() => moveCategory(index, 'down')}
+                    >
+                      Descer
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10"
+            onClick={() => setIsReorderModalOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            className="h-10"
+            onClick={() => void handleSaveCategoryOrder()}
+            disabled={isSavingCategoryOrder || categoryOrder.length === 0}
+          >
+            {isSavingCategoryOrder ? 'Salvando...' : 'Salvar'}
           </Button>
         </ModalFooter>
       </BaseModal>

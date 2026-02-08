@@ -25,7 +25,6 @@ import type { MenuOnlineProductDTO } from '@/src/types/menu-online';
 
 interface MenuProductCardProps {
   product: MenuOnlineProductDTO;
-  categoryName: string;
   onToggleStatus: (product: MenuOnlineProductDTO) => Promise<void>;
   onEditProduct: (product: MenuOnlineProductDTO) => void;
   onDeleteProduct: (productId: string) => void;
@@ -38,7 +37,6 @@ interface MenuProductCardProps {
 
 export function MenuProductCard({
   product,
-  categoryName,
   onToggleStatus,
   onEditProduct,
   onDeleteProduct,
@@ -131,7 +129,7 @@ export function MenuProductCard({
           {/* Header: Nome + Status + Ações */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 min-w-0 overflow-hidden flex-nowrap">
+              <div className="flex items-center gap-2 min-w-0 overflow-hidden flex-nowrap w-[calc(100%-20px)] sm:w-auto">
                 <h4 className="min-w-0 truncate text-base font-semibold">{product.name}</h4>
                 <div className="flex items-center gap-1 shrink-0">
                   {hasPromo && (
@@ -148,11 +146,6 @@ export function MenuProductCard({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[11px] text-muted-foreground">
-                  {categoryName}
-                </span>
-              </div>
             </div>
 
             {/* Status + Ações */}
@@ -167,7 +160,7 @@ export function MenuProductCard({
                   className="h-6 w-11"
                 />
                 <span className={`
-                  text-xs font-medium
+                  text-xs font-medium hidden sm:inline
                   ${product.status === 'active' 
                     ? 'text-success' 
                     : 'text-muted-foreground'
@@ -183,7 +176,7 @@ export function MenuProductCard({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    className="h-8 w-8"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>

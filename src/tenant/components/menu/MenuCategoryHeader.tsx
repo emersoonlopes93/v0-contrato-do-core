@@ -141,7 +141,7 @@ export function MenuCategoryHeader({
                 checked={masterSwitchState === 'on'}
                 onCheckedChange={handleMasterSwitchChange}
                 aria-label="Ativar/desativar todos os produtos"
-                className="shrink-0"
+                  className="shrink-0 border border-border data-[state=unchecked]:bg-muted"
                 data-state={masterSwitchState}
               />
             </div>

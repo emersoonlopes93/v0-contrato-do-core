@@ -38,6 +38,7 @@ interface MenuIfoodViewProps {
   onDuplicateCategory: (category: MenuOnlineCategoryDTO) => void;
   onToggleAllProductsInCategory: (categoryId: string, enabled: boolean) => Promise<void>;
   onNewModifierGroup: () => void;
+  onReorderCategories: () => void;
 }
 
 export function MenuIfoodView({
@@ -56,6 +57,7 @@ export function MenuIfoodView({
   onDuplicateCategory,
   onToggleAllProductsInCategory,
   onNewModifierGroup,
+  onReorderCategories,
 }: MenuIfoodViewProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'complements'>('products');
   const [searchQuery, setSearchQuery] = useState('');
@@ -195,17 +197,17 @@ export function MenuIfoodView({
       case 'products':
         return (
           <div className="space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="relative w-full flex-1">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar item..."
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  className="pl-10"
+                  className="h-10 pl-10 text-sm"
                 />
               </div>
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   variant="outline"
                   size="icon"
@@ -227,9 +229,16 @@ export function MenuIfoodView({
               </div>
             </div>
 
-            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-              <ArrowUpDown className="h-4 w-4" />
-              <span>Reordenar categorias</span>
+            <div className="flex items-center justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-muted-foreground"
+                onClick={onReorderCategories}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                <span>Reordenar categorias</span>
+              </Button>
             </div>
 
             <ScrollArea className="h-[600px]">
@@ -275,7 +284,6 @@ export function MenuIfoodView({
                                 <MenuProductCard
                                   key={product.id}
                                   product={product}
-                                  categoryName={categoryNameById.get(product.categoryId) || ''}
                                   onToggleStatus={onToggleProductStatus}
                                   onEditProduct={onEditProduct}
                                   onDeleteProduct={onDeleteProduct}
