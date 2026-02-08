@@ -23,7 +23,7 @@ export const manifest = {
   permissions,
   eventTypes,
   uiEntry: {
-    tenantBasePath: '/tenant/menu-online',
+    tenantBasePath: '/menu-online',
     homeLabel: 'Cardápio Online',
     icon: 'menu',
     category: 'Core de Operação do Restaurante',

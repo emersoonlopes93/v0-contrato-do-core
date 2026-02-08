@@ -16,5 +16,15 @@ export const manifest: ModuleRegisterPayload = {
   version: '1.0.0',
   permissions,
   eventTypes,
+  uiEntry: {
+    tenantBasePath: '/financial',
+    homeLabel: 'Financeiro',
+    icon: 'wallet',
+    category: 'Financeiro',
+  },
+  type: 'operations',
+  scope: 'tenant',
+  mobileFirst: true,
+  requiresAuth: true,
+  canDisable: true,
 };
-

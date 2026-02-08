@@ -26,4 +26,15 @@ export const manifest: ModuleRegisterPayload = {
   permissions,
   eventTypes,
   requiredPlan: 'pro',
+  uiEntry: {
+    tenantBasePath: '/orders',
+    homeLabel: 'Pedidos',
+    icon: 'box',
+    category: 'Pedidos',
+  },
+  type: 'core',
+  scope: 'tenant',
+  mobileFirst: true,
+  requiresAuth: true,
+  canDisable: true,
 };

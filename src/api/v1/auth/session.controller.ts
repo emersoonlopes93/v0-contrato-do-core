@@ -138,6 +138,10 @@ export async function getSession(req: Request, res: Response) {
            payment_provider_default: true,
            payment_public_key: true,
            payment_private_key: true,
+           kds_enabled: true,
+           pdv_enabled: true,
+           realtime_enabled: true,
+           printing_enabled: true,
          },
        });
        const tenantSettings = tenantSettingsRow
@@ -150,6 +154,10 @@ export async function getSession(req: Request, res: Response) {
              paymentProviderDefault: tenantSettingsRow.payment_provider_default,
              paymentPublicKey: tenantSettingsRow.payment_public_key,
              paymentPrivateKey: tenantSettingsRow.payment_private_key,
+             kdsEnabled: tenantSettingsRow.kds_enabled,
+             pdvEnabled: tenantSettingsRow.pdv_enabled,
+             realtimeEnabled: tenantSettingsRow.realtime_enabled,
+             printingEnabled: tenantSettingsRow.printing_enabled,
            }
          : null;
 

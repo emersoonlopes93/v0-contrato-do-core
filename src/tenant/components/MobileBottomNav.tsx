@@ -1,30 +1,62 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
 import {
-  BarChart3,
   BookOpen,
   Box,
+  ChefHat,
+  CreditCard,
+  Headphones,
+  Palette,
+  ShoppingCart,
+  Settings,
   Store,
   Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { ModuleRegisterPayload } from '@/src/core/modules/contracts';
+import { listTenantUiModules } from '@/src/modules/registry';
 
 type NavItem = {
   id: string;
   label: string;
   icon: React.ReactNode;
   href: string;
-  moduleId?: string;
   isActive?: boolean;
 };
+
+const iconMap = {
+  box: Box,
+  menu: BookOpen,
+  headphones: Headphones,
+  store: Store,
+  wallet: Wallet,
+  palette: Palette,
+  'chef-hat': ChefHat,
+  'shopping-cart': ShoppingCart,
+  'credit-card': CreditCard,
+  settings: Settings,
+};
+
+function resolveIcon(name: string, active: boolean): React.ReactNode {
+  const Icon = iconMap[name as keyof typeof iconMap] ?? Box;
+  return (
+    <Icon
+      className={cn(
+        'h-5 w-5 transition-all duration-200',
+        active ? 'text-primary' : 'text-muted-foreground',
+      )}
+    />
+  );
+}
 
 export function MobileBottomNav() {
   const { tenantSlug } = useTenant();
   const { isModuleEnabled } = useSession();
   const basePath = `/tenant/${tenantSlug}`;
+  const [modules, setModules] = useState<ModuleRegisterPayload[]>([]);
 
   // Função para verificar se rota está ativa
   const isRouteActive = (href?: string): boolean => {
@@ -33,55 +65,35 @@ export function MobileBottomNav() {
     return window.location.pathname.startsWith(href);
   };
 
-  // Itens principais do menu inferior (5 seções)
-  const navItems: NavItem[] = [
-    {
-      id: 'dashboard',
-      label: 'Início',
-      icon: <BarChart3 className="h-5 w-5" />,
-      href: `${basePath}/dashboard`,
-    },
-    {
-      id: 'orders',
-      label: 'Pedidos',
-      icon: <Box className="h-5 w-5" />,
-      href: `${basePath}/orders`,
-      moduleId: 'orders-module',
-    },
-    {
-      id: 'menu',
-      label: 'Cardápio',
-      icon: <BookOpen className="h-5 w-5" />,
-      href: `${basePath}/menu-online`,
-      moduleId: 'menu-online',
-    },
-    {
-      id: 'store',
-      label: 'Loja',
-      icon: <Store className="h-5 w-5" />,
-      href: `${basePath}/store-settings`,
-      moduleId: 'store-settings',
-    },
-    {
-      id: 'finance',
-      label: 'Financeiro',
-      icon: <Wallet className="h-5 w-5" />,
-      href: `${basePath}/financial`,
-      moduleId: 'financial',
-    },
-  ];
+  useEffect(() => {
+    listTenantUiModules()
+      .then((data) => setModules(data))
+      .catch(() => setModules([]));
+  }, []);
 
-  // Filtrar itens que têm módulo habilitado ou não requerem módulo
-  const visibleItems = navItems.filter((item) => {
-    if (!item.moduleId) return true;
-    return isModuleEnabled(item.moduleId);
-  });
-
-  // Verificar estado ativo para cada item
-  const itemsWithActive = visibleItems.map((item) => ({
-    ...item,
-    isActive: isRouteActive(item.href),
-  }));
+  const itemsWithActive = useMemo(() => {
+    const entries = modules
+      .filter((module) => module.uiEntry)
+      .filter((module) => isModuleEnabled(module.id))
+      .map((module) => {
+        const entry = module.uiEntry!;
+        const href = `${basePath}${entry.tenantBasePath}`;
+        return {
+          id: module.id,
+          label: entry.homeLabel,
+          icon: entry.icon,
+          href,
+          isActive: isRouteActive(href),
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .slice(0, 5)
+      .map((item) => ({
+        ...item,
+        icon: resolveIcon(item.icon, item.isActive),
+      }));
+    return entries as NavItem[];
+  }, [modules, isModuleEnabled, basePath]);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
@@ -104,9 +116,7 @@ export function MobileBottomNav() {
                 <div
                   className={cn(
                     'flex h-6 w-6 items-center justify-center rounded-md transition-all duration-200',
-                    active
-                      ? 'bg-primary/10 text-primary scale-110'
-                      : 'text-muted-foreground'
+                    active ? 'bg-primary/10 text-primary scale-110' : 'text-muted-foreground',
                   )}
                 >
                   {item.icon}

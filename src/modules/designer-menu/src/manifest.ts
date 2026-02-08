@@ -14,7 +14,7 @@ export const manifest = {
   permissions,
   eventTypes,
   uiEntry: {
-    tenantBasePath: '/tenant/designer-menu',
+    tenantBasePath: '/designer-menu',
     homeLabel: 'Designer do Cardápio',
     icon: 'palette',
     category: 'Cardápio',
@@ -25,4 +25,3 @@ export const manifest = {
   requiresAuth: true,
   canDisable: true,
 } satisfies ModuleRegisterPayload;
-

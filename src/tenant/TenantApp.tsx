@@ -31,6 +31,7 @@ import { TenantSlugGuard } from '@/src/tenant/guards/TenantSlugGuard';
 import { NoModulesPage } from '@/src/tenant/pages/NoModules';
 import { SoundNotificationsProvider } from '@/src/tenant/context/SoundNotificationsContext';
 import { RealtimeProvider } from '@/src/realtime/realtime-context';
+import { tenantModuleRoutes } from '@/src/modules/registry';
 
 /**
  * Tenant App - Entry Point
@@ -56,6 +57,7 @@ function TenantRouter() {
   const segments = pathname.split('/').filter(Boolean);
   const rest = segments.slice(2);
   const restPath = rest.length > 0 ? `/${rest.join('/')}` : '';
+  const moduleRoute = tenantModuleRoutes.find((route) => route.path === restPath);
 
   // 1. Loading inicial global (opcional, mas evita flashes)
   // O TenantAuthGuard também tem loading, mas aqui pegamos antes de decidir a rota
@@ -173,6 +175,13 @@ function TenantRouter() {
     page = (
       <PlanGuard moduleId="orders-module">
         <OrdersKanbanPage />
+      </PlanGuard>
+    );
+  } else if (moduleRoute) {
+    const ModuleComponent = moduleRoute.Component;
+    page = (
+      <PlanGuard moduleId={moduleRoute.moduleId}>
+        <ModuleComponent />
       </PlanGuard>
     );
   } else if (restPath === '/sound-notifications/settings') {

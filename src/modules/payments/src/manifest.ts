@@ -17,5 +17,15 @@ export const manifest: ModuleRegisterPayload = {
   permissions,
   eventTypes,
   requiredPlan: 'pro',
+  uiEntry: {
+    tenantBasePath: '/payments',
+    homeLabel: 'Pagamentos',
+    icon: 'credit-card',
+    category: 'Integrações',
+  },
+  type: 'integrations',
+  scope: 'tenant',
+  mobileFirst: true,
+  requiresAuth: true,
+  canDisable: true,
 };
-

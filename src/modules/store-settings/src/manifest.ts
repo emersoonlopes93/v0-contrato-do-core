@@ -18,5 +18,15 @@ export const manifest = {
   requiredPlan: 'basic',
   permissions,
   eventTypes,
+  uiEntry: {
+    tenantBasePath: '/store-settings',
+    homeLabel: 'Configurações da Loja',
+    icon: 'store',
+    category: 'Configurações',
+  },
+  type: 'core',
+  scope: 'tenant',
+  mobileFirst: true,
+  requiresAuth: true,
+  canDisable: true,
 } satisfies ModuleRegisterPayload;
-

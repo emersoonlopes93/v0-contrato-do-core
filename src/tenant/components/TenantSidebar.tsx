@@ -1,58 +1,55 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
 import {
-  BarChart3,
   BookOpen,
   Box,
+  ChefHat,
+  CreditCard,
   Headphones,
-  MessageCircle,
-  MousePointer2,
+  Palette,
+  ShoppingCart,
+  Settings,
   Store,
-  Truck,
   Wallet,
   ChevronRight,
 } from 'lucide-react';
-
-type SidebarSectionId =
-  | 'reports'
-  | 'orders'
-  | 'sounds'
-  | 'menu'
-  | 'delivery'
-  | 'support'
-  | 'store'
-  | 'integrations'
-  | 'finance';
+import type { ModuleRegisterPayload } from '@/src/core/modules/contracts';
+import { listTenantUiModules } from '@/src/modules/registry';
 
 type SidebarItem = {
   label: string;
-  href?: string;
-  icon?: React.ReactNode;
+  href: string;
   isActive?: boolean;
   disabled?: boolean;
 };
 
 type SidebarSection = {
-  id: SidebarSectionId;
+  id: string;
   label: string;
   icon: React.ReactNode;
   items: SidebarItem[];
 };
 
-const sidebarSectionIconColors: Record<SidebarSectionId, string> = {
-  reports: 'bg-amber-500/10 text-amber-500',
-  orders: 'bg-primary/10 text-primary',
-  sounds: 'bg-indigo-500/10 text-indigo-500',
-  menu: 'bg-rose-500/10 text-rose-500',
-  delivery: 'bg-sky-500/10 text-sky-500',
-  support: 'bg-emerald-500/10 text-emerald-500',
-  store: 'bg-teal-500/10 text-teal-500',
-  integrations: 'bg-cyan-500/10 text-cyan-500',
-  finance: 'bg-violet-500/10 text-violet-500',
+const iconMap = {
+  box: Box,
+  menu: BookOpen,
+  headphones: Headphones,
+  store: Store,
+  wallet: Wallet,
+  palette: Palette,
+  'chef-hat': ChefHat,
+  'shopping-cart': ShoppingCart,
+  'credit-card': CreditCard,
+  settings: Settings,
 };
+
+function resolveIcon(name: string): React.ReactNode {
+  const Icon = iconMap[name as keyof typeof iconMap] ?? Box;
+  return <Icon className="h-4 w-4" />;
+}
 
 function isRouteActive(href?: string): boolean {
   if (!href) return false;
@@ -65,185 +62,45 @@ export function TenantSidebar() {
   const { isModuleEnabled } = useSession();
   const basePath = `/tenant/${tenantSlug}`;
 
-  const [openSections, setOpenSections] = useState<Partial<Record<SidebarSectionId, boolean>>>({});
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [modules, setModules] = useState<ModuleRegisterPayload[]>([]);
 
-  const sections: SidebarSection[] = [
-    {
-      id: 'reports',
-      label: 'Relatórios',
-      icon: <BarChart3 className="h-4 w-4" />,
-      items: [
-        {
-          label: 'Visão Geral',
-          href: `${basePath}/dashboard`,
-          isActive: isRouteActive(`${basePath}/dashboard`),
-        },
-        {
-          label: 'Financeiro',
-          href: isModuleEnabled('financial') ? `${basePath}/financial` : undefined,
-          disabled: !isModuleEnabled('financial'),
-          isActive: isRouteActive(`${basePath}/financial`),
-        },
-        {
-          label: 'Performance',
-          href: undefined,
-          disabled: true,
-        },
-      ],
-    },
-    {
-      id: 'orders',
-      label: 'Gestor de Pedidos',
-      icon: <Box className="h-4 w-4" />,
-      items: [
-        {
-          label: 'Kanban',
-          href: isModuleEnabled('orders-module') ? `${basePath}/orders/kanban` : undefined,
-          disabled: !isModuleEnabled('orders-module'),
-          isActive: isRouteActive(`${basePath}/orders/kanban`),
-        },
-        {
-          label: 'Lista',
-          href: isModuleEnabled('orders-module') ? `${basePath}/orders` : undefined,
-          disabled: !isModuleEnabled('orders-module'),
-          isActive: isRouteActive(`${basePath}/orders`),
-        },
-        {
-          label: 'Histórico',
-          href: undefined,
-          disabled: true,
-        },
-      ],
-    },
-    {
-      id: 'sounds',
-      label: 'Sons',
-      icon: <Headphones className="h-4 w-4" />,
-      items: [
-        {
-          label: 'Notificações',
-          href: isModuleEnabled('sound-notifications')
-            ? `${basePath}/sound-notifications/settings`
-            : undefined,
-          disabled: !isModuleEnabled('sound-notifications'),
-          isActive: isRouteActive(`${basePath}/sound-notifications`),
-        },
-        {
-          label: 'Alertas',
-          href: undefined,
-          disabled: true,
-        },
-      ],
-    },
-    {
-      id: 'menu',
-      label: 'Cardápio',
-      icon: <BookOpen className="h-4 w-4" />,
-      items: [
-        {
-          label: 'Dashboard',
-          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online` : undefined,
-          disabled: !isModuleEnabled('menu-online'),
-          isActive: isRouteActive(`${basePath}/menu-online`) && !isRouteActive(`${basePath}/menu-online/`),
-        },
-        {
-          label: 'Produtos',
-          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/products` : undefined,
-          disabled: !isModuleEnabled('menu-online'),
-          isActive: isRouteActive(`${basePath}/menu-online/products`),
-        },
-        {
-          label: 'Promoções',
-          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/promotions` : undefined,
-          disabled: !isModuleEnabled('menu-online'),
-          isActive: isRouteActive(`${basePath}/menu-online/promotions`),
-        },
-        {
-          label: 'Fidelidade & Cashback',
-          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/rewards` : undefined,
-          disabled: !isModuleEnabled('menu-online'),
-          isActive: isRouteActive(`${basePath}/menu-online/rewards`),
-        },
-        {
-          label: 'Preview',
-          href: isModuleEnabled('menu-online') ? `${basePath}/menu-online/preview` : undefined,
-          disabled: !isModuleEnabled('menu-online'),
-          isActive: isRouteActive(`${basePath}/menu-online/preview`),
-        },
-        {
-          label: 'Designer do Cardápio',
-          href: isModuleEnabled('designer-menu') ? `${basePath}/designer-menu` : undefined,
-          disabled: !isModuleEnabled('designer-menu'),
-          isActive: isRouteActive(`${basePath}/designer-menu`),
-        },
-      ],
-    },
-    {
-      id: 'delivery',
-      label: 'Entregas',
-      icon: <Truck className="h-4 w-4" />,
-      items: [
-        { label: 'Motoboys', href: undefined, disabled: true },
-        { label: 'Rotas', href: undefined, disabled: true },
-        { label: 'Rastreamento', href: undefined, disabled: true },
-      ],
-    },
-    {
-      id: 'support',
-      label: 'Atendimento',
-      icon: <MessageCircle className="h-4 w-4" />,
-      items: [
-        { label: 'WhatsApp', href: undefined, disabled: true },
-        { label: 'Chat', href: undefined, disabled: true },
-      ],
-    },
-    {
-      id: 'store',
-      label: 'Configurações da Loja',
-      icon: <Store className="h-4 w-4" />,
-      items: [
-        {
-          label: 'Dados da Loja',
-          href: isModuleEnabled('store-settings') ? `${basePath}/store-settings` : undefined,
-          disabled: !isModuleEnabled('store-settings'),
-          isActive: isRouteActive(`${basePath}/store-settings`),
-        },
-        { label: 'Horários', href: undefined, disabled: true },
-        { label: 'Área de Entrega', href: undefined, disabled: true },
-      ],
-    },
-    {
-      id: 'integrations',
-      label: 'Integrações',
-      icon: <MousePointer2 className="h-4 w-4" />,
-      items: [
-        {
-          label: 'Pagamentos',
-          href: isModuleEnabled('payments') ? `${basePath}/payments` : undefined,
-          disabled: !isModuleEnabled('payments'),
-          isActive: isRouteActive(`${basePath}/payments`),
-        },
-        { label: 'Webhooks', href: undefined, disabled: true },
-        { label: 'WhatsApp API', href: undefined, disabled: true },
-      ],
-    },
-    {
-      id: 'finance',
-      label: 'Financeiro',
-      icon: <Wallet className="h-4 w-4" />,
-      items: [
-        { label: 'Caixa', href: undefined, disabled: true },
-        { label: 'Recebíveis', href: undefined, disabled: true },
-        { label: 'Taxas', href: undefined, disabled: true },
-      ],
-    },
-  ];
+  useEffect(() => {
+    listTenantUiModules()
+      .then((data) => setModules(data))
+      .catch(() => setModules([]));
+  }, []);
 
-  const visibleSections = sections.filter((section) =>
-    section.items.some((item) => item.href && !item.disabled),
-  );
+  const sections: SidebarSection[] = useMemo(() => {
+    const grouped = new Map<string, { label: string; iconName: string; items: SidebarItem[] }>();
+    modules.forEach((module) => {
+      const entry = module.uiEntry;
+      if (!entry) return;
+      const category = entry.category || 'Módulos';
+      if (!grouped.has(category)) {
+        grouped.set(category, { label: category, iconName: entry.icon || 'box', items: [] });
+      }
+      const href = `${basePath}${entry.tenantBasePath}`;
+      const section = grouped.get(category);
+      if (!section) return;
+      section.items.push({
+        label: entry.homeLabel,
+        href,
+        isActive: isRouteActive(href),
+        disabled: !isModuleEnabled(module.id),
+      });
+    });
+    return Array.from(grouped.values()).map((section, index) => ({
+      id: `${section.label}-${index}`,
+      label: section.label,
+      icon: resolveIcon(section.iconName),
+      items: section.items.sort((a, b) => a.label.localeCompare(b.label)),
+    }));
+  }, [modules, basePath, isModuleEnabled]);
 
-  const toggleSection = (id: SidebarSectionId) => {
+  const visibleSections = sections.filter((section) => section.items.length > 0);
+
+  const toggleSection = (id: string) => {
     setOpenSections((prev) => ({
       ...prev,
       [id]: !prev[id],
@@ -255,8 +112,7 @@ export function TenantSidebar() {
       {visibleSections.map((section) => {
         const hasActiveItem = section.items.some((item) => item.isActive);
         const isOpen = openSections[section.id] ?? hasActiveItem;
-        const iconClasses =
-          sidebarSectionIconColors[section.id] ?? 'bg-muted text-muted-foreground';
+        const iconClasses = 'bg-muted text-muted-foreground';
         const containerClasses =
           hasActiveItem
             ? 'rounded-lg transition-colors'
@@ -293,8 +149,16 @@ export function TenantSidebar() {
                   const commonClasses =
                     'flex min-h-12 items-center gap-3 rounded-md px-4 text-sm transition-colors';
 
-                  if (!item.href || item.disabled) {
-                    return null;
+                  if (item.disabled) {
+                    return (
+                      <div
+                        key={item.href}
+                        className={`${commonClasses} text-muted-foreground opacity-60`}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                        <span>{item.label}</span>
+                      </div>
+                    );
                   }
 
                   return (

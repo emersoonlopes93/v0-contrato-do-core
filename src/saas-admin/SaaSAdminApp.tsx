@@ -1,15 +1,21 @@
 import React from 'react';
-import { AdminSessionGuard } from './components/AdminSessionGuard';
-import { AdminLayout } from './components/AdminLayout';
-import { AdminDashboardPage } from './pages/Dashboard';
-import { AdminTenantsPage } from './pages/Tenants';
-import { AdminTenantSignupPage } from './pages/TenantSignup';
-import { AdminPlansPage } from './pages/Plans';
-import { AdminModulesPage } from './pages/Modules';
-import { AdminWhiteLabelPage } from './pages/WhiteLabel';
-import { AdminAuditLogsPage } from './pages/AuditLogs';
-import { AdminGlobalSettingsPage } from './pages/Settings';
-import './styles/saas-admin.css';
+import { AdminSessionGuard } from '@/src/saas-admin/components/AdminSessionGuard';
+import { AdminLayout } from '@/src/saas-admin/components/AdminLayout';
+import { AdminDashboardPage } from '@/src/saas-admin/pages/Dashboard';
+import { AdminTenantsPage } from '@/src/saas-admin/pages/Tenants';
+import { AdminTenantSignupPage } from '@/src/saas-admin/pages/TenantSignup';
+import { AdminPlansPage } from '@/src/saas-admin/pages/Plans';
+import { AdminModulesPage } from '@/src/saas-admin/pages/Modules';
+import { AdminWhiteLabelPage } from '@/src/saas-admin/pages/WhiteLabel';
+import { AdminAuditLogsPage } from '@/src/saas-admin/pages/AuditLogs';
+import { AdminGlobalSettingsPage } from '@/src/saas-admin/pages/Settings';
+import { AdminOrdersPage } from '@/src/saas-admin/pages/Orders';
+import { AdminMenuPage } from '@/src/saas-admin/pages/Menu';
+import { AdminCustomersPage } from '@/src/saas-admin/pages/Customers';
+import { AdminStoreDesignerPage } from '@/src/saas-admin/pages/StoreDesigner';
+import { AdminIntegrationsPage } from '@/src/saas-admin/pages/Integrations';
+import { AdminFinancePage } from '@/src/saas-admin/pages/Finance';
+import '@/src/saas-admin/styles/saas-admin.css';
 
 export function SaaSAdminApp() {
   const path = window.location.pathname;
@@ -25,6 +31,18 @@ export function SaaSAdminApp() {
     page = <AdminPlansPage />;
   } else if (path.startsWith('/admin/modules')) {
     page = <AdminModulesPage />;
+  } else if (path.startsWith('/admin/orders')) {
+    page = <AdminOrdersPage />;
+  } else if (path.startsWith('/admin/menu')) {
+    page = <AdminMenuPage />;
+  } else if (path.startsWith('/admin/customers')) {
+    page = <AdminCustomersPage />;
+  } else if (path.startsWith('/admin/store-designer')) {
+    page = <AdminStoreDesignerPage />;
+  } else if (path.startsWith('/admin/integrations')) {
+    page = <AdminIntegrationsPage />;
+  } else if (path.startsWith('/admin/finance')) {
+    page = <AdminFinancePage />;
   } else if (path.startsWith('/admin/white-label')) {
     page = <AdminWhiteLabelPage />;
   } else if (path.startsWith('/admin/settings')) {

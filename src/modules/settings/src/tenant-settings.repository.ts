@@ -23,6 +23,10 @@ export type TenantSettingsRow = {
   payment_provider_default: string | null;
   payment_public_key: string | null;
   payment_private_key: string | null;
+  kds_enabled: boolean;
+  pdv_enabled: boolean;
+  realtime_enabled: boolean;
+  printing_enabled: boolean;
   is_open: boolean;
   created_at: Date;
   updated_at: Date;
@@ -57,6 +61,10 @@ export class TenantSettingsRepository {
       longitude: number | null;
       timezone: string | null;
       currency: string | null;
+      kdsEnabled: boolean;
+      pdvEnabled: boolean;
+      realtimeEnabled: boolean;
+      printingEnabled: boolean;
       isOpen: boolean;
     }>,
   ): Promise<TenantSettingsRow> {
@@ -81,6 +89,10 @@ export class TenantSettingsRepository {
         longitude: patch.longitude ?? null,
         timezone: patch.timezone ?? null,
         currency: patch.currency ?? null,
+        kds_enabled: patch.kdsEnabled ?? true,
+        pdv_enabled: patch.pdvEnabled ?? true,
+        realtime_enabled: patch.realtimeEnabled ?? true,
+        printing_enabled: patch.printingEnabled ?? false,
         is_open: patch.isOpen ?? false,
       },
       update: {
@@ -101,6 +113,10 @@ export class TenantSettingsRepository {
         longitude: patch.longitude,
         timezone: patch.timezone,
         currency: patch.currency,
+        kds_enabled: patch.kdsEnabled,
+        pdv_enabled: patch.pdvEnabled,
+        realtime_enabled: patch.realtimeEnabled,
+        printing_enabled: patch.printingEnabled,
         is_open: patch.isOpen,
       },
     });

@@ -35,6 +35,9 @@ import checkoutModule from '@/src/modules/checkout/src';
 import paymentsModule from '@/src/modules/payments/src';
 import financialModule from '@/src/modules/financial/src';
 import designerMenuModule from '@/src/modules/designer-menu/src';
+import kdsModule from '@/src/modules/kds/src';
+import pdvModule from '@/src/modules/pdv/src';
+import cashierModule from '@/src/modules/cashier/src';
 
 // Tenant Controllers
 import * as helloController from './tenant/hello/hello.controller';
@@ -329,6 +332,15 @@ void financialModule.register(moduleContext);
 
 void globalModuleRegistry.register(designerMenuModule.manifest);
 void designerMenuModule.register(moduleContext);
+
+void globalModuleRegistry.register(kdsModule.manifest);
+void kdsModule.register(moduleContext);
+
+void globalModuleRegistry.register(pdvModule.manifest);
+void pdvModule.register(moduleContext);
+
+void globalModuleRegistry.register(cashierModule.manifest);
+void cashierModule.register(moduleContext);
 
 /**
  * Execute middleware chain

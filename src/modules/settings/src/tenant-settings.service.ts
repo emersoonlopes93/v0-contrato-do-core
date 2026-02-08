@@ -30,6 +30,10 @@ function toDTO(row: TenantSettingsRow): TenantSettingsDTO {
     paymentProviderDefault: row.payment_provider_default,
     paymentPublicKey: row.payment_public_key,
     paymentPrivateKey: row.payment_private_key,
+    kdsEnabled: row.kds_enabled,
+    pdvEnabled: row.pdv_enabled,
+    realtimeEnabled: row.realtime_enabled,
+    printingEnabled: row.printing_enabled,
     isOpen: row.is_open,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -126,6 +130,22 @@ export function parseTenantSettingsUpdateRequest(
   if (value.currency !== undefined) {
     if (value.currency !== null && !isString(value.currency)) return { error: 'currency inválido' };
     next.currency = value.currency as string | null;
+  }
+  if (value.kdsEnabled !== undefined) {
+    if (!isBoolean(value.kdsEnabled)) return { error: 'kdsEnabled inválido' };
+    next.kdsEnabled = value.kdsEnabled;
+  }
+  if (value.pdvEnabled !== undefined) {
+    if (!isBoolean(value.pdvEnabled)) return { error: 'pdvEnabled inválido' };
+    next.pdvEnabled = value.pdvEnabled;
+  }
+  if (value.realtimeEnabled !== undefined) {
+    if (!isBoolean(value.realtimeEnabled)) return { error: 'realtimeEnabled inválido' };
+    next.realtimeEnabled = value.realtimeEnabled;
+  }
+  if (value.printingEnabled !== undefined) {
+    if (!isBoolean(value.printingEnabled)) return { error: 'printingEnabled inválido' };
+    next.printingEnabled = value.printingEnabled;
   }
   if (value.isOpen !== undefined) {
     if (!isBoolean(value.isOpen)) return { error: 'isOpen inválido' };

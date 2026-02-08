@@ -1,70 +1,24 @@
 import React from 'react';
-import { adminApi } from '../lib/adminApi';
-import { 
-  Building2, 
-  Users, 
-  Activity, 
-  Puzzle, 
+import {
+  Building2,
+  Users,
+  Activity,
+  Puzzle,
   TrendingUp,
   Clock,
   AlertTriangle,
-  CheckCircle,
   ArrowUpRight,
   Zap,
   DollarSign,
   ShoppingCart,
   Star,
-  Bell,
-  BarChart3
+  BarChart3,
 } from 'lucide-react';
-
-interface Metrics {
-  totalTenants: number;
-  activeTenants: number;
-  suspendedTenants: number;
-  totalUsers: number;
-  activeModules: number;
-  recentEvents: Array<{ id: string; action: string; resource: string; timestamp: string; type: 'critical' | 'warning' | 'info' | 'success' }>;
-  quickStats: {
-    todayOrders: number;
-    todayRevenue: number;
-    weeklyGrowth: number;
-    monthlyActive: number;
-  };
-}
+import { useAdminDashboard } from '@/src/saas-admin/hooks/useAdminDashboard';
+import type { SaaSAdminDashboardEventDTO } from '@/src/types/saas-admin';
 
 export function AdminDashboardPage() {
-  const [metrics, setMetrics] = React.useState<Metrics | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const mockMetrics: Metrics = {
-    totalTenants: 156,
-    activeTenants: 142,
-    suspendedTenants: 14,
-    totalUsers: 12480,
-    activeModules: 89,
-    quickStats: {
-      todayOrders: 342,
-      todayRevenue: 12847.50,
-      weeklyGrowth: 12.5,
-      monthlyActive: 8934
-    },
-    recentEvents: [
-      { id: '1', action: 'Novo tenant', resource: 'Acme Restaurant', timestamp: '2024-01-15 14:30', type: 'success' },
-      { id: '2', action: 'Módulo ativado', resource: 'PDV Core', timestamp: '2024-01-15 13:45', type: 'info' },
-      { id: '3', action: 'Pagamento falhou', resource: 'Tenant XYZ', timestamp: '2024-01-15 12:20', type: 'critical' },
-      { id: '4', action: 'Alta carga', resource: 'Sistema', timestamp: '2024-01-15 11:15', type: 'warning' },
-      { id: '5', action: 'Usuário cadastrado', resource: 'New User', timestamp: '2024-01-15 10:30', type: 'success' }
-    ]
-  };
-
-  React.useEffect(() => {
-    setTimeout(() => {
-      setMetrics(mockMetrics);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  const { metrics, loading, error, empty } = useAdminDashboard();
 
   if (loading) {
     return (
@@ -91,29 +45,13 @@ export function AdminDashboardPage() {
     );
   }
 
-  if (!metrics) {
-    return null;
-  }
-
-  const getEventIcon = (type: string) => {
-    switch (type) {
-      case 'critical': return AlertTriangle;
-      case 'warning': return Bell;
-      case 'info': return Activity;
-      case 'success': return CheckCircle;
-      default: return Activity;
-    }
-  };
-
-  const getEventColor = (type: string) => {
-    switch (type) {
-      case 'critical': return 'text-danger';
-      case 'warning': return 'text-warning';
-      case 'info': return 'text-info';
-      case 'success': return 'text-success';
-      default: return 'text-muted-foreground';
-    }
-  };
+  const highlightEvents: SaaSAdminDashboardEventDTO[] = metrics?.recentEvents.slice(0, 2) ?? [];
+  const hasEvents = (metrics?.recentEvents.length ?? 0) > 0;
+  const activationRate =
+    metrics && metrics.totalTenants > 0
+      ? `${Math.round((metrics.activeModules / metrics.totalTenants) * 100)}%`
+      : 'Sem dados';
+  const lastUpdateLabel = metrics ? new Date().toLocaleString('pt-BR') : 'Sem dados disponíveis';
 
   return (
     <div className="saas-admin-app min-h-screen bg-gradient-to-br from-background-app via-background to-background-surface">
@@ -130,7 +68,7 @@ export function AdminDashboardPage() {
               </div>
             </div>
             <div className="text-sm text-muted-foreground">
-              Última atualização: {new Date().toLocaleString('pt-BR')}
+              Última atualização: {lastUpdateLabel}
             </div>
           </div>
         </div>
@@ -138,20 +76,37 @@ export function AdminDashboardPage() {
 
       <div className="container-responsive mx-auto px-4 py-8 space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {metrics.recentEvents.filter(e => e.type === 'critical').map((event) => (
-            <div key={event.id} className="p-6 rounded-2xl border border-danger/30 bg-danger/5">
+          {(empty || !hasEvents) && (
+            <div className="p-6 rounded-2xl border border-border/40 bg-card/50">
               <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-danger/10">
-                  <AlertTriangle className="h-5 w-5 text-danger" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                  <AlertTriangle className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-danger mb-1">{event.action}</h3>
-                  <p className="text-sm text-muted-foreground">{event.resource}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{event.timestamp}</p>
+                  <h3 className="font-semibold text-foreground mb-1">Sem alertas no momento</h3>
+                  <p className="text-sm text-muted-foreground">Conecte uma fonte de dados para monitorar eventos.</p>
                 </div>
               </div>
             </div>
-          ))}
+          )}
+          {!empty &&
+            hasEvents &&
+            highlightEvents.map((event) => (
+              <div key={event.id} className="p-6 rounded-2xl border border-border/40 bg-card/50">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Activity className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-foreground mb-1">{event.action}</h3>
+                    <p className="text-sm text-muted-foreground">{event.resource}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(event.timestamp).toLocaleString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -166,10 +121,10 @@ export function AdminDashboardPage() {
               <TrendingUp className="h-4 w-4 text-success" />
             </div>
             <div className="space-y-2">
-              <div className="text-3xl font-bold text-foreground">{metrics.totalTenants}</div>
+              <div className="text-3xl font-bold text-foreground">{empty ? 'Sem dados' : metrics?.totalTenants}</div>
               <div className="flex items-center gap-4 text-sm">
-                <span className="text-success">{metrics.activeTenants} ativos</span>
-                <span className="text-muted-foreground">{metrics.suspendedTenants} suspensos</span>
+                <span className="text-success">{empty ? '—' : `${metrics?.activeTenants ?? 0} ativos`}</span>
+                <span className="text-muted-foreground">{empty ? '—' : `${metrics?.suspendedTenants ?? 0} suspensos`}</span>
               </div>
             </div>
           </div>
@@ -185,7 +140,9 @@ export function AdminDashboardPage() {
               <ArrowUpRight className="h-4 w-4 text-success" />
             </div>
             <div className="space-y-2">
-              <div className="text-3xl font-bold text-foreground">{metrics.totalUsers.toLocaleString('pt-BR')}</div>
+              <div className="text-3xl font-bold text-foreground">
+                {empty ? 'Sem dados' : metrics?.totalUsers.toLocaleString('pt-BR')}
+              </div>
               <div className="text-sm text-muted-foreground">Total cadastrados</div>
             </div>
           </div>
@@ -201,8 +158,8 @@ export function AdminDashboardPage() {
               <Activity className="h-4 w-4 text-warning" />
             </div>
             <div className="space-y-2">
-              <div className="text-3xl font-bold text-foreground">{metrics.activeModules}</div>
-              <div className="text-sm text-muted-foreground">Ativos este mês</div>
+              <div className="text-3xl font-bold text-foreground">{empty ? 'Sem dados' : metrics?.activeModules}</div>
+              <div className="text-sm text-muted-foreground">Módulos ativos</div>
             </div>
           </div>
 
@@ -217,7 +174,7 @@ export function AdminDashboardPage() {
               <Star className="h-4 w-4 text-info" />
             </div>
             <div className="space-y-2">
-              <div className="text-3xl font-bold text-foreground">{Math.round((metrics.activeModules / metrics.totalTenants) * 100)}%</div>
+              <div className="text-3xl font-bold text-foreground">{activationRate}</div>
               <div className="text-sm text-muted-foreground">Média por tenant</div>
             </div>
           </div>
@@ -277,17 +234,26 @@ export function AdminDashboardPage() {
             Eventos Recentes
           </h2>
           <div className="space-y-4">
-            {metrics.recentEvents.map((event) => {
-              const EventIcon = getEventIcon(event.type);
-              return (
-                <div key={event.id} className="flex items-center gap-4 p-4 rounded-xl border border-border/20 hover:bg-muted/30 transition-colors duration-150">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                    event.type === 'critical' ? 'bg-danger/10' :
-                    event.type === 'warning' ? 'bg-warning/10' :
-                    event.type === 'info' ? 'bg-info/10' :
-                    'bg-success/10'
-                  }`}>
-                    <EventIcon className={`h-5 w-5 ${getEventColor(event.type)}`} />
+            {(!hasEvents || empty) && (
+              <div className="flex items-center gap-4 p-4 rounded-xl border border-border/20">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-foreground">Sem dados suficientes no momento</div>
+                  <div className="text-sm text-muted-foreground">Aguardando primeira atividade</div>
+                </div>
+              </div>
+            )}
+            {!empty &&
+              hasEvents &&
+              metrics?.recentEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-border/20 hover:bg-muted/30 transition-colors duration-150"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <Activity className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
@@ -295,12 +261,13 @@ export function AdminDashboardPage() {
                         <div className="font-medium text-foreground">{event.action}</div>
                         <div className="text-sm text-muted-foreground">{event.resource}</div>
                       </div>
-                      <div className="text-xs text-muted-foreground">{event.timestamp}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(event.timestamp).toLocaleString('pt-BR')}
+                      </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              ))}
           </div>
         </div>
       </div>

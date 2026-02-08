@@ -227,7 +227,7 @@ function DesignerMenuPageContent() {
       )}
 
       {saveSuccess && (
-        <Alert variant="default" className="bg-green-50 border-green-200 text-green-800">
+        <Alert variant="default" className="bg-success-soft border border-success/30 text-success">
           <AlertDescription>Layout salvo com sucesso!</AlertDescription>
         </Alert>
       )}

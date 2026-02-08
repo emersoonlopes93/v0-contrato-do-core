@@ -26,4 +26,15 @@ export const manifest: ModuleRegisterPayload = {
   permissions,
   eventTypes,
   requiredPlan: 'pro',
+  uiEntry: {
+    tenantBasePath: '/sound-notifications/settings',
+    homeLabel: 'Sons',
+    icon: 'headphones',
+    category: 'Operação',
+  },
+  type: 'operations',
+  scope: 'tenant',
+  mobileFirst: true,
+  requiresAuth: true,
+  canDisable: true,
 };

@@ -54,6 +54,10 @@ function isTenantSettingsSessionDTO(value: unknown): value is TenantSettingsSess
   if (!('paymentProviderDefault' in value) || !isNullableString(value.paymentProviderDefault)) return false;
   if (!('paymentPublicKey' in value) || !isNullableString(value.paymentPublicKey)) return false;
   if (!('paymentPrivateKey' in value) || !isNullableString(value.paymentPrivateKey)) return false;
+  if (!('kdsEnabled' in value) || typeof value.kdsEnabled !== 'boolean') return false;
+  if (!('pdvEnabled' in value) || typeof value.pdvEnabled !== 'boolean') return false;
+  if (!('realtimeEnabled' in value) || typeof value.realtimeEnabled !== 'boolean') return false;
+  if (!('printingEnabled' in value) || typeof value.printingEnabled !== 'boolean') return false;
   return true;
 }
 

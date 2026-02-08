@@ -85,6 +85,30 @@ export type SaaSAdminModuleViewDTO = {
   dependencies: string[];
 };
 
+export type SaaSAdminDashboardEventDTO = {
+  id: string;
+  action: string;
+  resource: string;
+  timestamp: string;
+};
+
+export type SaaSAdminDashboardMetricsDTO = {
+  totalTenants: number;
+  activeTenants: number;
+  suspendedTenants: number;
+  totalUsers: number;
+  activeModules: number;
+  recentEvents: SaaSAdminDashboardEventDTO[];
+};
+
+export type SaaSAdminDashboardState = {
+  metrics: SaaSAdminDashboardMetricsDTO | null;
+  loading: boolean;
+  error: string | null;
+  empty: boolean;
+  reload: () => Promise<void>;
+};
+
 export type SaaSAdminAuditEventDTO = {
   id: string;
   userId: string;

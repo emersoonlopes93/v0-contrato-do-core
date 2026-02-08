@@ -4,7 +4,7 @@ import { asUUID } from '@/src/core/types';
 import { globalRealtimeEmitter, REALTIME_ORDER_EVENTS } from '@/src/core';
 import { OrdersRepository } from '../repositories/order.repository';
 import { ORDERS_EVENTS } from '../events';
-import type { OrderCreatedPayload } from '../events';
+import type { OrderCreatedPayload, OrderStatusChangedPayload } from '../events';
 import type {
   OrdersCreateOrderRequest,
   OrdersKanbanColumnDTO,
@@ -52,6 +52,7 @@ export class OrdersService {
       total: order.total,
       itemsCount: order.items.length,
       timestamp: new Date(),
+      order,
     };
 
     const data: Record<string, unknown> = {
@@ -64,6 +65,7 @@ export class OrdersService {
       total: payload.total,
       itemsCount: payload.itemsCount,
       timestamp: payload.timestamp.toISOString(),
+      order: payload.order,
     };
 
     const event: DomainEvent = {
@@ -130,6 +132,34 @@ export class OrdersService {
     const effectiveUserId = userId ?? systemUserId;
 
     const order = await this.repository.updateStatus(tenantId, orderId, status, userId);
+
+    const statusPayload: OrderStatusChangedPayload = {
+      tenantId,
+      userId: effectiveUserId,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      timestamp: new Date(),
+    };
+
+    const statusEvent: DomainEvent = {
+      id: `orders.status.changed:${order.id}:${Date.now()}`,
+      type: ORDERS_EVENTS.ORDER_STATUS_CHANGED,
+      tenantId: asUUID(tenantId),
+      userId: asUUID(effectiveUserId),
+      timestamp: statusPayload.timestamp,
+      data: {
+        tenantId: statusPayload.tenantId,
+        userId: statusPayload.userId,
+        orderId: statusPayload.orderId,
+        orderNumber: statusPayload.orderNumber,
+        status: statusPayload.status,
+        timestamp: statusPayload.timestamp.toISOString(),
+        order,
+      },
+    };
+
+    await this.eventBus.publish(statusEvent);
 
     globalRealtimeEmitter.emitToTenant(tenantId, REALTIME_ORDER_EVENTS.ORDER_STATUS_CHANGED, {
       orderId: order.id,

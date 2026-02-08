@@ -5,6 +5,8 @@ import { menuOnlineTenantRoutes } from './menu-online.routes';
 import { soundNotificationsTenantRoutes } from './sound-notifications.routes';
 import { storeSettingsTenantRoutes } from '@/src/modules/store-settings/src/store-settings.routes';
 import { tenantSettingsTenantRoutes } from '@/src/modules/settings/src/tenant-settings.routes';
+import { deliveryRoutesTenantRoutes } from '@/src/modules/delivery-routes/src/delivery-routes.routes';
+import { deliveryTrackingTenantRoutes } from '@/src/modules/delivery-tracking/src/delivery-tracking.routes';
 
 export const tenantRoutes: Route[] = [
   ...ordersTenantRoutes,
@@ -13,4 +15,6 @@ export const tenantRoutes: Route[] = [
   ...tenantSettingsTenantRoutes,
   ...menuOnlineTenantRoutes,
   ...soundNotificationsTenantRoutes,
+  ...deliveryRoutesTenantRoutes,
+  ...deliveryTrackingTenantRoutes,
 ];

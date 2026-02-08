@@ -1,14 +1,8 @@
-/**
- * Modules Controller (SaaS Admin)
- * 
- * THIN CONTROLLER - No business logic.
- * Validates input, calls service, returns HTTP response.
- */
-
 import type { Request, Response } from '../middleware';
 import { globalModuleRegistry } from '../../../core/modules/registry';
 import { tenantModuleService } from '../../../adapters/prisma/modules/tenant-module.service';
-import { asModuleId, asUUID, type ModuleId } from '../../../core/types';
+import { asUUID, type ModuleId } from '../../../core/types';
+import { ensureTenantUiRegistry } from '@/src/modules/registry';
 
 /**
  * GET /api/v1/saas-admin/modules
@@ -17,19 +11,8 @@ import { asModuleId, asUUID, type ModuleId } from '../../../core/types';
 export async function listModules(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.query?.tenantId;
-    let modules = await globalModuleRegistry.listRegisteredModules();
-
-    if (modules.length === 0) {
-      await globalModuleRegistry.register({
-        id: asModuleId('hello-module'),
-        name: 'Hello Module',
-        version: '1.0.0',
-        permissions: [],
-        eventTypes: [],
-        requiredPlan: 'pro',
-      });
-      modules = await globalModuleRegistry.listRegisteredModules();
-    }
+    await ensureTenantUiRegistry();
+    const modules = await globalModuleRegistry.listRegisteredModules();
     
     let activeForTenant = new Set<ModuleId>();
     if (tenantId) {

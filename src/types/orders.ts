@@ -112,6 +112,36 @@ export type OrdersKanbanDTO = {
   columns: OrdersKanbanColumnDTO[];
 };
 
+export const ORDERS_OPERATIONAL_STATUS = {
+  NEW: 'created',
+  ACCEPTED: 'accepted',
+  PREPARING: 'preparing',
+  READY: 'ready',
+  DISPATCHED: 'delivering',
+  COMPLETED: 'completed',
+  CANCELED: 'cancelled',
+} as const;
+
+export type OrdersOperationalStatusKey = keyof typeof ORDERS_OPERATIONAL_STATUS;
+
+export type OrdersOperationalStatus = (typeof ORDERS_OPERATIONAL_STATUS)[OrdersOperationalStatusKey];
+
+export const ORDERS_STATUS_LABELS: Record<string, string> = {
+  created: 'Novo',
+  accepted: 'Aceito',
+  preparing: 'Em preparo',
+  ready: 'Pronto',
+  delivering: 'Despachado',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
+  canceled: 'Cancelado',
+  pending: 'Pendente',
+  confirmed: 'Confirmado',
+  pending_payment: 'Aguardando Pgto',
+  delivered: 'Entregue',
+  expired: 'Expirado',
+};
+
 export type OrdersServiceContract = {
   createOrder(request: {
     tenantId: string;

@@ -162,6 +162,10 @@ model TenantSettings {
   payment_provider_default String?
   payment_public_key       String?
   payment_private_key      String?
+  kds_enabled          Boolean  @default(true)
+  pdv_enabled          Boolean  @default(true)
+  realtime_enabled     Boolean  @default(true)
+  printing_enabled     Boolean  @default(false)
   is_open              Boolean  @default(false)
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt

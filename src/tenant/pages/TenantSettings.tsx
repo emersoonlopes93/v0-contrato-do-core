@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FormFooterSaveBar } from '@/components/form/FormFooterSaveBar';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { TenantSettingsDTO, TenantSettingsUpdateRequest } from '@/src/types/tenant-settings';
@@ -73,6 +74,10 @@ function TenantSettingsPageContent() {
       addressState: tenantSettings?.state ?? '',
       timezone: tenantSettings?.timezone ?? '',
       isOpen: tenantSettings?.isOpen ?? false,
+      kdsEnabled: tenantSettings?.kdsEnabled ?? true,
+      pdvEnabled: tenantSettings?.pdvEnabled ?? true,
+      realtimeEnabled: tenantSettings?.realtimeEnabled ?? true,
+      printingEnabled: tenantSettings?.printingEnabled ?? false,
     };
   }, [tenantSettings]);
 
@@ -97,6 +102,10 @@ function TenantSettingsPageContent() {
   const [timezone, setTimezone] = useState<string>('');
   const [currency, setCurrency] = useState<string>('');
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [kdsEnabled, setKdsEnabled] = useState<boolean>(true);
+  const [pdvEnabled, setPdvEnabled] = useState<boolean>(true);
+  const [realtimeEnabled, setRealtimeEnabled] = useState<boolean>(true);
+  const [printingEnabled, setPrintingEnabled] = useState<boolean>(false);
 
   const applyToForm = (dto: TenantSettingsDTO | null) => {
     if (!dto) {
@@ -118,6 +127,10 @@ function TenantSettingsPageContent() {
       setTimezone(initialFromSession.timezone);
       setCurrency('');
       setIsOpen(initialFromSession.isOpen);
+      setKdsEnabled(initialFromSession.kdsEnabled);
+      setPdvEnabled(initialFromSession.pdvEnabled);
+      setRealtimeEnabled(initialFromSession.realtimeEnabled);
+      setPrintingEnabled(initialFromSession.printingEnabled);
       return;
     }
 
@@ -139,6 +152,10 @@ function TenantSettingsPageContent() {
     setTimezone(dto.timezone ?? '');
     setCurrency(dto.currency ?? '');
     setIsOpen(dto.isOpen);
+    setKdsEnabled(dto.kdsEnabled);
+    setPdvEnabled(dto.pdvEnabled);
+    setRealtimeEnabled(dto.realtimeEnabled);
+    setPrintingEnabled(dto.printingEnabled);
   };
 
   useEffect(() => {
@@ -164,7 +181,7 @@ function TenantSettingsPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, initialFromSession.tradeName, initialFromSession.addressCity, initialFromSession.addressState, initialFromSession.timezone, initialFromSession.isOpen]);
+  }, [accessToken, initialFromSession.tradeName, initialFromSession.addressCity, initialFromSession.addressState, initialFromSession.timezone, initialFromSession.isOpen, initialFromSession.kdsEnabled, initialFromSession.pdvEnabled, initialFromSession.realtimeEnabled, initialFromSession.printingEnabled]);
 
   async function save(): Promise<void> {
     if (!accessToken) return;
@@ -205,6 +222,10 @@ function TenantSettingsPageContent() {
         longitude: parsedLongitude as number | null,
         timezone: normalizeText(timezone),
         currency: normalizeText(currency),
+        kdsEnabled,
+        pdvEnabled,
+        realtimeEnabled,
+        printingEnabled,
         isOpen,
       };
 
@@ -250,14 +271,22 @@ function TenantSettingsPageContent() {
         addressState !== (settings.addressState ?? '' ) ||
         timezone !== (settings.timezone ?? '' ) ||
         currency !== (settings.currency ?? '' ) ||
-        isOpen !== settings.isOpen)) ||
+        isOpen !== settings.isOpen ||
+        kdsEnabled !== settings.kdsEnabled ||
+        pdvEnabled !== settings.pdvEnabled ||
+        realtimeEnabled !== settings.realtimeEnabled ||
+        printingEnabled !== settings.printingEnabled)) ||
     (settings === null &&
       (tradeName !== initialFromSession.tradeName ||
         addressCity !== initialFromSession.addressCity ||
         addressState !== initialFromSession.addressState ||
         timezone !== initialFromSession.timezone ||
         isOpen !== initialFromSession.isOpen ||
-        currency !== ''));
+        currency !== '' ||
+        kdsEnabled !== initialFromSession.kdsEnabled ||
+        pdvEnabled !== initialFromSession.pdvEnabled ||
+        realtimeEnabled !== initialFromSession.realtimeEnabled ||
+        printingEnabled !== initialFromSession.printingEnabled));
 
   return (
     <form
@@ -412,11 +441,44 @@ function TenantSettingsPageContent() {
                   <div className="font-medium">Loja aberta</div>
                   <div className="text-sm text-muted-foreground">Usado para exibir aberto/fechado</div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={isOpen}
-                  onChange={(e) => setIsOpen(e.target.checked)}
-                />
+                <Switch checked={isOpen} onCheckedChange={setIsOpen} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Operação ao Vivo</CardTitle>
+              <CardDescription>Ativações por tenant que afetam fluxo em tempo real</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <div className="font-medium">Tempo real</div>
+                  <div className="text-sm text-muted-foreground">Atualizações automáticas entre módulos</div>
+                </div>
+                <Switch checked={realtimeEnabled} onCheckedChange={setRealtimeEnabled} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <div className="font-medium">KDS ativo</div>
+                  <div className="text-sm text-muted-foreground">Exibição contínua para cozinha</div>
+                </div>
+                <Switch checked={kdsEnabled} onCheckedChange={setKdsEnabled} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <div className="font-medium">PDV ativo</div>
+                  <div className="text-sm text-muted-foreground">Ponto de venda disponível</div>
+                </div>
+                <Switch checked={pdvEnabled} onCheckedChange={setPdvEnabled} />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <div className="font-medium">Impressão automática</div>
+                  <div className="text-sm text-muted-foreground">Pedidos e comprovantes</div>
+                </div>
+                <Switch checked={printingEnabled} onCheckedChange={setPrintingEnabled} />
               </div>
             </CardContent>
           </Card>

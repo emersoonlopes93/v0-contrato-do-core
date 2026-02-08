@@ -12,14 +12,14 @@ type RealtimeContextValue = {
 const RealtimeContext = createContext<RealtimeContextValue | undefined>(undefined);
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
-  const { user, tenantId, accessToken, isLoading, logout } = useSession();
+  const { user, tenantId, accessToken, isLoading, logout, tenantSettings } = useSession();
   const [client, setClient] = useState<RealtimeClient | null>(null);
   const lastTenantIdRef = useRef<string | null>(null);
   const lastTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) {
+    if (!user || tenantSettings?.realtimeEnabled === false) {
       if (client) {
         client.disconnect();
         setClient(null);
@@ -50,7 +50,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     } catch {
       logout();
     }
-  }, [user, tenantId, accessToken, isLoading, logout]);
+  }, [user, tenantId, accessToken, isLoading, logout, tenantSettings?.realtimeEnabled, client]);
 
   const value = useMemo<RealtimeContextValue>(
     () => ({
@@ -69,4 +69,3 @@ export function useRealtimeContext(): RealtimeContextValue {
   }
   return ctx;
 }
-

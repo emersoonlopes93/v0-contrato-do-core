@@ -21,6 +21,10 @@ export type TenantSettingsDTO = {
   paymentProviderDefault: string | null;
   paymentPublicKey: string | null;
   paymentPrivateKey: string | null;
+  kdsEnabled: boolean;
+  pdvEnabled: boolean;
+  realtimeEnabled: boolean;
+  printingEnabled: boolean;
   isOpen: boolean;
   createdAt: string;
   updatedAt: string;
@@ -44,6 +48,10 @@ export type TenantSettingsUpdateRequest = Partial<{
   longitude: number | null;
   timezone: string | null;
   currency: string | null;
+  kdsEnabled: boolean;
+  pdvEnabled: boolean;
+  realtimeEnabled: boolean;
+  printingEnabled: boolean;
   isOpen: boolean;
 }>;
 
@@ -56,6 +64,10 @@ export type TenantSettingsSessionDTO = {
   paymentProviderDefault: string | null;
   paymentPublicKey: string | null;
   paymentPrivateKey: string | null;
+  kdsEnabled: boolean;
+  pdvEnabled: boolean;
+  realtimeEnabled: boolean;
+  printingEnabled: boolean;
 };
 
 export type TenantSettingsServiceContract = {
