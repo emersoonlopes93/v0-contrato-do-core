@@ -15,11 +15,72 @@ import type {
 } from '@/src/types/designer-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { ProductCard } from '@/src/tenant/components/cards/ProductCard';
 
 const STORAGE_KEY_PREFIX = 'designer-menu:';
+const paletteOptions: SafeColorPalette[] = [
+  'white',
+  'black',
+  'gray',
+  'blue',
+  'green',
+  'red',
+  'yellow',
+  'purple',
+  'pink',
+  'orange',
+];
+const paletteLabels: Record<SafeColorPalette, string> = {
+  white: 'Branco',
+  black: 'Preto',
+  gray: 'Cinza',
+  blue: 'Azul',
+  green: 'Verde',
+  red: 'Vermelho',
+  yellow: 'Amarelo',
+  purple: 'Roxo',
+  pink: 'Rosa',
+  orange: 'Laranja',
+};
+type PaletteTone = 'base' | 'soft' | 'text' | 'foreground';
+
+const getPaletteValue = (palette: SafeColorPalette, tone: PaletteTone): string => {
+  const suffix = tone === 'base' ? '' : `-${tone}`;
+  return `hsl(var(--palette-${palette}${suffix}))`;
+};
+
+const previewProducts = [
+  {
+    id: 'p1',
+    name: 'Burger premium',
+    description: 'Blend artesanal, queijo e molho especial',
+    price: 34.9,
+    promoPrice: 29.9,
+  },
+  {
+    id: 'p2',
+    name: 'Pizza marguerita',
+    description: 'Mussarela, tomate e manjericão',
+    price: 54.9,
+    promoPrice: null,
+  },
+  {
+    id: 'p3',
+    name: 'Salada fresca',
+    description: 'Mix de folhas, tomate e molho cítrico',
+    price: 24.9,
+    promoPrice: null,
+  },
+  {
+    id: 'p4',
+    name: 'Sobremesa da casa',
+    description: 'Doce cremoso com frutas',
+    price: 18.9,
+    promoPrice: null,
+  },
+];
 
 function loadConfig(tenantSlug: string): DesignerMenuConfigDTO {
   try {
@@ -49,6 +110,7 @@ function getDefaultConfig(): DesignerMenuConfigDTO {
     layoutMode: 'grid',
     showSearchBar: true,
     showAddButton: true,
+    showWelcomeMessage: true,
     imageStyle: 'square',
     
     // Cores padrão
@@ -99,6 +161,7 @@ function DesignerMenuPageContent() {
       config.layoutMode !== initialConfig.layoutMode ||
       config.showSearchBar !== initialConfig.showSearchBar ||
       config.showAddButton !== initialConfig.showAddButton ||
+      config.showWelcomeMessage !== initialConfig.showWelcomeMessage ||
       config.imageStyle !== initialConfig.imageStyle ||
       config.headerTextColor !== initialConfig.headerTextColor ||
       config.headerButtonColor !== initialConfig.headerButtonColor ||
@@ -140,11 +203,21 @@ function DesignerMenuPageContent() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Designer do Cardápio</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Personalize o visual do cardápio público sem alterar regras de negócio.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Designer do Cardápio</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Personalize o visual do cardápio público sem alterar regras de negócio.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setConfig(getDefaultConfig())}
+        >
+          Restaurar padrão
+        </Button>
       </div>
 
       {error && (
@@ -159,18 +232,18 @@ function DesignerMenuPageContent() {
         </Alert>
       )}
 
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Header do Cardápio</CardTitle>
+              <CardTitle>Estrutura do Cardápio</CardTitle>
               <CardDescription>
-                Controle visual da área superior e barra de busca.
+                Header, busca e mensagem de boas-vindas organizados para o cliente final.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Estilo do header</p>
+                <p className="text-sm font-medium text-foreground">Header do cardápio</p>
                 <Tabs
                   value={config.headerVariant}
                   onValueChange={(value) =>
@@ -185,14 +258,11 @@ function DesignerMenuPageContent() {
                     <TabsTrigger value="solid-primary">Bloco em destaque</TabsTrigger>
                   </TabsList>
                 </Tabs>
-                <p className="text-xs text-muted-foreground">
-                  Usa apenas tokens de tema e CSS variables seguros.
-                </p>
               </div>
 
               <div className="space-y-2">
                 <p className="text-sm font-medium text-foreground">Busca</p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     size="sm"
@@ -204,7 +274,7 @@ function DesignerMenuPageContent() {
                       }))
                     }
                   >
-                    Exibir barra de busca
+                    Exibir
                   </Button>
                   <Button
                     type="button"
@@ -217,7 +287,39 @@ function DesignerMenuPageContent() {
                       }))
                     }
                   >
-                    Esconder busca
+                    Ocultar
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Mensagem de boas-vindas</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={config.showWelcomeMessage ? 'default' : 'outline'}
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        showWelcomeMessage: true,
+                      }))
+                    }
+                  >
+                    Exibir
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={!config.showWelcomeMessage ? 'default' : 'outline'}
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        showWelcomeMessage: false,
+                      }))
+                    }
+                  >
+                    Ocultar
                   </Button>
                 </div>
               </div>
@@ -226,14 +328,14 @@ function DesignerMenuPageContent() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Layout dos produtos</CardTitle>
+              <CardTitle>Layout dos Produtos</CardTitle>
               <CardDescription>
-                Defina como os cards aparecem para o cliente final.
+                Escolha o layout e o estilo visual dos cards.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5">
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Modo de exibição</p>
+                <p className="text-sm font-medium text-foreground">Layout dos cards</p>
                 <Tabs
                   value={config.layoutMode}
                   onValueChange={(value) =>
@@ -273,33 +375,54 @@ function DesignerMenuPageContent() {
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="show-add-button">Botão "Adicionar"</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Exibir botão de adicionar em cada item
-                  </p>
-                </div>
-                <Switch
-                  id="show-add-button"
-                  checked={config.showAddButton}
-                  onCheckedChange={(checked) =>
+          <Card>
+            <CardHeader>
+              <CardTitle>Ações</CardTitle>
+              <CardDescription>
+                Configure se o cliente vê o botão de adicionar.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm font-medium text-foreground">Botão "Adicionar"</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={config.showAddButton ? 'default' : 'outline'}
+                  onClick={() =>
                     setConfig((prev) => ({
                       ...prev,
-                      showAddButton: checked,
+                      showAddButton: true,
                     }))
                   }
-                />
+                >
+                  Exibir
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={!config.showAddButton ? 'default' : 'outline'}
+                  onClick={() =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      showAddButton: false,
+                    }))
+                  }
+                >
+                  Não exibir
+                </Button>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Controle de Cores</CardTitle>
+              <CardTitle>Cores & Estilo Visual</CardTitle>
               <CardDescription>
-                Personalize as cores do cardápio com paletas seguras.
+                Paletas seguras e consistentes para todo o cardápio.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -319,9 +442,9 @@ function DesignerMenuPageContent() {
                       <SelectValue placeholder="Cor do texto" />
                     </SelectTrigger>
                     <SelectContent>
-                      {['gray', 'blue', 'green', 'red', 'yellow', 'purple', 'pink', 'orange'].map((color) => (
+                      {paletteOptions.map((color) => (
                         <SelectItem key={color} value={color}>
-                          {color.charAt(0).toUpperCase() + color.slice(1)}
+                          {paletteLabels[color]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -343,9 +466,9 @@ function DesignerMenuPageContent() {
                       <SelectValue placeholder="Cor dos botões" />
                     </SelectTrigger>
                     <SelectContent>
-                      {['blue', 'green', 'red', 'yellow', 'purple', 'pink', 'orange', 'gray'].map((color) => (
+                      {paletteOptions.map((color) => (
                         <SelectItem key={color} value={color}>
-                          {color.charAt(0).toUpperCase() + color.slice(1)}
+                          {paletteLabels[color]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -367,9 +490,9 @@ function DesignerMenuPageContent() {
                       <SelectValue placeholder="Fundo do logo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {['gray', 'blue', 'green', 'red', 'yellow', 'purple', 'pink', 'orange'].map((color) => (
+                      {paletteOptions.map((color) => (
                         <SelectItem key={color} value={color}>
-                          {color.charAt(0).toUpperCase() + color.slice(1)}
+                          {paletteLabels[color]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -391,9 +514,9 @@ function DesignerMenuPageContent() {
                       <SelectValue placeholder="Fundo dos títulos" />
                     </SelectTrigger>
                     <SelectContent>
-                      {['gray', 'blue', 'green', 'red', 'yellow', 'purple', 'pink', 'orange'].map((color) => (
+                      {paletteOptions.map((color) => (
                         <SelectItem key={color} value={color}>
-                          {color.charAt(0).toUpperCase() + color.slice(1)}
+                          {paletteLabels[color]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -415,9 +538,9 @@ function DesignerMenuPageContent() {
                       <SelectValue placeholder="Fundo da mensagem" />
                     </SelectTrigger>
                     <SelectContent>
-                      {['blue', 'green', 'red', 'yellow', 'purple', 'pink', 'orange', 'gray'].map((color) => (
+                      {paletteOptions.map((color) => (
                         <SelectItem key={color} value={color}>
-                          {color.charAt(0).toUpperCase() + color.slice(1)}
+                          {paletteLabels[color]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -439,9 +562,9 @@ function DesignerMenuPageContent() {
                       <SelectValue placeholder="Texto da mensagem" />
                     </SelectTrigger>
                     <SelectContent>
-                      {['gray', 'blue', 'green', 'red', 'yellow', 'purple', 'pink', 'orange'].map((color) => (
+                      {paletteOptions.map((color) => (
                         <SelectItem key={color} value={color}>
-                          {color.charAt(0).toUpperCase() + color.slice(1)}
+                          {paletteLabels[color]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -450,198 +573,203 @@ function DesignerMenuPageContent() {
               </div>
             </CardContent>
           </Card>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Ícones Personalizados</CardTitle>
-            <CardDescription>
-              Adicione ícones SVG ou PNG para atalhos do cardápio.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="rounded-lg border border-dashed p-6 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                  <svg
-                    className="h-6 w-6 text-muted-foreground"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
+          <Card>
+            <CardHeader>
+              <CardTitle>Ícones Personalizados</CardTitle>
+              <CardDescription>
+                Adicione ícones SVG ou PNG para atalhos do cardápio.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="rounded-lg border border-dashed p-6 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                    <svg
+                      className="h-6 w-6 text-muted-foreground"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Upload de ícones em breve
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Suporte para SVG e PNG com normalização automática
+                  </p>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Upload de ícones em breve
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Suporte para SVG e PNG com normalização automática
-                </p>
-              </div>
-              
-              {config.customIcons.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Ícones configurados</Label>
-                  <div className="grid gap-2">
-                    {config.customIcons.map((icon) => (
-                      <div
-                        key={icon.id}
-                        className="flex items-center justify-between rounded-lg border p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={icon.url}
-                            alt={icon.name}
-                            className="h-8 w-8 object-contain"
-                          />
-                          <div>
-                            <p className="text-sm font-medium">{icon.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {icon.fileType.toUpperCase()} • {icon.width}x{icon.height}
-                            </p>
+                
+                {config.customIcons.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Ícones configurados</Label>
+                    <div className="grid gap-2">
+                      {config.customIcons.map((icon) => (
+                        <div
+                          key={icon.id}
+                          className="flex items-center justify-between rounded-lg border p-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={icon.url}
+                              alt={icon.name}
+                              className="h-8 w-8 object-contain"
+                            />
+                            <div>
+                              <p className="text-sm font-medium">{icon.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {icon.fileType.toUpperCase()} • {icon.width}x{icon.height}
+                              </p>
+                            </div>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6 md:sticky md:top-6 self-start">
+          <Card>
+            <CardHeader>
+              <CardTitle>Preview em Tempo Real</CardTitle>
+              <CardDescription>
+                Visualização fiel do cardápio público conforme você ajusta.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-2xl border bg-background">
+                <div
+                  className={cn(
+                    'rounded-2xl border-b px-4 py-4',
+                    config.headerVariant === 'solid-primary' && 'bg-primary',
+                  )}
+                  style={{
+                    color: getPaletteValue(
+                      config.headerTextColor,
+                      config.headerVariant === 'solid-primary' ? 'foreground' : 'text',
+                    ),
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="flex h-12 w-12 items-center justify-center rounded-xl"
+                      style={{
+                        backgroundColor: getPaletteValue(config.logoBackgroundColor, 'soft'),
+                        color: getPaletteValue(config.logoBackgroundColor, 'text'),
+                      }}
+                    >
+                      <span className="text-xs font-semibold">Logo</span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-base font-semibold leading-tight">Restaurante Exemplo</div>
+                      <div className="text-xs">Centro · Cidade</div>
+                    </div>
+                  </div>
+
+                  {config.showSearchBar && (
+                    <div className="mt-3">
+                      <div
+                        className="h-10 w-full rounded-full border px-3 text-xs"
+                        style={{
+                          borderColor: getPaletteValue(config.headerButtonColor, 'base'),
+                        }}
+                      >
+                        Buscar no cardápio
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-3 flex gap-2 overflow-hidden">
+                    {['Combos', 'Bebidas', 'Sobremesas'].map((label, index) => (
+                      <div
+                        key={label}
+                        className="rounded-full border px-3 py-1 text-[11px] font-semibold"
+                        style={
+                          index === 0
+                            ? {
+                                backgroundColor: getPaletteValue(config.headerButtonColor, 'base'),
+                                color: getPaletteValue(config.headerButtonColor, 'foreground'),
+                                borderColor: getPaletteValue(config.headerButtonColor, 'base'),
+                              }
+                            : {
+                                backgroundColor: getPaletteValue(config.headerButtonColor, 'soft'),
+                                color: getPaletteValue(config.headerButtonColor, 'text'),
+                                borderColor: getPaletteValue(config.headerButtonColor, 'base'),
+                              }
+                        }
+                      >
+                        {label}
                       </div>
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle>Preview simplificado</CardTitle>
-            <CardDescription>
-              Representação visual de alto nível do layout selecionado.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div
-              className={cn(
-                'rounded-xl border bg-background p-4',
-                config.headerVariant === 'solid-primary' && 'bg-primary/5',
-              )}
-            >
-              {/* Header Preview */}
-              <div
-                className={cn(
-                  'rounded-lg border px-4 py-3 mb-4',
-                  config.headerVariant === 'solid-primary'
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background',
-                )}
-                style={{
-                  color: config.headerVariant === 'solid-primary' ? undefined : `var(--${config.headerTextColor})`,
-                  backgroundColor: config.headerVariant === 'solid-primary' 
-                    ? undefined 
-                    : `var(--${config.logoBackgroundColor}-100)`,
-                }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div 
-                    className="h-8 w-28 rounded"
-                    style={{
-                      backgroundColor: config.headerVariant === 'solid-primary'
-                        ? 'rgba(255, 255, 255, 0.2)'
-                        : `var(--${config.logoBackgroundColor}-200)`,
-                    }}
-                  />
-                  {config.showSearchBar && (
-                    <div 
-                      className="h-8 flex-1 rounded-full border"
-                      style={{
-                        backgroundColor: config.headerVariant === 'solid-primary'
-                          ? 'rgba(255, 255, 255, 0.1)'
-                          : 'var(--background)',
-                        borderColor: config.headerVariant === 'solid-primary'
-                          ? 'rgba(255, 255, 255, 0.3)'
-                          : `var(--${config.headerButtonColor}-200)`,
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Welcome Message Preview */}
-              <div
-                className="rounded-lg p-3 mb-4"
-                style={{
-                  backgroundColor: `var(--${config.welcomeBackgroundColor}-100)`,
-                  color: `var(--${config.welcomeTextColor}-800)`,
-                }}
-              >
-                <div className="text-center text-sm">
-                  Mensagem de boas-vindas
-                </div>
-              </div>
-
-              {/* Group Title Preview */}
-              <div
-                className="rounded-t-lg p-3"
-                style={{
-                  backgroundColor: `var(--${config.groupTitleBackgroundColor}-100)`,
-                  color: `var(--${config.groupTitleBackgroundColor}-800)`,
-                }}
-              >
-                <div className="font-medium">Categoria do Produto</div>
-              </div>
-
-              <div className="mt-4">
-                <div
-                  className={cn(
-                    'gap-3',
-                    config.layoutMode === 'grid'
-                      ? 'grid grid-cols-1 md:grid-cols-2'
-                      : 'space-y-2',
-                  )}
-                >
-                  {Array.from({ length: 4 }).map((_, index) => (
+                {config.showWelcomeMessage && (
+                  <div className="px-4 pt-4">
                     <div
-                      key={index}
-                      className={cn(
-                        'rounded-lg border bg-background p-3',
-                        config.layoutMode === 'list' && 'flex items-center gap-3',
-                      )}
+                      className="rounded-xl px-4 py-3 text-center text-sm font-medium"
+                      style={{
+                        backgroundColor: getPaletteValue(config.welcomeBackgroundColor, 'soft'),
+                        color: getPaletteValue(config.welcomeTextColor, 'text'),
+                      }}
                     >
-                      <div 
-                        className={cn(
-                          'bg-muted',
-                          config.imageStyle === 'square' && 'h-16 w-16 rounded-lg',
-                          config.imageStyle === 'rectangle' && 'h-16 w-24 rounded',
-                          config.imageStyle === 'rounded' && 'h-16 w-16 rounded-2xl',
-                          config.imageStyle === 'full-bleed' && 'h-16 w-16 rounded-lg',
-                        )}
-                      />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3 w-3/4 rounded bg-muted" />
-                        <div className="h-3 w-1/2 rounded bg-muted" />
-                        <div className="flex items-center justify-between">
-                          <div className="h-4 w-1/3 rounded bg-muted" />
-                          {config.showAddButton && (
-                            <div 
-                              className="h-6 w-6 rounded-full"
-                              style={{
-                                backgroundColor: `var(--${config.headerButtonColor}-500)`,
-                              }}
-                            />
-                          )}
-                        </div>
-                      </div>
+                      Bem-vindo ao nosso cardápio!
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                <div className="px-4 py-4 space-y-4">
+                  <div
+                    className="flex items-center justify-between gap-2 rounded-xl px-3 py-2"
+                    style={{
+                      backgroundColor: getPaletteValue(config.groupTitleBackgroundColor, 'soft'),
+                      color: getPaletteValue(config.groupTitleBackgroundColor, 'text'),
+                    }}
+                  >
+                    <span className="text-sm font-semibold">Categoria em destaque</span>
+                    <span className="text-xs">4 itens</span>
+                  </div>
+
+                  <div
+                    className={
+                      config.layoutMode === 'list'
+                        ? 'space-y-3'
+                        : config.layoutMode === 'compact'
+                        ? 'grid grid-cols-2 gap-3'
+                        : 'grid grid-cols-1 gap-3 md:grid-cols-2'
+                    }
+                  >
+                    {previewProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        variant="public"
+                        name={product.name}
+                        description={product.description}
+                        price={product.price}
+                        promoPrice={product.promoPrice}
+                        imageUrl={null}
+                        currency="BRL"
+                        showAddButton={config.showAddButton}
+                        imageStyle={config.imageStyle}
+                        compact={config.layoutMode === 'compact'}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {hasChanges && (

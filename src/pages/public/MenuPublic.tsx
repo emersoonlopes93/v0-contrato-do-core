@@ -16,7 +16,7 @@ import { ModalBody } from '@/components/modal/ModalBody';
 import { ModalFooter } from '@/components/modal/ModalFooter';
 import { getContrastRatioFromHsl, parseHslTriplet } from '@/lib/color';
 import { cn } from '@/lib/utils';
-import type { DesignerMenuConfigDTO } from '@/src/types/designer-menu';
+import type { DesignerMenuConfigDTO, SafeColorPalette } from '@/src/types/designer-menu';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -145,6 +145,14 @@ function loadDesignerConfigForTenant(tenantSlug: string): DesignerMenuRuntimeCon
     return null;
   }
 }
+
+type PaletteTone = 'base' | 'soft' | 'text' | 'foreground';
+
+const getPaletteValue = (palette: SafeColorPalette | undefined, tone: PaletteTone): string => {
+  const safePalette: SafeColorPalette = palette ?? 'blue';
+  const suffix = tone === 'base' ? '' : `-${tone}`;
+  return `hsl(var(--palette-${safePalette}${suffix}))`;
+};
 
 function parseHHMMToMinutes(value: string): number | null {
   const trimmed = value.trim();
@@ -758,6 +766,29 @@ export function MenuPublicPage() {
     }
   }
 
+  const headerTextPalette = designerConfig?.headerTextColor ?? 'gray';
+  const headerButtonPalette = designerConfig?.headerButtonColor ?? 'blue';
+  const logoPalette = designerConfig?.logoBackgroundColor ?? 'gray';
+  const groupTitlePalette = designerConfig?.groupTitleBackgroundColor ?? 'gray';
+  const welcomeBackgroundPalette = designerConfig?.welcomeBackgroundColor ?? 'blue';
+  const welcomeTextPalette = designerConfig?.welcomeTextColor ?? 'gray';
+  const showWelcomeMessage = designerConfig?.showWelcomeMessage ?? true;
+
+  const headerTextColor = getPaletteValue(
+    headerTextPalette,
+    designerConfig?.headerVariant === 'solid-primary' ? 'foreground' : 'text',
+  );
+  const headerButtonBg = getPaletteValue(headerButtonPalette, 'base');
+  const headerButtonSoft = getPaletteValue(headerButtonPalette, 'soft');
+  const headerButtonText = getPaletteValue(headerButtonPalette, 'text');
+  const headerButtonFg = getPaletteValue(headerButtonPalette, 'foreground');
+  const logoBg = getPaletteValue(logoPalette, 'soft');
+  const logoText = getPaletteValue(logoPalette, 'text');
+  const groupTitleBg = getPaletteValue(groupTitlePalette, 'soft');
+  const groupTitleText = getPaletteValue(groupTitlePalette, 'text');
+  const welcomeBackground = getPaletteValue(welcomeBackgroundPalette, 'soft');
+  const welcomeText = getPaletteValue(welcomeTextPalette, 'text');
+
   if (notFound) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -777,12 +808,15 @@ export function MenuPublicPage() {
         <header
           className={cn(
             'border-b bg-gradient-to-b from-background to-background-surface',
-            designerConfig?.headerVariant === 'solid-primary' && 'bg-primary text-primary-foreground',
+            designerConfig?.headerVariant === 'solid-primary' && 'bg-primary',
           )}
         >
           <div className="space-y-3 px-4 py-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary-soft">
+              <div
+                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
+                style={{ backgroundColor: logoBg, color: logoText }}
+              >
                 {logoUrl ? (
                   <img
                     src={logoUrl}
@@ -790,17 +824,17 @@ export function MenuPublicPage() {
                     className="h-10 w-10 object-contain"
                   />
                 ) : (
-                  <span className="text-sm font-semibold text-primary">
+                  <span className="text-sm font-semibold">
                     {tenantName.slice(0, 2).toUpperCase()}
                   </span>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-lg font-bold leading-tight text-foreground">
+                <h1 className="truncate text-lg font-bold leading-tight" style={{ color: headerTextColor }}>
                   {tenantName}
                 </h1>
                 {data?.tenant.address.city && data.tenant.address.state && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs" style={{ color: headerTextColor }}>
                     {data.tenant.address.city} - {data.tenant.address.state}
                   </p>
                 )}
@@ -849,6 +883,7 @@ export function MenuPublicPage() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Buscar no cardápio"
                     className="h-11 w-full rounded-full border bg-background pl-10 pr-3 text-sm"
+                    style={{ borderColor: headerButtonBg }}
                   />
                 </div>
               )}
@@ -865,10 +900,11 @@ export function MenuPublicPage() {
                         setActiveCategoryId(category.id);
                       }
                     }}
-                    className={
+                    className="whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold"
+                    style={
                       activeCategoryId === category.id
-                        ? 'whitespace-nowrap rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground'
-                        : 'whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold text-foreground'
+                        ? { backgroundColor: headerButtonBg, color: headerButtonFg, borderColor: headerButtonBg }
+                        : { backgroundColor: headerButtonSoft, color: headerButtonText, borderColor: headerButtonBg }
                     }
                   >
                     {category.name}
@@ -892,6 +928,16 @@ export function MenuPublicPage() {
 
           {!isLoading && !error && data && (
             <div className="space-y-4 md:space-y-5">
+              {showWelcomeMessage && (
+                <section>
+                  <div
+                    className="rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                    style={{ backgroundColor: welcomeBackground, color: welcomeText }}
+                  >
+                    Bem-vindo ao nosso cardápio!
+                  </div>
+                </section>
+              )}
               {popularProducts.length > 0 && (
                 <section className="space-y-2.5 md:space-y-3">
                   <div className="flex items-center justify-between gap-3">
@@ -922,6 +968,7 @@ export function MenuPublicPage() {
                             onClick={() => openProduct(product)}
                             showAddButton={designerConfig?.showAddButton ?? true}
                             imageStyle={designerConfig?.imageStyle}
+                            compact={designerConfig?.layoutMode === 'compact'}
                           />
                         </div>
                       );
@@ -952,11 +999,12 @@ export function MenuPublicPage() {
                       }}
                       data-category-id={category.id}
                     >
-                      <div className="flex items-baseline justify-between gap-2.5">
+                      <div
+                        className="flex items-baseline justify-between gap-2.5 rounded-xl px-3 py-2"
+                        style={{ backgroundColor: groupTitleBg, color: groupTitleText }}
+                      >
                         <h2 className="text-base font-semibold md:text-lg">{category.name}</h2>
-                        <span className="text-[11px] text-muted-foreground md:text-xs">
-                          {products.length} itens
-                        </span>
+                        <span className="text-[11px] md:text-xs">{products.length} itens</span>
                       </div>
                       {category.description && (
                         <p className="text-sm text-muted-foreground">{category.description}</p>
@@ -970,6 +1018,8 @@ export function MenuPublicPage() {
                           className={
                             designerConfig?.layoutMode === 'list'
                               ? 'space-y-3'
+                              : designerConfig?.layoutMode === 'compact'
+                              ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4'
                               : 'grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
                           }
                         >
@@ -1001,6 +1051,7 @@ export function MenuPublicPage() {
                               onClick={() => openProduct(product)}
                               showAddButton={designerConfig?.showAddButton ?? true}
                               imageStyle={designerConfig?.imageStyle}
+                              compact={designerConfig?.layoutMode === 'compact'}
                             />
                             );
                           })}
@@ -1583,6 +1634,7 @@ export function MenuPublicPage() {
                           }}
                           showAddButton={designerConfig?.showAddButton ?? true}
                           imageStyle={designerConfig?.imageStyle}
+                          compact={designerConfig?.layoutMode === 'compact'}
                         />
                       </div>
                     );

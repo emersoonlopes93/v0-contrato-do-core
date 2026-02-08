@@ -51,6 +51,7 @@ type ProductCardProps = {
   className?: string;
   showAddButton?: boolean;
   imageStyle?: DesignerMenuImageStyle;
+  compact?: boolean;
 };
 
 function formatCurrency(value: number, currency: string): string {
@@ -79,6 +80,7 @@ export function ProductCard({
   className,
   showAddButton,
   imageStyle,
+  compact,
 }: ProductCardProps) {
   const isPublic = variant === 'public';
   const isAdmin = variant === 'admin';
@@ -88,24 +90,130 @@ export function ProductCard({
   const displayPrice = hasPromo ? promoPrice : price;
 
   const effectiveShowAddButton = !isPublic ? false : showAddButton !== false;
+  const isCompact = compact === true;
+  const isFullBleed = imageStyle === 'full-bleed';
 
   const publicImageWrapperClass =
     imageStyle === 'rectangle'
-      ? 'relative h-20 w-28 flex-shrink-0 overflow-hidden rounded-lg bg-muted md:h-32 md:w-full'
+      ? cn(
+          'relative flex-shrink-0 overflow-hidden rounded-lg bg-muted',
+          isCompact ? 'h-16 w-20 md:h-28 md:w-full' : 'h-20 w-28 md:h-32 md:w-full',
+        )
       : imageStyle === 'rounded'
-      ? 'relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-2xl bg-muted md:h-40 md:w-full'
+      ? cn(
+          'relative flex-shrink-0 overflow-hidden rounded-2xl bg-muted',
+          isCompact ? 'h-16 w-16 md:h-28 md:w-full' : 'h-20 w-20 md:h-40 md:w-full',
+        )
       : imageStyle === 'full-bleed'
-      ? 'relative h-24 w-full flex-shrink-0 overflow-hidden rounded-none bg-muted md:h-48'
-      : 'relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted md:h-40 md:w-full';
+      ? cn(
+          'relative w-full flex-shrink-0 overflow-hidden rounded-none bg-muted',
+          isCompact ? 'h-32 md:h-40' : 'h-40 md:h-56',
+        )
+      : cn(
+          'relative flex-shrink-0 overflow-hidden rounded-lg bg-muted',
+          isCompact ? 'h-16 w-16 md:h-28 md:w-full' : 'h-20 w-20 md:h-40 md:w-full',
+        );
 
   if (isPublic) {
+    if (isFullBleed) {
+      return (
+        <BaseCard
+          onClick={onClick}
+          hover
+          className={cn('overflow-hidden', status === 'inactive' && 'opacity-60', className)}
+        >
+          <div className={cn('relative', isCompact ? 'h-40' : 'h-48 md:h-56')}>
+            <img
+              src={imageUrl || FALLBACK_IMAGE}
+              alt={name}
+              className="h-full w-full object-cover"
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to top, hsl(var(--overlay-strong) / 0.85), hsl(var(--overlay-strong) / 0.55), hsl(var(--overlay-strong) / 0.05))',
+              }}
+            />
+            {hasPromo && (
+              <Badge className="absolute right-3 top-3 bg-danger text-[10px] text-danger-foreground">
+                Promo
+              </Badge>
+            )}
+            {status === 'inactive' && (
+              <Badge variant="secondary" className="absolute left-3 top-3 text-[10px]">
+                Indisponível
+              </Badge>
+            )}
+            <div
+              className="absolute inset-x-0 bottom-0 space-y-3 px-4 pb-4"
+              style={{ color: 'hsl(var(--overlay-foreground))' }}
+            >
+              <div className="space-y-1">
+                <h3 className={cn('line-clamp-2 font-semibold leading-tight', isCompact ? 'text-sm' : 'text-base')}>
+                  {name}
+                </h3>
+                {description && (
+                  <p
+                    className="line-clamp-2 text-xs"
+                    style={{ color: 'hsl(var(--overlay-foreground-muted))' }}
+                  >
+                    {description}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col">
+                  {hasPromo && (
+                    <span
+                      className="text-xs line-through"
+                      style={{ color: 'hsl(var(--overlay-foreground-muted))' }}
+                    >
+                      {formatCurrency(price, currency)}
+                    </span>
+                  )}
+                  <div className="flex items-baseline gap-1">
+                    <span className={cn('font-semibold', isCompact ? 'text-sm' : 'text-lg')}>
+                      {formatCurrency(displayPrice, currency)}
+                    </span>
+                    {priceLabel && (
+                      <span
+                        className="text-[11px]"
+                        style={{ color: 'hsl(var(--overlay-foreground-muted))' }}
+                      >
+                        / {priceLabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {effectiveShowAddButton && (
+                  <Button
+                    type="button"
+                    className="h-9 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (onClick) {
+                        onClick();
+                      }
+                    }}
+                  >
+                    Adicionar
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </BaseCard>
+      );
+    }
+
     return (
       <BaseCard
         onClick={onClick}
         hover
         className={cn('flex h-full flex-col overflow-hidden', status === 'inactive' && 'opacity-60', className)}
       >
-        <div className="flex flex-1 gap-3 px-3 pt-3 md:flex-col">
+        <div className={cn('flex flex-1 gap-3 md:flex-col', isCompact ? 'px-2 pt-2' : 'px-3 pt-3')}>
           <div className={publicImageWrapperClass}>
             <img
               src={imageUrl || FALLBACK_IMAGE}
@@ -123,24 +231,26 @@ export function ProductCard({
               </Badge>
             )}
           </div>
-          <div className="flex min-w-0 flex-1 flex-col justify-between py-1.5 md:py-2.5">
+          <div className={cn('flex min-w-0 flex-1 flex-col justify-between', isCompact ? 'py-1' : 'py-1.5 md:py-2.5')}>
             <div className="space-y-1">
-              <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground md:text-base">
+              <h3 className={cn('line-clamp-2 font-semibold leading-snug text-foreground', isCompact ? 'text-xs' : 'text-sm md:text-base')}>
                 {name}
               </h3>
               {description && (
-                <p className="line-clamp-1 text-xs text-muted-foreground">{description}</p>
+                <p className={cn('line-clamp-1 text-muted-foreground', isCompact ? 'text-[11px]' : 'text-xs')}>
+                  {description}
+                </p>
               )}
             </div>
             <div className="mt-2 flex items-end justify-between gap-2">
               <div className="flex flex-col leading-none">
                 {hasPromo && (
-                  <span className="text-xs text-muted-foreground line-through">
+                  <span className={cn('text-muted-foreground line-through', isCompact ? 'text-[11px]' : 'text-xs')}>
                     {formatCurrency(price, currency)}
                   </span>
                 )}
                 <div className="flex items-baseline gap-1">
-                  <span className="text-base font-semibold text-foreground md:text-lg">
+                  <span className={cn('font-semibold text-foreground', isCompact ? 'text-sm' : 'text-base md:text-lg')}>
                     {formatCurrency(displayPrice, currency)}
                   </span>
                   {priceLabel && (
@@ -152,10 +262,13 @@ export function ProductCard({
           </div>
         </div>
         {effectiveShowAddButton && (
-          <BaseCard.Footer className="border-t px-3 pb-3 pt-2">
+          <BaseCard.Footer className={cn('border-t', isCompact ? 'px-2 pb-2 pt-2' : 'px-3 pb-3 pt-2')}>
             <Button
               type="button"
-              className="h-11 w-full gap-2 rounded-full text-sm font-medium"
+              className={cn(
+                'w-full gap-2 rounded-full font-medium',
+                isCompact ? 'h-10 text-xs' : 'h-11 text-sm',
+              )}
               onClick={(event) => {
                 event.stopPropagation();
                 if (onClick) {

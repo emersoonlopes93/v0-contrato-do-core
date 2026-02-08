@@ -5,6 +5,8 @@ export type DesignerMenuLayoutMode = 'grid' | 'list' | 'compact';
 export type DesignerMenuImageStyle = 'square' | 'rectangle' | 'rounded' | 'full-bleed';
 
 export type SafeColorPalette = 
+  | 'white'
+  | 'black'
   | 'blue'
   | 'green' 
   | 'red'
@@ -19,6 +21,7 @@ export type DesignerMenuConfigDTO = {
   layoutMode: DesignerMenuLayoutMode;
   showSearchBar: boolean;
   showAddButton: boolean;
+  showWelcomeMessage: boolean;
   imageStyle: DesignerMenuImageStyle;
   
   // Cores
@@ -44,4 +47,3 @@ export type DesignerMenuStoredConfig = {
   tenantSlug: string;
   config: DesignerMenuConfigDTO;
 };
-
