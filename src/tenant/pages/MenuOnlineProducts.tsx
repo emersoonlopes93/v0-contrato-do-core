@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { withModuleGuard } from '@/src/tenant/components/ModuleGuard';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -101,7 +101,7 @@ function MenuOnlineProductsPageContent() {
   const [categoryOrder, setCategoryOrder] = useState<MenuOnlineCategoryDTO[]>([]);
 
   // Carregar dados
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!accessToken) {
       return;
     }
@@ -163,11 +163,11 @@ function MenuOnlineProductsPageContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [accessToken]);
 
   useEffect(() => {
     load();
-  }, [accessToken]);
+  }, [load]);
 
   // Resetar formulário
   const resetForm = () => {

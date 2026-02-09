@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -107,7 +107,7 @@ function TenantSettingsPageContent() {
   const [realtimeEnabled, setRealtimeEnabled] = useState<boolean>(true);
   const [printingEnabled, setPrintingEnabled] = useState<boolean>(false);
 
-  const applyToForm = (dto: TenantSettingsDTO | null) => {
+  const applyToForm = useCallback((dto: TenantSettingsDTO | null) => {
     if (!dto) {
       setTradeName(initialFromSession.tradeName);
       setLegalName('');
@@ -156,7 +156,7 @@ function TenantSettingsPageContent() {
     setPdvEnabled(dto.pdvEnabled);
     setRealtimeEnabled(dto.realtimeEnabled);
     setPrintingEnabled(dto.printingEnabled);
-  };
+  }, [initialFromSession]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -181,7 +181,7 @@ function TenantSettingsPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, initialFromSession.tradeName, initialFromSession.addressCity, initialFromSession.addressState, initialFromSession.timezone, initialFromSession.isOpen, initialFromSession.kdsEnabled, initialFromSession.pdvEnabled, initialFromSession.realtimeEnabled, initialFromSession.printingEnabled]);
+  }, [accessToken, applyToForm]);
 
   async function save(): Promise<void> {
     if (!accessToken) return;

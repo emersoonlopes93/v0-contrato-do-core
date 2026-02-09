@@ -15,12 +15,14 @@ import { manifest as cashierManifest } from '@/src/modules/cashier/src/module.co
 import { manifest as deliveryDriversManifest } from '@/src/modules/delivery-drivers/src/manifest';
 import { manifest as deliveryRoutesManifest } from '@/src/modules/delivery-routes/src/manifest';
 import { manifest as deliveryTrackingManifest } from '@/src/modules/delivery-tracking/src/manifest';
+import { manifest as deliveryPricingManifest } from '@/src/modules/delivery-pricing/src/manifest';
 import { kdsRoutes } from '@/src/modules/kds/src/routes';
 import { pdvRoutes } from '@/src/modules/pdv/src/routes';
 import { cashierRoutes } from '@/src/modules/cashier/src/routes';
 import { deliveryDriversRoutes } from '@/src/modules/delivery-drivers/src/routes';
 import { deliveryRoutes } from '@/src/modules/delivery-routes/src/routes';
 import { deliveryTrackingRoutes } from '@/src/modules/delivery-tracking/src/routes';
+import { deliveryPricingRoutes } from '@/src/modules/delivery-pricing/src/routes';
 
 export type TenantModuleRoute = {
   path: string;
@@ -42,6 +44,7 @@ const uiManifests: ModuleRegisterPayload[] = [
   deliveryDriversManifest,
   deliveryRoutesManifest,
   deliveryTrackingManifest,
+  deliveryPricingManifest,
 ];
 
 let uiRegistryReady = false;
@@ -65,4 +68,5 @@ export const tenantModuleRoutes: TenantModuleRoute[] = [
   ...deliveryDriversRoutes,
   ...deliveryRoutes,
   ...deliveryTrackingRoutes,
+  ...deliveryPricingRoutes,
 ];

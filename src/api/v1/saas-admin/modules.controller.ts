@@ -13,6 +13,9 @@ export async function listModules(req: Request, res: Response): Promise<void> {
     const tenantId = req.query?.tenantId;
     await ensureTenantUiRegistry();
     const modules = await globalModuleRegistry.listRegisteredModules();
+    const visibleModules = modules.filter(
+      (module) => module.type !== 'driver-app' && module.scope !== 'public',
+    );
     
     let activeForTenant = new Set<ModuleId>();
     if (tenantId) {
@@ -23,7 +26,7 @@ export async function listModules(req: Request, res: Response): Promise<void> {
     res.status = 200;
     res.body = {
       success: true,
-      data: modules.map((m) => ({
+      data: visibleModules.map((m) => ({
         ...m,
         slug: m.id,
         isActiveForTenant: tenantId ? activeForTenant.has(m.id) : false,

@@ -17,6 +17,51 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isBoolean(value: unknown): value is boolean {
+  return typeof value === 'boolean';
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || isString(value);
+}
+
+type TenantSettingsSessionRow = {
+  trade_name: string | null;
+  is_open: boolean;
+  address_city: string | null;
+  address_state: string | null;
+  timezone: string | null;
+  payment_provider_default: string | null;
+  payment_public_key: string | null;
+  payment_private_key: string | null;
+  kds_enabled: boolean;
+  pdv_enabled: boolean;
+  realtime_enabled: boolean;
+  printing_enabled: boolean;
+};
+
+function isTenantSettingsSessionRow(value: unknown): value is TenantSettingsSessionRow {
+  if (!isRecord(value)) return false;
+  return (
+    isNullableString(value.trade_name) &&
+    isBoolean(value.is_open) &&
+    isNullableString(value.address_city) &&
+    isNullableString(value.address_state) &&
+    isNullableString(value.timezone) &&
+    isNullableString(value.payment_provider_default) &&
+    isNullableString(value.payment_public_key) &&
+    isNullableString(value.payment_private_key) &&
+    isBoolean(value.kds_enabled) &&
+    isBoolean(value.pdv_enabled) &&
+    isBoolean(value.realtime_enabled) &&
+    isBoolean(value.printing_enabled)
+  );
+}
+
 export async function getSession(req: Request, res: Response) {
   const authHeader = req.headers['authorization'];
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -127,24 +172,10 @@ export async function getSession(req: Request, res: Response) {
 
        const permissions = await authRepo.getTenantUserPermissions(tenantUser.id, tenantId);
        const activeModules = await authRepo.getTenantActiveModules(tenantId);
-       const tenantSettingsRow = await prisma.tenantSettings.findUnique({
-         where: { tenant_id: tenantId },
-         select: {
-           trade_name: true,
-           is_open: true,
-           address_city: true,
-           address_state: true,
-           timezone: true,
-           payment_provider_default: true,
-           payment_public_key: true,
-           payment_private_key: true,
-           kds_enabled: true,
-           pdv_enabled: true,
-           realtime_enabled: true,
-           printing_enabled: true,
-         },
-       });
-       const tenantSettings = tenantSettingsRow
+       const tenantSettingsRow: unknown = await prisma.tenantSettings.findUnique({
+        where: { tenant_id: tenantId },
+      });
+      const tenantSettings = isTenantSettingsSessionRow(tenantSettingsRow)
          ? {
              tradeName: tenantSettingsRow.trade_name,
              isOpen: tenantSettingsRow.is_open,

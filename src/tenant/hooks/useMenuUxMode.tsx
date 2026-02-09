@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect, useCallback } from 'react';
 import { SessionContext } from '../context/SessionContext';
 
 export type MenuUxMode = 'classic' | 'ifood';
@@ -22,26 +22,26 @@ export function useMenuUxMode(): {
   const [currentMode, setCurrentMode] = useState<MenuUxMode>('classic');
 
   // Obter modo do localStorage ou usar 'classic' como padrão
-  const getStoredMode = (): MenuUxMode => {
+  const getStoredMode = useCallback((): MenuUxMode => {
     if (typeof window === 'undefined') return 'classic';
     
     const storageKey = tenantId ? `menu-ux-mode-${tenantId}` : 'menu-ux-mode';
     const stored = localStorage.getItem(storageKey);
     return stored === 'ifood' ? 'ifood' : 'classic';
-  };
+  }, [tenantId]);
 
-  const setStoredMode = (mode: MenuUxMode) => {
+  const setStoredMode = useCallback((mode: MenuUxMode) => {
     if (typeof window === 'undefined') return;
     
     const storageKey = tenantId ? `menu-ux-mode-${tenantId}` : 'menu-ux-mode';
     localStorage.setItem(storageKey, mode);
-  };
+  }, [tenantId]);
 
   // Sincronizar estado com localStorage na montagem e quando mudar
   useEffect(() => {
     const mode = getStoredMode();
     setCurrentMode(mode);
-  }, [tenantId]);
+  }, [getStoredMode]);
 
   // Escutar mudanças no localStorage (entre abas/janelas)
   useEffect(() => {

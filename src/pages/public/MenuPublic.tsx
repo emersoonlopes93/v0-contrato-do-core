@@ -277,12 +277,28 @@ export function MenuPublicPage() {
   const [checkoutAddressNumber, setCheckoutAddressNumber] = useState<string>('');
   const [checkoutAddressComplement, setCheckoutAddressComplement] = useState<string>('');
   const [checkoutAddressNeighborhood, setCheckoutAddressNeighborhood] = useState<string>('');
+  const [checkoutDeliveryLatitude, setCheckoutDeliveryLatitude] = useState<number | null>(null);
+  const [checkoutDeliveryLongitude, setCheckoutDeliveryLongitude] = useState<number | null>(null);
   const [checkoutChangeFor, setCheckoutChangeFor] = useState<string>('');
   const [checkoutObservations, setCheckoutObservations] = useState<string>('');
   const sectionRefs = React.useRef(new Map<string, HTMLElement | null>());
   const [postAddUpsellOpen, setPostAddUpsellOpen] = useState<boolean>(false);
   const [lastAddedProductId, setLastAddedProductId] = useState<string | null>(null);
   const [designerConfig, setDesignerConfig] = useState<DesignerMenuRuntimeConfig | null>(null);
+
+  useEffect(() => {
+    if (checkoutDeliveryType !== 'delivery') return;
+    if (checkoutDeliveryLatitude !== null && checkoutDeliveryLongitude !== null) return;
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCheckoutDeliveryLatitude(position.coords.latitude);
+        setCheckoutDeliveryLongitude(position.coords.longitude);
+      },
+      () => undefined,
+      { enableHighAccuracy: true, maximumAge: 60000, timeout: 8000 },
+    );
+  }, [checkoutDeliveryType, checkoutDeliveryLatitude, checkoutDeliveryLongitude]);
 
   useEffect(() => {
     let cancelled = false;
@@ -729,6 +745,10 @@ export function MenuPublicPage() {
         addressNumber: checkoutAddressNumber.trim() === '' ? null : checkoutAddressNumber.trim(),
         addressComplement: checkoutAddressComplement.trim() === '' ? null : checkoutAddressComplement.trim(),
         addressNeighborhood: checkoutAddressNeighborhood.trim() === '' ? null : checkoutAddressNeighborhood.trim(),
+        addressCity: null,
+        addressState: null,
+        deliveryLatitude: checkoutDeliveryLatitude,
+        deliveryLongitude: checkoutDeliveryLongitude,
         changeFor: checkoutPaymentMethod === 'cash' ? (checkoutChangeFor.trim() === '' ? null : Number(checkoutChangeFor)) : null,
         observations: checkoutObservations.trim() === '' ? null : checkoutObservations.trim(),
         items: cart.map((item) => ({

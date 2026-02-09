@@ -377,12 +377,23 @@ export type MenuOnlineCheckoutRequest = {
   customerName?: string | null;
   customerPhone?: string | null;
   customerKey?: string | null;
+  addressZip?: string | null;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  addressNeighborhood?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  deliveryLatitude?: number | null;
+  deliveryLongitude?: number | null;
 };
 
 export type MenuOnlineCheckoutResponse = {
   orderId: string;
   publicOrderCode: string;
   status: 'pending' | 'confirmed' | 'cancelled';
+  publicTrackingToken?: string | null;
+  trackingExpiresAt?: string | null;
 };
 
 export type MenuOnlinePublicOrderSummaryDTO = {
@@ -391,6 +402,8 @@ export type MenuOnlinePublicOrderSummaryDTO = {
   status: 'pending' | 'confirmed' | 'cancelled';
   items: Array<{ name: string; quantity: number; total: number }>;
   totals: { subtotal: number; discount: number; total: number; currency: string };
+  publicTrackingToken?: string | null;
+  trackingExpiresAt?: string | null;
 };
 
 export type MenuOnlineCreateModifierGroupRequest = {

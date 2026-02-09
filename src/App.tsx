@@ -3,10 +3,12 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { TenantApp } from '@/src/tenant/TenantApp';
 import { SaaSAdminApp } from '@/src/saas-admin/SaaSAdminApp';
 import { AdminLoginPage } from '@/src/saas-admin/pages/Login';
+import { DeliveryDriverApp } from '@/src/modules/delivery-driver-app/src/ui/DeliveryDriverApp';
 import { GlobalTenantLoginPage } from '@/src/pages/Login';
 import { PublicSignupPage } from '@/src/pages/Signup';
 import MenuPublicPage from '@/src/pages/public/MenuPublic';
 import OrderConfirmationPage from '@/src/pages/public/OrderConfirmation';
+import { ClientTrackingPage } from '@/src/modules/client-tracking/src/ui/ClientTrackingPage';
 
 function LandingPage() {
   return (
@@ -41,6 +43,7 @@ function PublicRouter() {
       <Route path="/signup" element={<PublicSignupPage />} />
       <Route path="/menu/:slug" element={<MenuPublicPage />} />
       <Route path="/menu/:slug/order/:code" element={<OrderConfirmationPage />} />
+      <Route path="/track/:token" element={<ClientTrackingPage />} />
       <Route path="/" element={<LandingPage />} />
     </Routes>
   );
@@ -58,6 +61,7 @@ function App() {
         <Route path="/tenant/*" element={<TenantApp />} />
         <Route path="/saas-admin/*" element={<SaaSAdminApp />} />
         <Route path="/admin/*" element={<SaaSAdminApp />} />
+        <Route path="/driver/*" element={<DeliveryDriverApp />} />
         <Route path="/*" element={<PublicRouter />} />
       </Routes>
     </BrowserRouter>

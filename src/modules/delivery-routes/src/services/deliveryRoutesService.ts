@@ -9,6 +9,7 @@ import { createRouteId, listRoutes, persistRoute, removeRoute } from '../reposit
 import { calculateDistanceMatrix } from '../repositories/distanceMatrixRepository';
 import { fetchTenantSettings } from '../repositories/tenantSettingsRepository';
 import { listDeliveryDrivers } from '@/src/modules/delivery-drivers/src/services/deliveryDriversService';
+import { applyDeliveryPricingRoute } from '@/src/modules/delivery-pricing/src/repositories/deliveryPricingApiRepository';
 
 type Coordinate = {
   latitude: number;
@@ -219,7 +220,20 @@ export async function createRoute(
   const optimized = await optimizeStops(accessToken, origin, route.stops, options);
   const withMetrics = await applyMetrics(accessToken, origin, optimized);
   const computed = computeTotals({ ...route, stops: withMetrics });
-  return persistRoute(tenantSlug, computed);
+  const persisted = persistRoute(tenantSlug, computed);
+  try {
+    await applyDeliveryPricingRoute(accessToken, {
+      routeId: persisted.id,
+      stops: persisted.stops.map((stop) => ({
+        orderId: stop.orderId,
+        distanceKm: stop.distanceKm,
+        etaMinutes: stop.etaMinutes,
+      })),
+    });
+  } catch {
+    return persisted;
+  }
+  return persisted;
 }
 
 export async function listAllRoutes(tenantSlug: string): Promise<DeliveryRouteDTO[]> {
@@ -258,7 +272,20 @@ export async function updateRoute(
   const optimized = await optimizeStops(accessToken, origin, next.stops);
   const withMetrics = await applyMetrics(accessToken, origin, optimized);
   const computed = computeTotals({ ...next, stops: withMetrics });
-  return persistRoute(tenantSlug, computed);
+  const persisted = persistRoute(tenantSlug, computed);
+  try {
+    await applyDeliveryPricingRoute(accessToken, {
+      routeId: persisted.id,
+      stops: persisted.stops.map((stop) => ({
+        orderId: stop.orderId,
+        distanceKm: stop.distanceKm,
+        etaMinutes: stop.etaMinutes,
+      })),
+    });
+  } catch {
+    return persisted;
+  }
+  return persisted;
 }
 
 export async function deleteRoute(tenantSlug: string, routeId: string): Promise<void> {

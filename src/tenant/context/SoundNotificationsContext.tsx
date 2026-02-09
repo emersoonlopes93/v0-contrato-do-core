@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { REALTIME_ORDER_EVENTS, REALTIME_PAYMENT_EVENTS } from '@/src/core/realtime/contracts';
 import {
@@ -131,17 +131,17 @@ export function SoundNotificationsProvider({ children }: { children: ReactNode }
     return base;
   }, [settings, currentRole]);
 
-  async function refreshSettings(): Promise<void> {
+  const refreshSettings = useCallback(async (): Promise<void> => {
     if (!accessToken) return;
     const data = await apiGet<SoundNotificationSettingsDTO[]>('/api/v1/tenant/sound-notifications/settings', accessToken);
     setSettings(data);
-  }
+  }, [accessToken]);
 
   useEffect(() => {
     if (!accessToken) return;
     if (!isModuleEnabled('sound-notifications')) return;
     void refreshSettings();
-  }, [accessToken, isModuleEnabled]);
+  }, [accessToken, isModuleEnabled, refreshSettings]);
 
   useEffect(() => {
     if (!accessToken) return;

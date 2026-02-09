@@ -32,6 +32,27 @@ export type OrdersOrderTimelineEventDTO = {
   timestamp: string;
 };
 
+export type OrdersDeliveryInfoDTO = {
+  distanceKm: number | null;
+  etaMinutes: number | null;
+  deliveryFee: number | null;
+  customerLatitude?: number | null;
+  customerLongitude?: number | null;
+  driverLatitude?: number | null;
+  driverLongitude?: number | null;
+  driverUpdatedAt?: string | null;
+};
+
+export type OrdersCustomerAddressDTO = {
+  street: string | null;
+  number: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+};
+
 export type OrdersOrderDTO = {
   id: string;
   orderNumber: number;
@@ -42,6 +63,9 @@ export type OrdersOrderDTO = {
   customerName: string | null;
   customerPhone: string | null;
   deliveryType: string | null;
+  distanceKm: number | null;
+  etaMinutes: number | null;
+  deliveryFee: number | null;
   createdAt: string;
   updatedAt: string;
   items: OrdersOrderItemDTO[];
@@ -83,6 +107,9 @@ export type OrdersCreateOrderRequest = {
   customerName?: string | null;
   customerPhone?: string | null;
   deliveryType?: string | null;
+  customerAddress?: OrdersCustomerAddressDTO | null;
+  customerLatitude?: number | null;
+  customerLongitude?: number | null;
   items: OrdersCreateOrderItemInput[];
 };
 
@@ -150,6 +177,13 @@ export type OrdersServiceContract = {
   }): Promise<OrdersOrderDTO>;
   listOrdersByTenant(tenantId: string): Promise<OrdersOrderSummaryDTO[]>;
   getOrderById(tenantId: string, orderId: string): Promise<OrdersOrderDTO | null>;
+  updateOrderDeliveryInfo(request: {
+    tenantId: string;
+    orderId: string;
+    distanceKm: number | null;
+    etaMinutes: number | null;
+    deliveryFee: number | null;
+  }): Promise<OrdersOrderDTO>;
   updateOrderStatus(request: {
     tenantId: string;
     orderId: string;

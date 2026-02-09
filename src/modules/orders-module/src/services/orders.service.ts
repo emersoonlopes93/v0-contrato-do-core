@@ -95,6 +95,28 @@ export class OrdersService {
     return this.repository.findById(tenantId, orderId);
   }
 
+  async updateOrderDeliveryInfo(request: {
+    tenantId: string;
+    orderId: string;
+    distanceKm: number | null;
+    etaMinutes: number | null;
+    deliveryFee: number | null;
+  }): Promise<OrdersOrderDTO> {
+    const updated = await this.repository.updateDeliveryInfo(request.tenantId, request.orderId, {
+      distanceKm: request.distanceKm,
+      etaMinutes: request.etaMinutes,
+      deliveryFee: request.deliveryFee,
+    });
+
+    globalRealtimeEmitter.emitToTenant(request.tenantId, REALTIME_ORDER_EVENTS.ORDER_UPDATED, {
+      orderId: updated.id,
+      status: updated.status,
+      order: updated,
+    });
+
+    return updated;
+  }
+
   async getKanbanByTenant(tenantId: string): Promise<OrdersKanbanDTO> {
     const orders = await this.repository.listByTenant(tenantId);
 

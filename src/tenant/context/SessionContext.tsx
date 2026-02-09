@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useTenant } from '@/src/contexts/TenantContext';
 import type { SessionContextValue, SessionUser, SessionTenant, SessionPlan } from '@/src/types/tenant';
 import type { AuthSessionResponse, TenantLoginResponse } from '@/src/types/auth';
@@ -138,7 +138,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const tenantId = tenant?.id ?? user?.tenantId ?? null;
   const resolvedTenantSlug = tenant?.slug ?? null;
 
-  const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     const refreshToken =
       localStorage.getItem(TENANT_REFRESH_TOKEN_KEY);
     if (!refreshToken) return null;
@@ -157,25 +157,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAccessToken(nextToken);
     localStorage.setItem(TENANT_ACCESS_TOKEN_KEY, nextToken);
     return nextToken;
-  };
+  }, []);
 
-  useEffect(() => {
-    const storedToken =
-      localStorage.getItem(TENANT_ACCESS_TOKEN_KEY) ??
-      localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
-    if (!storedToken) {
-      setIsLoading(false);
-      return;
-    }
-
-    setAccessToken(storedToken);
-    fetchSession(storedToken).catch((err: unknown) => {
-      setAuthError(err instanceof Error ? err.message : 'Sessão inválida');
-      logout();
-    });
-  }, [tenantSlug]);
-
-  const fetchSession = async (
+  const fetchSession = useCallback(async function fetchSessionInternal(
     token: string,
     allowRefresh = true,
   ): Promise<{
@@ -183,7 +167,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     permissions: string[];
     tenantOnboarded: boolean;
     tenantStatus: string | null;
-  }> => {
+  }> {
     try {
       const response = await fetch('/api/v1/auth/session', {
         headers: {
@@ -196,7 +180,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (response.status === 401 && allowRefresh) {
           const refreshed = await refreshAccessToken();
           if (refreshed) {
-            return await fetchSession(refreshed, false);
+            return await fetchSessionInternal(refreshed, false);
           }
         }
         throw new Error('Failed to fetch session');
@@ -263,7 +247,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tenantSlug, refreshAccessToken]);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    setTenant(null);
+    setAccessToken(null);
+    setTenantOnboarded(false);
+    setTenantStatus(null);
+    setTenantSettings(null);
+    setActiveModules([]);
+    setPermissions([]);
+    setPlan(null);
+    localStorage.removeItem(TENANT_ACCESS_TOKEN_KEY);
+    localStorage.removeItem(TENANT_REFRESH_TOKEN_KEY);
+    localStorage.removeItem('tenant_session');
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const storedToken =
+      localStorage.getItem(TENANT_ACCESS_TOKEN_KEY) ??
+      localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
+    if (!storedToken) {
+      setIsLoading(false);
+      return;
+    }
+
+    setAccessToken(storedToken);
+    fetchSession(storedToken).catch((err: unknown) => {
+      setAuthError(err instanceof Error ? err.message : 'Sessão inválida');
+      logout();
+    });
+  }, [tenantSlug, fetchSession, logout]);
 
   const loginTenant = async (email: string, password: string): Promise<string[]> => {
     setIsLoading(true);
@@ -311,22 +327,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    setTenant(null);
-    setAccessToken(null);
-    setTenantOnboarded(false);
-    setTenantStatus(null);
-    setTenantSettings(null);
-    setActiveModules([]);
-    setPermissions([]);
-    setPlan(null);
-    localStorage.removeItem(TENANT_ACCESS_TOKEN_KEY);
-    localStorage.removeItem(TENANT_REFRESH_TOKEN_KEY);
-    localStorage.removeItem('tenant_session'); // Cleanup old key
-    setIsLoading(false);
   };
 
   const clearAuthError = () => {
@@ -379,7 +379,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [accessToken]);
+  }, [accessToken, refreshAccessToken]);
 
   const isModuleEnabled = (moduleId: string): boolean => {
     return activeModules.includes(moduleId);

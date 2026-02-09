@@ -182,7 +182,7 @@ export function AdminModulesPage() {
         setLoading(false);
       }
     },
-    []
+    [globalModules]
   );
 
   React.useEffect(() => {

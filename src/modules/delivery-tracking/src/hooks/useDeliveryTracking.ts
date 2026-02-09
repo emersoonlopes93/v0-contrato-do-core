@@ -50,6 +50,19 @@ export function useDeliveryTracking(tenantSlug: string, options?: Options): Stat
     void load();
   }, [load]);
 
+  React.useEffect(() => {
+    if (!realtimeEnabled) return;
+    if (typeof window === 'undefined') return;
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel('delivery-driver-app');
+    channel.onmessage = () => {
+      void load(false);
+    };
+    return () => {
+      channel.close();
+    };
+  }, [load, realtimeEnabled]);
+
   useRealtimeEvent(REALTIME_ORDER_EVENTS.ORDER_CREATED, () => {
     if (!realtimeEnabled) return;
     void load(false);

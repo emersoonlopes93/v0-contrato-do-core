@@ -12,7 +12,6 @@ import {
 import type { DistanceMatrixInput } from '@/src/types/delivery-routes';
 import { getMapsConfig } from '@/src/config/maps.config';
 import { GoogleDistanceMatrixProvider } from './providers/googleDistanceMatrix.provider';
-import { NoopDistanceMatrixProvider } from './services/distanceMatrix.provider';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -71,9 +70,12 @@ async function handleCalculateMatrix(req: Request, res: Response): Promise<void>
 
   try {
     const config = getMapsConfig();
-    const provider = config.googleDistanceMatrixApiKey
-      ? new GoogleDistanceMatrixProvider()
-      : new NoopDistanceMatrixProvider();
+    if (!config.googleDistanceMatrixApiKey) {
+      res.status = 500;
+      res.body = { error: 'Internal Server Error', message: 'Google Distance Matrix não configurado' };
+      return;
+    }
+    const provider = new GoogleDistanceMatrixProvider();
     const data = await provider.calculateMatrix(parsed.data);
     res.status = 200;
     res.body = { success: true, data };

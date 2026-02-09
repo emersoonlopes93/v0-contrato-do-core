@@ -10,7 +10,6 @@ import {
   type Route,
 } from '@/src/api/v1/middleware';
 import { prisma } from '@/src/adapters/prisma/client';
-import { Prisma } from '@prisma/client';
 import { tenantModuleService } from '@/src/adapters/prisma/modules/tenant-module.service';
 import { globalModuleServiceRegistry } from '@/src/core';
 import { asModuleId, asUUID } from '@/src/core/types';
@@ -39,6 +38,7 @@ import type {
   MenuOnlineUpdateSettingsRequest,
 } from '@/src/types/menu-online';
 import type { OrdersCreateOrderRequest, OrdersServiceContract } from '@/src/types/orders';
+import { getOrCreateTrackingToken } from '@/src/modules/client-tracking/src/services/clientTrackingTokenService';
 import type { StoreSettingsServiceContract } from '@/src/types/store-settings';
 
 const CHECKOUT_RATE_LIMIT_WINDOW_MS = 60_000;
@@ -2308,6 +2308,7 @@ async function handlePublicGetOrder(req: Request, res: Response): Promise<void> 
       res.body = { error: 'Not Found', message: 'Order not found' };
       return;
     }
+    const tracking = await getOrCreateTrackingToken(tenant.id, order.id);
     const currency =
       (await prisma.menuSettings.findUnique({
         where: { tenant_id: tenant.id },
@@ -2328,6 +2329,8 @@ async function handlePublicGetOrder(req: Request, res: Response): Promise<void> 
         total: order.total,
         currency,
       },
+      publicTrackingToken: tracking.token,
+      trackingExpiresAt: tracking.expiresAt.toISOString(),
     };
     res.status = 200;
     res.body = { success: true, data };
@@ -2539,6 +2542,15 @@ async function handlePublicCheckout(req: Request, res: Response): Promise<void> 
       customerName: typeof body.customerName === 'string' ? body.customerName : null,
       customerPhone: typeof body.customerPhone === 'string' ? body.customerPhone : null,
       customerKey: typeof body.customerKey === 'string' ? body.customerKey : null,
+      addressZip: typeof body.addressZip === 'string' ? body.addressZip : null,
+      addressStreet: typeof body.addressStreet === 'string' ? body.addressStreet : null,
+      addressNumber: typeof body.addressNumber === 'string' ? body.addressNumber : null,
+      addressComplement: typeof body.addressComplement === 'string' ? body.addressComplement : null,
+      addressNeighborhood: typeof body.addressNeighborhood === 'string' ? body.addressNeighborhood : null,
+      addressCity: typeof body.addressCity === 'string' ? body.addressCity : null,
+      addressState: typeof body.addressState === 'string' ? body.addressState : null,
+      deliveryLatitude: isNumber(body.deliveryLatitude) ? body.deliveryLatitude : null,
+      deliveryLongitude: isNumber(body.deliveryLongitude) ? body.deliveryLongitude : null,
     };
 
     if (!input.items || input.items.length === 0) {
@@ -2674,6 +2686,17 @@ async function handlePublicCheckout(req: Request, res: Response): Promise<void> 
       customerName: input.customerName ?? null,
       customerPhone: input.customerPhone ?? null,
       deliveryType: input.deliveryType ?? null,
+      customerAddress: {
+        street: input.addressStreet ?? null,
+        number: input.addressNumber ?? null,
+        complement: input.addressComplement ?? null,
+        neighborhood: input.addressNeighborhood ?? null,
+        city: input.addressCity ?? null,
+        state: input.addressState ?? null,
+        zip: input.addressZip ?? null,
+      },
+      customerLatitude: input.deliveryLatitude ?? null,
+      customerLongitude: input.deliveryLongitude ?? null,
       items: itemsForOrder,
     };
 
@@ -2684,11 +2707,14 @@ async function handlePublicCheckout(req: Request, res: Response): Promise<void> 
     });
 
     const publicOrderCode = String(created.orderNumber);
+    const tracking = await getOrCreateTrackingToken(tenant.id, created.id);
 
     const data = {
       orderId: created.id,
       publicOrderCode,
       status: created.status === 'confirmed' || created.status === 'cancelled' ? created.status : 'pending',
+      publicTrackingToken: tracking.token,
+      trackingExpiresAt: tracking.expiresAt.toISOString(),
     };
     res.status = 201;
     res.body = { success: true, data };

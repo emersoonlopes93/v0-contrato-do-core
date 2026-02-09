@@ -38,6 +38,9 @@ import designerMenuModule from '@/src/modules/designer-menu/src';
 import kdsModule from '@/src/modules/kds/src';
 import pdvModule from '@/src/modules/pdv/src';
 import cashierModule from '@/src/modules/cashier/src';
+import deliveryDriverAppModule from '@/src/modules/delivery-driver-app/src';
+import deliveryPricingModule from '@/src/modules/delivery-pricing/src';
+import clientTrackingModule from '@/src/modules/client-tracking/src';
 
 // Tenant Controllers
 import * as helloController from './tenant/hello/hello.controller';
@@ -59,6 +62,7 @@ import { menuOnlinePublicRoutes } from '@/src/api/v1/tenant/menu-online.routes';
 import { checkoutRoutes } from '@/src/modules/checkout/src/checkout.routes';
 import { paymentsRoutes } from '@/src/modules/payments/src/payments.routes';
 import { financialRoutes } from '@/src/modules/financial/src/financial.routes';
+import { clientTrackingPublicRoutes } from '@/src/modules/client-tracking/src/client-tracking.routes';
 
 /**
  * API Routes Configuration
@@ -70,6 +74,7 @@ export const routes: Route[] = [
   ...authRoutes,
 
   ...menuOnlinePublicRoutes,
+  ...clientTrackingPublicRoutes,
   {
     method: 'GET',
     path: '/api/v1/public/white-label/:tenantSlug',
@@ -341,6 +346,15 @@ void pdvModule.register(moduleContext);
 
 void globalModuleRegistry.register(cashierModule.manifest);
 void cashierModule.register(moduleContext);
+
+void globalModuleRegistry.register(deliveryDriverAppModule.manifest);
+void deliveryDriverAppModule.register(moduleContext);
+
+void globalModuleRegistry.register(deliveryPricingModule.manifest);
+void deliveryPricingModule.register(moduleContext);
+
+void globalModuleRegistry.register(clientTrackingModule.manifest);
+void clientTrackingModule.register(moduleContext);
 
 /**
  * Execute middleware chain

@@ -80,6 +80,7 @@ model Tenant {
   users            TenantUser[]
   userRoles        UserRole[]
   storeSettings    StoreSettings?
+  deliveryPricingSettings DeliveryPricingSettings?
   tenantSettings   TenantSettings?
   tenantFinancialSummary TenantFinancialSummary?
   menuOnlineCategories       Category[]
@@ -107,6 +108,7 @@ model Tenant {
   payments                  Payment[]
   soundNotificationSettings SoundNotificationSettings[]
   whiteBrandConfig WhiteBrandConfig?
+  publicTrackingTokens      PublicTrackingToken[]
 
   @@index([slug])
   @@index([status])
@@ -137,6 +139,26 @@ model StoreSettings {
   @@index([tenant_id])
   @@index([slug])
   @@map("store_settings")
+}
+
+model DeliveryPricingSettings {
+  id                     String   @id @default(uuid())
+  tenant_id              String   @unique
+  base_fee               Float    @default(0)
+  price_per_km           Float    @default(0)
+  free_km                Float?
+  min_fee                Float    @default(0)
+  max_fee                Float    @default(0)
+  additional_per_minute  Float?
+  region_multipliers     Json?
+  time_multipliers       Json?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@map("delivery_pricing_settings")
 }
 
 model TenantSettings {
@@ -718,6 +740,7 @@ model Order {
   tenant         Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   items          OrderItem[]
   timelineEvents OrderTimelineEvent[]
+  publicTrackingTokens PublicTrackingToken[]
 
   @@unique([tenant_id, order_number])
   @@index([tenant_id, public_order_code])
@@ -725,6 +748,24 @@ model Order {
   @@index([status])
   @@index([created_at])
   @@map("order_manager_orders")
+}
+
+model PublicTrackingToken {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  order_id    String
+  token       String   @unique
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+  last_used_at DateTime?
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([order_id])
+  @@index([expires_at])
+  @@map("public_tracking_tokens")
 }
 
 model OrderItem {

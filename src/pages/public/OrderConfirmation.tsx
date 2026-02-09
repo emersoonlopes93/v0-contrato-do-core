@@ -76,6 +76,21 @@ export default function OrderConfirmationPage() {
               <div className="text-sm text-muted-foreground">Código do pedido</div>
               <div className="text-base font-semibold">#{data.publicOrderCode}</div>
               <div className="mt-2 text-sm">Status: {data.status}</div>
+              {data.publicTrackingToken && (
+                <div className="mt-3">
+                  <a
+                    href={`/track/${encodeURIComponent(data.publicTrackingToken)}`}
+                    className="text-sm underline"
+                  >
+                    Acompanhar entrega em tempo real
+                  </a>
+                  {data.trackingExpiresAt && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Link expira em {new Date(data.trackingExpiresAt).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="rounded-lg border p-4">
