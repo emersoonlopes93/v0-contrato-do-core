@@ -47,7 +47,7 @@ type PdvOptions = {
   realtimeEnabled?: boolean;
 };
 
-export function usePdv(accessToken: string | null, options?: PdvOptions): PdvState {
+export function usePdv(tenantSlug: string, options?: PdvOptions): PdvState {
   const enabled = options?.enabled ?? true;
   const realtimeEnabled = options?.realtimeEnabled ?? true;
   const [products, setProducts] = React.useState<MenuOnlineProductDTO[]>([]);
@@ -73,16 +73,16 @@ export function usePdv(accessToken: string | null, options?: PdvOptions): PdvSta
   }, [cart]);
 
   const loadMenu = React.useCallback(async () => {
-    if (!accessToken || !enabled) return;
+    if (!enabled) return;
     if (isMountedRef.current) {
       setLoading(true);
       setError(null);
     }
     try {
       const [productsData, categoriesData, settingsData] = await Promise.all([
-        fetchPdvProducts(accessToken),
-        fetchPdvCategories(accessToken),
-        fetchPdvSettings(accessToken).catch(() => null),
+        fetchPdvProducts(tenantSlug),
+        fetchPdvCategories(tenantSlug),
+        fetchPdvSettings(tenantSlug).catch(() => null),
       ]);
       if (!isMountedRef.current) return;
       setProducts(productsData);
@@ -95,7 +95,7 @@ export function usePdv(accessToken: string | null, options?: PdvOptions): PdvSta
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
-  }, [accessToken, enabled]);
+  }, [enabled, tenantSlug]);
 
   React.useEffect(() => {
     void loadMenu();
@@ -111,13 +111,13 @@ export function usePdv(accessToken: string | null, options?: PdvOptions): PdvSta
   }, []);
 
   const loadOrders = React.useCallback(async (withLoading = true) => {
-    if (!accessToken || !enabled) return;
+    if (!enabled) return;
     if (withLoading) {
       setOrdersLoading(true);
       setOrdersError(null);
     }
     try {
-      const data = await fetchPdvOrders(accessToken);
+      const data = await fetchPdvOrders(tenantSlug);
       setRecentOrders(data.slice(0, 6));
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Erro ao carregar pedidos';
@@ -125,7 +125,7 @@ export function usePdv(accessToken: string | null, options?: PdvOptions): PdvSta
     } finally {
       if (withLoading) setOrdersLoading(false);
     }
-  }, [accessToken, enabled]);
+  }, [enabled, tenantSlug]);
 
   React.useEffect(() => {
     void loadOrders();
@@ -195,7 +195,7 @@ export function usePdv(accessToken: string | null, options?: PdvOptions): PdvSta
   }, []);
 
   const submitOrder = React.useCallback(async (): Promise<OrdersOrderDTO | null> => {
-    if (!accessToken || !enabled) return null;
+    if (!enabled) return null;
     if (cart.length === 0) return null;
     setSubmitting(true);
     setSubmitError(null);
@@ -220,8 +220,12 @@ export function usePdv(accessToken: string | null, options?: PdvOptions): PdvSta
     };
 
     try {
-      const created = await submitPdvOrder(accessToken, payload);
-      clearCart();
+      const created = await submitPdvOrder(tenantSlug, payload);
+      setCart([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setDeliveryType('');
+      void loadOrders(false);
       return created;
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Erro ao criar pedido';
@@ -230,7 +234,7 @@ export function usePdv(accessToken: string | null, options?: PdvOptions): PdvSta
     } finally {
       setSubmitting(false);
     }
-  }, [accessToken, cart, clearCart, customerName, customerPhone, deliveryType, enabled, summary.total]);
+  }, [cart, customerName, customerPhone, deliveryType, enabled, loadOrders, summary.total, tenantSlug]);
 
   return {
     products,

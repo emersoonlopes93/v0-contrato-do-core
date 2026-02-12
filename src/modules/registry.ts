@@ -16,13 +16,23 @@ import { manifest as deliveryDriversManifest } from '@/src/modules/delivery-driv
 import { manifest as deliveryRoutesManifest } from '@/src/modules/delivery-routes/src/manifest';
 import { manifest as deliveryTrackingManifest } from '@/src/modules/delivery-tracking/src/manifest';
 import { manifest as deliveryPricingManifest } from '@/src/modules/delivery-pricing/src/manifest';
-import { kdsRoutes } from '@/src/modules/kds/src/routes';
-import { pdvRoutes } from '@/src/modules/pdv/src/routes';
-import { cashierRoutes } from '@/src/modules/cashier/src/routes';
-import { deliveryDriversRoutes } from '@/src/modules/delivery-drivers/src/routes';
-import { deliveryRoutes } from '@/src/modules/delivery-routes/src/routes';
-import { deliveryTrackingRoutes } from '@/src/modules/delivery-tracking/src/routes';
-import { deliveryPricingRoutes } from '@/src/modules/delivery-pricing/src/routes';
+import { manifest as deliverySettlementManifest } from '@/src/modules/delivery-settlement/src/manifest';
+import { manifest as logisticsAiManifest } from '@/src/modules/logistics-ai/src/manifest';
+import { manifest as employeesManifest } from '@/src/modules/employees/src/manifest';
+import { manifest as rolesPermissionsManifest } from '@/src/modules/roles-permissions/src/manifest';
+import { manifest as customersCrmManifest } from './customers-crm/src/manifest';
+import { kdsRoutes } from './kds/src/routes';
+import { pdvRoutes } from './pdv/src/routes';
+import { cashierRoutes } from './cashier/src/routes';
+import { deliveryDriversRoutes } from './delivery-drivers/src/routes';
+import { deliveryRoutes } from './delivery-routes/src/routes';
+import { deliveryTrackingRoutes } from './delivery-tracking/src/routes';
+import { deliveryPricingRoutes } from './delivery-pricing/src/routes';
+import { deliverySettlementRoutes } from './delivery-settlement/src/routes';
+import { logisticsAiRoutes } from './logistics-ai/src/routes';
+import { employeesRoutes } from './employees/src/routes';
+import { rolesPermissionsRoutes } from './roles-permissions/src/routes';
+import { customersCrmRoutes } from './customers-crm/src/routes';
 
 export type TenantModuleRoute = {
   path: string;
@@ -45,6 +55,11 @@ const uiManifests: ModuleRegisterPayload[] = [
   deliveryRoutesManifest,
   deliveryTrackingManifest,
   deliveryPricingManifest,
+  deliverySettlementManifest,
+  logisticsAiManifest,
+  employeesManifest,
+  rolesPermissionsManifest,
+  customersCrmManifest,
 ];
 
 let uiRegistryReady = false;
@@ -69,4 +84,9 @@ export const tenantModuleRoutes: TenantModuleRoute[] = [
   ...deliveryRoutes,
   ...deliveryTrackingRoutes,
   ...deliveryPricingRoutes,
+  ...deliverySettlementRoutes,
+  ...logisticsAiRoutes,
+  ...employeesRoutes,
+  ...rolesPermissionsRoutes,
+  ...customersCrmRoutes,
 ];

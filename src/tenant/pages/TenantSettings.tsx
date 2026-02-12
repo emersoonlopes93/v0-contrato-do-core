@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,11 +26,13 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiRequestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function apiRequestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
@@ -60,7 +63,8 @@ function normalizeNumber(value: string): number | null | { error: string } {
 }
 
 function TenantSettingsPageContent() {
-  const { accessToken, tenantSettings, refreshSession } = useSession();
+  const { tenantSlug } = useTenant();
+  const { tenantSettings, refreshSession } = useSession();
   const [settings, setSettings] = useState<TenantSettingsDTO | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -159,14 +163,13 @@ function TenantSettingsPageContent() {
   }, [initialFromSession]);
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
 
     (async () => {
       setIsLoading(true);
       setError('');
       try {
-        const dto = await apiRequestJson<TenantSettingsDTO | null>('/api/v1/tenant/settings', accessToken);
+        const dto = await apiRequestJson<TenantSettingsDTO | null>('/api/v1/tenant/settings', tenantSlug);
         if (cancelled) return;
         setSettings(dto);
         applyToForm(dto);
@@ -181,10 +184,9 @@ function TenantSettingsPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, applyToForm]);
+  }, [applyToForm, tenantSlug]);
 
   async function save(): Promise<void> {
-    if (!accessToken) return;
     setIsSaving(true);
     setError('');
     setSuccess('');
@@ -231,7 +233,7 @@ function TenantSettingsPageContent() {
 
       const dto = await apiRequestJson<TenantSettingsDTO>(
         '/api/v1/tenant/settings',
-        accessToken,
+        tenantSlug,
         { method: 'PUT', body: JSON.stringify(payload) },
       );
       setSettings(dto);
@@ -254,8 +256,6 @@ function TenantSettingsPageContent() {
       setIsSaving(false);
     }
   }
-
-  if (!accessToken) return null;
 
   const showIncompleteWarning =
     settings === null ||

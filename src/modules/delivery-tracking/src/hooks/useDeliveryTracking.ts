@@ -13,19 +13,17 @@ type State = {
 
 type Options = {
   realtimeEnabled?: boolean;
-  accessToken?: string | null;
 };
 
 export function useDeliveryTracking(tenantSlug: string, options?: Options): State {
   const realtimeEnabled = options?.realtimeEnabled ?? true;
-  const accessToken = options?.accessToken ?? null;
   const [snapshot, setSnapshot] = React.useState<DeliveryTrackingSnapshot | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   const load = React.useCallback(
     async (withLoading = true) => {
-      if (!tenantSlug || !accessToken) {
+      if (!tenantSlug) {
         if (withLoading) setLoading(false);
         return;
       }
@@ -34,7 +32,7 @@ export function useDeliveryTracking(tenantSlug: string, options?: Options): Stat
         setError(null);
       }
       try {
-        const nextSnapshot = await getDeliveryTrackingSnapshot(accessToken, tenantSlug);
+        const nextSnapshot = await getDeliveryTrackingSnapshot(tenantSlug);
         setSnapshot(nextSnapshot);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'Erro ao carregar mapa de entregas';
@@ -43,7 +41,7 @@ export function useDeliveryTracking(tenantSlug: string, options?: Options): Stat
         if (withLoading) setLoading(false);
       }
     },
-    [accessToken, tenantSlug],
+    [tenantSlug],
   );
 
   React.useEffect(() => {

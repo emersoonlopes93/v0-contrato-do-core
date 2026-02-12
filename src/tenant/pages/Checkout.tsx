@@ -26,11 +26,13 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiRequestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function apiRequestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
@@ -69,7 +71,7 @@ function formatCurrency(value: number, currency: string): string {
 
 function CheckoutPageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings: sessionTenantSettings, isModuleEnabled } = useSession();
+  const { tenantSettings: sessionTenantSettings, isModuleEnabled } = useSession();
 
   const [products, setProducts] = useState<MenuOnlineProductDTO[]>([]);
   const [modifierGroups, setModifierGroups] = useState<MenuOnlineModifierGroupDTO[]>([]);
@@ -87,16 +89,15 @@ function CheckoutPageContent() {
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       setError('');
       try {
         const [prods, groups, options] = await Promise.all([
-          apiRequestJson<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', accessToken),
-          apiRequestJson<MenuOnlineModifierGroupDTO[]>('/api/v1/tenant/menu-online/modifiers/groups', accessToken),
-          apiRequestJson<MenuOnlineModifierOptionDTO[]>('/api/v1/tenant/menu-online/modifiers/options', accessToken),
+          apiRequestJson<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', tenantSlug),
+          apiRequestJson<MenuOnlineModifierGroupDTO[]>('/api/v1/tenant/menu-online/modifiers/groups', tenantSlug),
+          apiRequestJson<MenuOnlineModifierOptionDTO[]>('/api/v1/tenant/menu-online/modifiers/options', tenantSlug),
         ]);
         if (cancelled) return;
         setProducts(prods);
@@ -111,10 +112,9 @@ function CheckoutPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       try {
@@ -122,7 +122,7 @@ function CheckoutPageContent() {
           if (!cancelled) setTenantSettings(null);
           return;
         }
-        const settings = await apiRequestJson<TenantSettingsDTO | null>('/api/v1/tenant/settings', accessToken);
+        const settings = await apiRequestJson<TenantSettingsDTO | null>('/api/v1/tenant/settings', tenantSlug);
         if (!cancelled) setTenantSettings(settings);
       } catch {
         if (!cancelled) setTenantSettings(null);
@@ -131,7 +131,7 @@ function CheckoutPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, isModuleEnabled]);
+  }, [isModuleEnabled, tenantSlug]);
 
   const productById = useMemo(() => {
     const map = new Map<string, MenuOnlineProductDTO>();
@@ -209,7 +209,6 @@ function CheckoutPageContent() {
   const canCheckout = hasMinimumTenantSettings && hasMinimumSessionSettings;
 
   async function submit(): Promise<void> {
-    if (!accessToken) return;
     setIsSubmitting(true);
     setError('');
 
@@ -250,7 +249,7 @@ function CheckoutPageContent() {
         },
       };
 
-      const order = await apiRequestJson<CheckoutOrderDTO>('/api/v1/checkout', accessToken, {
+      const order = await apiRequestJson<CheckoutOrderDTO>('/api/v1/checkout', tenantSlug, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -262,8 +261,6 @@ function CheckoutPageContent() {
       setIsSubmitting(false);
     }
   }
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="checkout:create">

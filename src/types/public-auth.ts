@@ -1,6 +1,6 @@
 import type {
   GlobalTenantLoginRequest,
-  GlobalTenantLoginResponse,
+  GlobalTenantLoginCookieResponse,
 } from '@/src/types/auth';
 
 export interface PublicSignupRequest {
@@ -30,5 +30,5 @@ export interface PublicSignupResponse {
 
 export type PublicLoginRequest = GlobalTenantLoginRequest;
 
-export type PublicLoginResponse = GlobalTenantLoginResponse;
+export type PublicLoginResponse = GlobalTenantLoginCookieResponse;
 

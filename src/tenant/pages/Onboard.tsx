@@ -45,13 +45,11 @@ export function OnboardPage() {
     try {
       const response = await fetch('/api/v1/tenant/onboard/complete', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${
-            localStorage.getItem('tenant_access_token') ??
-            localStorage.getItem('auth_token') ??
-            ''
-          }`,
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
         body: JSON.stringify({
           restaurantName,

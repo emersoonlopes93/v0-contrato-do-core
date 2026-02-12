@@ -1,9 +1,7 @@
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { TenantSettingsDTO } from '@/src/types/tenant-settings';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
   return isRecord(value) && value.success === true && 'data' in value;
@@ -13,10 +11,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function requestJson<T>(url: string, accessToken: string): Promise<T> {
+async function requestJson<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -31,6 +31,6 @@ async function requestJson<T>(url: string, accessToken: string): Promise<T> {
   return raw.data;
 }
 
-export async function fetchTenantSettings(accessToken: string): Promise<TenantSettingsDTO | null> {
-  return requestJson<TenantSettingsDTO | null>('/api/v1/tenant/settings', accessToken);
+export async function fetchTenantSettings(tenantSlug: string): Promise<TenantSettingsDTO | null> {
+  return requestJson<TenantSettingsDTO | null>('/api/v1/tenant/settings', tenantSlug);
 }

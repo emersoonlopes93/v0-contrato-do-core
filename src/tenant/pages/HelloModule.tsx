@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { HelloMessageDTO } from '@/src/types/hello';
 
@@ -48,7 +49,8 @@ function Spinner({ className }: { className?: string }) {
   );
 }
 function HelloModulePageContent() {
-  const { user, accessToken } = useSession();
+  const { tenantSlug } = useTenant();
+  const { user } = useSession();
   const [messages, setMessages] = useState<HelloMessageDTO[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -57,15 +59,16 @@ function HelloModulePageContent() {
   const [success, setSuccess] = useState('');
 
   const loadMessages = useCallback(async (): Promise<void> => {
-    if (!accessToken) return;
     setIsLoading(true);
     setError('');
     setSuccess('');
     try {
       const response = await fetch('/api/v1/tenant/hello/list', {
         method: 'GET',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
       });
       const raw: unknown = await response.json().catch(() => null);
@@ -90,7 +93,7 @@ function HelloModulePageContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   useEffect(() => {
     void loadMessages();
@@ -98,7 +101,7 @@ function HelloModulePageContent() {
 
   const handleSendMessage = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!newMessage.trim() || !accessToken) return;
+    if (!newMessage.trim()) return;
 
     setIsSending(true);
     setError('');
@@ -107,9 +110,11 @@ function HelloModulePageContent() {
     try {
       const response = await fetch('/api/v1/tenant/hello/create', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
         body: JSON.stringify({ message: newMessage.trim() }),
       });

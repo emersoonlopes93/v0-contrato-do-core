@@ -1,9 +1,7 @@
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { ClientTrackingSnapshot } from '@/src/types/client-tracking';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
   return isRecord(value) && value.success === true && 'data' in value;

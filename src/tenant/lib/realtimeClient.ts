@@ -1,9 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import type { RealtimeEnvelope, RealtimeEventName } from '@/src/core/realtime/contracts';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 export function isRealtimeEnvelope(value: unknown): value is RealtimeEnvelope<Record<string, unknown>> {
   if (!isRecord(value)) return false;

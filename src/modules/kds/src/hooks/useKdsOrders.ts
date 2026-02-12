@@ -20,7 +20,7 @@ type KdsOptions = {
   realtimeEnabled?: boolean;
 };
 
-export function useKdsOrders(accessToken: string | null, options?: KdsOptions): KdsState {
+export function useKdsOrders(tenantSlug: string, options?: KdsOptions): KdsState {
   const enabled = options?.enabled ?? true;
   const realtimeEnabled = options?.realtimeEnabled ?? true;
   const [orders, setOrders] = React.useState<OrdersOrderSummaryDTO[]>([]);
@@ -33,7 +33,7 @@ export function useKdsOrders(accessToken: string | null, options?: KdsOptions): 
   const highlightTimeoutsRef = React.useRef<Record<string, number>>({});
 
   const load = React.useCallback(async (withLoading = true) => {
-    if (!accessToken || !enabled) return;
+    if (!enabled) return;
     if (withLoading) {
       setLoading(true);
     }
@@ -41,7 +41,7 @@ export function useKdsOrders(accessToken: string | null, options?: KdsOptions): 
       setError(null);
     }
     try {
-      const data = await fetchKdsOrders(accessToken);
+      const data = await fetchKdsOrders(tenantSlug);
       setOrders(data);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Erro ao carregar pedidos';
@@ -51,16 +51,16 @@ export function useKdsOrders(accessToken: string | null, options?: KdsOptions): 
         setLoading(false);
       }
     }
-  }, [accessToken, enabled]);
+  }, [enabled, tenantSlug]);
 
   const updateStatus = React.useCallback(
     async (orderId: string, status: string) => {
-      if (!accessToken || !enabled) return;
+      if (!enabled) return;
       if (updatingOrderIds.includes(orderId)) return;
       setUpdateError(null);
       setUpdatingOrderIds((prev) => [...prev, orderId]);
       try {
-        const updated = await changeKdsOrderStatus(accessToken, orderId, status);
+        const updated = await changeKdsOrderStatus(tenantSlug, orderId, status);
         setOrders((prev) =>
           prev.map((order) => (order.id === updated.id ? { ...order, status: updated.status } : order)),
         );
@@ -71,18 +71,17 @@ export function useKdsOrders(accessToken: string | null, options?: KdsOptions): 
         setUpdatingOrderIds((prev) => prev.filter((id) => id !== orderId));
       }
     },
-    [accessToken, enabled, updatingOrderIds],
+    [enabled, tenantSlug, updatingOrderIds],
   );
 
   React.useEffect(() => {
     if (!enabled) return undefined;
     void load();
-    if (!accessToken) return undefined;
     const timer = window.setInterval(() => {
       void load(false);
     }, realtimeEnabled ? 60000 : 15000);
     return () => window.clearInterval(timer);
-  }, [accessToken, enabled, load, realtimeEnabled]);
+  }, [enabled, load, realtimeEnabled]);
 
   React.useEffect(() => {
     return () => {

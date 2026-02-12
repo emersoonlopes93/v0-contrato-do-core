@@ -1,0 +1,294 @@
+{
+  "timestamp": "2026-02-11T23:48:53.441Z",
+  "totalFindings": 41,
+  "riskScore": 205,
+  "findings": [
+    {
+      "file": "scripts\\audit-any.ts",
+      "line": 39,
+      "content": "{ pattern: /\\bas any\\b/, score: 10, description: 'cast explícito as any' },",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "scripts\\audit-any.ts",
+      "line": 40,
+      "content": "{ pattern: /<any>/, score: 20, description: 'Promise<any> ou Array<any>' },",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "scripts\\audit-any.ts",
+      "line": 46,
+      "content": "{ pattern: /unknown\\s+as/, score: 1, description: 'unknown as (cast técnico)' },",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "scripts\\audit-any.ts",
+      "line": 52,
+      "content": "/Prisma\\..*as unknown as/,  // casts envolvendo Prisma",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "scripts\\audit-type-safety.ts",
+      "line": 45,
+      "content": "/<any>/,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\audit-logger.ts",
+      "line": 15,
+      "content": "old_value: event.oldValue as unknown as never,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\audit-logger.ts",
+      "line": 16,
+      "content": "new_value: event.newValue as unknown as never,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\audit-logger.ts",
+      "line": 18,
+      "content": "metadata: event.metadata as unknown as never,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\audit-logger.ts",
+      "line": 50,
+      "content": "metadata: e.metadata as unknown as Record<string, unknown> | undefined,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\audit-logger.ts",
+      "line": 78,
+      "content": "metadata: e.metadata as unknown as Record<string, unknown> | undefined,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\client.ts",
+      "line": 9,
+      "content": "const globalForPrisma = globalThis as unknown as {",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 33,
+      "content": "(this.client as unknown as { $use(middleware: unknown): void }).$use(",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 84,
+      "content": "const client = this.client as unknown as Record<string, unknown>;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 119,
+      "content": "where[filter.field] = { not: filter.value } as unknown as QueryValue;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 122,
+      "content": "where[filter.field] = { gt: filter.value } as unknown as QueryValue;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 125,
+      "content": "where[filter.field] = { gte: filter.value } as unknown as QueryValue;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 128,
+      "content": "where[filter.field] = { lt: filter.value } as unknown as QueryValue;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 131,
+      "content": "where[filter.field] = { lte: filter.value } as unknown as QueryValue;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 134,
+      "content": "where[filter.field] = { in: filter.value } as unknown as QueryValue;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\adapters\\prisma\\prisma-adapter.ts",
+      "line": 140,
+      "content": "} as unknown as QueryValue;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\api\\v1\\saas-admin\\dashboard.controller.ts",
+      "line": 37,
+      "content": "timestamp: (e.timestamp as unknown as Date).toISOString(),",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\api\\v1\\saas-admin\\tenants.controller.ts",
+      "line": 155,
+      "content": "id: tenant.id as unknown as UserId,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\api\\v1\\saas-admin\\white-label.controller.ts",
+      "line": 48,
+      "content": "customMetadata: config.custom_metadata as unknown as Record<string, unknown> | undefined,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\api\\v1\\saas-admin\\white-label.controller.ts",
+      "line": 160,
+      "content": "const prismaWithAudit = prisma as unknown as {",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\api\\v1\\tenant\\white-label.controller.ts",
+      "line": 39,
+      "content": "customMetadata: config.custom_metadata as unknown as Record<string, unknown> | undefined,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\client-tracking\\src\\repositories\\publicTrackingRepository.ts",
+      "line": 37,
+      "content": "const prisma = getPrismaClient() as unknown as {",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\delivery-pricing\\src\\repositories\\deliveryPricingRepository.ts",
+      "line": 61,
+      "content": "private readonly client = prisma as unknown as { deliveryPricingSettings: DeliveryPricingDelegate };",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\hello-module\\src\\listeners\\hello.listener.ts",
+      "line": 17,
+      "content": "const payload = event.data as unknown as HelloCreatedPayload;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\hello-module\\src\\listeners\\hello.listener.ts",
+      "line": 28,
+      "content": "const payload = event.data as unknown as HelloGreetedPayload;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\hello-module\\src\\services\\hello.service.ts",
+      "line": 53,
+      "content": "data: payload as unknown as Record<string, unknown>,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\hello-module\\src\\services\\hello.service.ts",
+      "line": 77,
+      "content": "data: payload as unknown as Record<string, unknown>,",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\settings\\src\\tenant-settings.repository.ts",
+      "line": 42,
+      "content": "return row as unknown as TenantSettingsRow;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\settings\\src\\tenant-settings.repository.ts",
+      "line": 96,
+      "content": "} as unknown as Prisma.TenantSettingsUncheckedCreateInput;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\settings\\src\\tenant-settings.repository.ts",
+      "line": 121,
+      "content": "} as unknown as Prisma.TenantSettingsUncheckedUpdateInput;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\settings\\src\\tenant-settings.repository.ts",
+      "line": 128,
+      "content": "return row as unknown as TenantSettingsRow;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\store-settings\\src\\store-settings.repository.ts",
+      "line": 30,
+      "content": "return row as unknown as StoreSettingsRow;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\store-settings\\src\\store-settings.repository.ts",
+      "line": 67,
+      "content": "return row as unknown as StoreSettingsRow;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\modules\\store-settings\\src\\store-settings.repository.ts",
+      "line": 106,
+      "content": "return row as unknown as StoreSettingsRow;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\tenant\\context\\SoundNotificationsContext.tsx",
+      "line": 64,
+      "content": "const webkit = (window as unknown as { webkitAudioContext?: new () => AudioContext }).webkitAudioContext;",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\tenant\\context\\ThemeContext.tsx",
+      "line": 7,
+      "content": "tenantId: 'default' as unknown as WhiteBrandConfig['tenantId'],",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    },
+    {
+      "file": "src\\tenant\\context\\ThemeContext.tsx",
+      "line": 183,
+      "content": "tenantId: data.tenantId as unknown as WhiteBrandConfig['tenantId'],",
+      "area": "CORE",
+      "severity": "CRITICAL"
+    }
+  ]
+}

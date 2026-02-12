@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useTenant } from '@/src/contexts/TenantContext';
 import type { SessionContextValue, SessionUser, SessionTenant, SessionPlan } from '@/src/types/tenant';
-import type { AuthSessionResponse, TenantLoginResponse } from '@/src/types/auth';
+import type { AuthSessionResponse, TenantLoginCookieResponse } from '@/src/types/auth';
 import type { TenantSettingsSessionDTO } from '@/src/types/tenant-settings';
 
 /**
@@ -23,10 +23,6 @@ import type { TenantSettingsSessionDTO } from '@/src/types/tenant-settings';
  */
 
 export const SessionContext = createContext<SessionContextValue | undefined>(undefined);
-
-const TENANT_ACCESS_TOKEN_KEY = 'tenant_access_token';
-const TENANT_REFRESH_TOKEN_KEY = 'tenant_refresh_token';
-const LEGACY_ACCESS_TOKEN_KEY = 'auth_token';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -94,29 +90,16 @@ function isAuthSessionResponse(value: unknown): value is AuthSessionResponse {
   return true;
 }
 
-function isTenantLoginResponse(value: unknown): value is TenantLoginResponse {
+function isTenantLoginResponse(value: unknown): value is TenantLoginCookieResponse {
   return (
     isRecord(value) &&
-    isString(value.accessToken) &&
-    isString(value.refreshToken) &&
+    value.ok === true &&
     isString(value.tenantId) &&
     isStringArray(value.activeModules) &&
     isString(value.role) &&
     isStringArray(value.permissions) &&
     isString(value.email)
   );
-}
-
-function decodeJwtExpMs(token: string): number | null {
-  try {
-    const payloadRaw = token.split('.')[1];
-    if (!payloadRaw) return null;
-    const json = JSON.parse(atob(payloadRaw)) as { exp?: unknown };
-    if (typeof json.exp !== 'number') return null;
-    return json.exp * 1000;
-  } catch {
-    return null;
-  }
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -139,24 +122,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const resolvedTenantSlug = tenant?.slug ?? null;
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
-    const refreshToken =
-      localStorage.getItem(TENANT_REFRESH_TOKEN_KEY);
-    if (!refreshToken) return null;
-
     const response = await fetch('/api/v1/auth/tenant/refresh', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      body: JSON.stringify({}),
     });
-    const raw: unknown = await response.json().catch(() => null);
-    if (!response.ok || !isRecord(raw) || !isString(raw.accessToken)) {
-      return null;
-    }
-
-    const nextToken = raw.accessToken;
-    setAccessToken(nextToken);
-    localStorage.setItem(TENANT_ACCESS_TOKEN_KEY, nextToken);
-    return nextToken;
+    if (!response.ok) return null;
+    return 'cookie';
   }, []);
 
   const fetchSession = useCallback(async function fetchSessionInternal(
@@ -170,8 +143,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }> {
     try {
       const response = await fetch('/api/v1/auth/session', {
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${token}`,
+          'X-Auth-Context': 'tenant_user',
           'X-Tenant-Slug': tenantSlug,
         },
       });
@@ -259,27 +233,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setActiveModules([]);
     setPermissions([]);
     setPlan(null);
-    localStorage.removeItem(TENANT_ACCESS_TOKEN_KEY);
-    localStorage.removeItem(TENANT_REFRESH_TOKEN_KEY);
-    localStorage.removeItem('tenant_session');
     setIsLoading(false);
   }, []);
 
   useEffect(() => {
-    const storedToken =
-      localStorage.getItem(TENANT_ACCESS_TOKEN_KEY) ??
-      localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
-    if (!storedToken) {
-      setIsLoading(false);
-      return;
-    }
-
-    setAccessToken(storedToken);
-    fetchSession(storedToken).catch((err: unknown) => {
-      setAuthError(err instanceof Error ? err.message : 'Sessão inválida');
-      logout();
-    });
-  }, [tenantSlug, fetchSession, logout]);
+    void fetchSession('cookie')
+      .then(({ activeModules: mods }) => {
+        setActiveModules(mods);
+      })
+      .catch(() => undefined);
+  }, [fetchSession]);
 
   const loginTenant = async (email: string, password: string): Promise<string[]> => {
     setIsLoading(true);
@@ -288,41 +251,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (tenantSlug.trim().length === 0) {
         throw new Error('Tenant não resolvido');
       }
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      headers['X-Tenant-Slug'] = tenantSlug;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Tenant-Slug': tenantSlug,
+      };
 
       const response = await fetch('/api/v1/auth/tenant/login', {
         method: 'POST',
+        credentials: 'include',
         headers,
         body: JSON.stringify({ email, password }),
       });
 
+      const raw: unknown = await response.json().catch(() => null);
       if (!response.ok) {
-        const raw: unknown = await response.json().catch(() => null);
         if (isRecord(raw) && isString(raw.error)) {
           throw new Error(raw.error);
         }
         throw new Error('Login failed');
       }
 
-      const data: unknown = await response.json();
-      if (!isTenantLoginResponse(data)) {
+      if (!isTenantLoginResponse(raw)) {
         throw new Error('Invalid login response');
       }
 
-      const token = data.accessToken;
-      const refreshToken = data.refreshToken;
-      const loginActiveModules = data.activeModules;
-      
-      setAccessToken(token);
-      localStorage.setItem(TENANT_ACCESS_TOKEN_KEY, token);
-      localStorage.setItem(TENANT_REFRESH_TOKEN_KEY, refreshToken);
+      const loginActiveModules = raw.activeModules;
       setAuthError(null);
 
+      await fetchSession('cookie');
+
       return loginActiveModules;
-    } catch (err) {
+    } catch (err: unknown) {
       setAuthError(err instanceof Error ? err.message : 'Falha ao fazer login');
-      setIsLoading(false);
       throw err;
     } finally {
       setIsLoading(false);
@@ -334,52 +295,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshSession = async () => {
-    const token =
-      accessToken ??
-      localStorage.getItem(TENANT_ACCESS_TOKEN_KEY) ??
-      localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
-    if (!token) {
-      return;
-    }
-    
     setIsRefreshing(true);
     try {
-      await fetchSession(token);
+      await fetchSession('cookie');
     } finally {
       setIsRefreshing(false);
     }
   };
-
-  useEffect(() => {
-    if (!accessToken) return;
-
-    const shouldRefreshSoon = () => {
-      const expMs = decodeJwtExpMs(accessToken);
-      if (!expMs) return false;
-      return expMs - Date.now() <= 60 * 1000;
-    };
-
-    const tick = async () => {
-      if (!shouldRefreshSoon()) return;
-      await refreshAccessToken();
-    };
-
-    const interval = window.setInterval(() => {
-      void tick();
-    }, 15 * 1000);
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        void tick();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-
-    return () => {
-      window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [accessToken, refreshAccessToken]);
 
   const isModuleEnabled = (moduleId: string): boolean => {
     return activeModules.includes(moduleId);

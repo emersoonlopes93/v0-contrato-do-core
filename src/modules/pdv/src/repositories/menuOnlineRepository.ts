@@ -6,9 +6,7 @@ import type {
   MenuOnlineSettingsDTO,
 } from '@/src/types/menu-online';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
   return isRecord(value) && value.success === true && 'data' in value;
@@ -18,10 +16,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function requestJson<T>(url: string, accessToken: string): Promise<T> {
+async function requestJson<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -36,14 +36,14 @@ async function requestJson<T>(url: string, accessToken: string): Promise<T> {
   return raw.data;
 }
 
-export async function listMenuProducts(accessToken: string): Promise<MenuOnlineProductDTO[]> {
-  return requestJson<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', accessToken);
+export async function listMenuProducts(tenantSlug: string): Promise<MenuOnlineProductDTO[]> {
+  return requestJson<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', tenantSlug);
 }
 
-export async function listMenuCategories(accessToken: string): Promise<MenuOnlineCategoryDTO[]> {
-  return requestJson<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', accessToken);
+export async function listMenuCategories(tenantSlug: string): Promise<MenuOnlineCategoryDTO[]> {
+  return requestJson<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', tenantSlug);
 }
 
-export async function getMenuSettings(accessToken: string): Promise<MenuOnlineSettingsDTO> {
-  return requestJson<MenuOnlineSettingsDTO>('/api/v1/tenant/menu-online/settings', accessToken);
+export async function getMenuSettings(tenantSlug: string): Promise<MenuOnlineSettingsDTO> {
+  return requestJson<MenuOnlineSettingsDTO>('/api/v1/tenant/menu-online/settings', tenantSlug);
 }

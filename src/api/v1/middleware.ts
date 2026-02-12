@@ -21,7 +21,7 @@ export interface Request {
 export interface Response {
   status: number;
   body: unknown;
-  headers?: Record<string, string>;
+  headers?: Record<string, string | string[]>;
 }
 
 export type NextFunction = () => Promise<void>;
@@ -55,7 +55,25 @@ const authRepo = new AuthRepository();
 function extractToken(req: Request): string | undefined {
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   if (!authHeader || typeof authHeader !== 'string') {
-    return undefined;
+    const cookieHeader = req.headers['cookie'];
+    if (!cookieHeader || typeof cookieHeader !== 'string') return undefined;
+    const authContext = req.headers['x-auth-context'];
+    const context = typeof authContext === 'string' ? authContext : null;
+
+    if (context === 'saas_admin') {
+      const token = parseCookieValue(cookieHeader, 'saas_auth_token');
+      return token ?? undefined;
+    }
+
+    if (context === 'tenant_user') {
+      const token = parseCookieValue(cookieHeader, 'tenant_auth_token');
+      return token ?? undefined;
+    }
+
+    const saasToken = parseCookieValue(cookieHeader, 'saas_auth_token');
+    if (saasToken) return saasToken;
+    const tenantToken = parseCookieValue(cookieHeader, 'tenant_auth_token');
+    return tenantToken ?? undefined;
   }
   
   const parts = authHeader.split(' ');
@@ -64,6 +82,17 @@ function extractToken(req: Request): string | undefined {
   }
   
   return parts[1];
+}
+
+function parseCookieValue(cookieHeader: string, key: string): string | null {
+  const parts = cookieHeader.split(';');
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith(`${key}=`)) continue;
+    const value = trimmed.slice(key.length + 1);
+    return value.length > 0 ? value : null;
+  }
+  return null;
 }
 
 /**

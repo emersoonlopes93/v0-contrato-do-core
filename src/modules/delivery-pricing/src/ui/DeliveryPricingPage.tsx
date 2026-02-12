@@ -44,7 +44,7 @@ function toNumber(value: string): number | null {
 }
 
 function DeliveryPricingPageContent() {
-  const { accessToken, hasPermission } = useSession();
+  const { hasPermission } = useSession();
   const { tenantSlug } = useTenant();
   const canWrite = hasPermission('delivery-pricing.write');
   const {
@@ -57,8 +57,8 @@ function DeliveryPricingPageContent() {
     update,
     simulate,
     reload,
-  } = useDeliveryPricing(accessToken);
-  const tracking = useDeliveryTracking(tenantSlug, { accessToken });
+  } = useDeliveryPricing(tenantSlug);
+  const tracking = useDeliveryTracking(tenantSlug);
 
   const [baseFee, setBaseFee] = React.useState('');
   const [pricePerKm, setPricePerKm] = React.useState('');
@@ -200,8 +200,6 @@ function DeliveryPricingPageContent() {
         })),
     );
   }, [tracking.snapshot]);
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="delivery-pricing.read">

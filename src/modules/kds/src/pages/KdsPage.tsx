@@ -38,11 +38,11 @@ const KDS_COLUMNS: KdsColumn[] = [
 
 function KdsPageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings } = useSession();
+  const { tenantSettings } = useSession();
   const kdsEnabled = tenantSettings?.kdsEnabled ?? true;
   const realtimeEnabled = tenantSettings?.realtimeEnabled ?? true;
   const { orders, loading, error, updateError, updatingOrderIds, highlightOrderIds, updateStatus, reload } = useKdsOrders(
-    accessToken,
+    tenantSlug,
     { enabled: kdsEnabled, realtimeEnabled },
   );
 
@@ -63,8 +63,6 @@ function KdsPageContent() {
   }, [orders]);
 
   const hasOrders = ordersByColumn.size > 0 && [...ordersByColumn.values()].some((list) => list.length > 0);
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="kds.view">

@@ -8,6 +8,8 @@ import { tenantSettingsTenantRoutes } from '@/src/modules/settings/src/tenant-se
 import { deliveryRoutesTenantRoutes } from '@/src/modules/delivery-routes/src/delivery-routes.routes';
 import { deliveryTrackingTenantRoutes } from '@/src/modules/delivery-tracking/src/delivery-tracking.routes';
 import { deliveryPricingTenantRoutes } from '@/src/modules/delivery-pricing/src/delivery-pricing.routes';
+import { employeesTenantRoutes } from '@/src/modules/employees/src/employees.routes';
+import { rolesPermissionsTenantRoutes } from '@/src/modules/roles-permissions/src/roles-permissions.routes';
 
 export const tenantRoutes: Route[] = [
   ...ordersTenantRoutes,
@@ -19,4 +21,6 @@ export const tenantRoutes: Route[] = [
   ...deliveryRoutesTenantRoutes,
   ...deliveryTrackingTenantRoutes,
   ...deliveryPricingTenantRoutes,
+  ...employeesTenantRoutes,
+  ...rolesPermissionsTenantRoutes,
 ];

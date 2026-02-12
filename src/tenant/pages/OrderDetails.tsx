@@ -32,10 +32,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiGet<T>(url: string, accessToken: string): Promise<T> {
+async function apiGet<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -83,25 +85,24 @@ function formatCurrency(value: number, currency: string | null): string {
 
 function OrderDetailsPageContent({ orderId }: OrderDetailsPageProps) {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings: tenantSettingsSession } = useSession();
+  const { tenantSettings: tenantSettingsSession } = useSession();
   const [order, setOrder] = useState<OrdersOrderDTO | null>(null);
   const [tenantSettings, setTenantSettings] = useState<TenantSettingsDTO | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       setError('');
       try {
-        const data = await apiGet<OrdersOrderDTO>(`/api/v1/tenant/orders/${orderId}`, accessToken);
+        const data = await apiGet<OrdersOrderDTO>(`/api/v1/tenant/orders/${orderId}`, tenantSlug);
         if (cancelled) return;
         setOrder(data);
 
         try {
-          const settings = await apiGet<TenantSettingsDTO | null>('/api/v1/tenant/settings', accessToken);
+          const settings = await apiGet<TenantSettingsDTO | null>('/api/v1/tenant/settings', tenantSlug);
           if (!cancelled) setTenantSettings(settings);
         } catch {
           if (!cancelled) setTenantSettings(null);
@@ -116,7 +117,7 @@ function OrderDetailsPageContent({ orderId }: OrderDetailsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, orderId]);
+  }, [orderId, tenantSlug]);
 
   useRealtimeEvent(REALTIME_ORDER_EVENTS.ORDER_STATUS_CHANGED, (envelope) => {
     if (!tenantSlug || !order) return;
@@ -134,8 +135,6 @@ function OrderDetailsPageContent({ orderId }: OrderDetailsPageProps) {
     if (!order) return 0;
     return order.items.reduce((sum, i) => sum + i.totalPrice, 0);
   }, [order]);
-
-  if (!accessToken) return null;
 
   const basePath = `/tenant/${tenantSlug}`;
   const effectiveTimezone = tenantSettings?.timezone ?? tenantSettingsSession?.timezone ?? null;

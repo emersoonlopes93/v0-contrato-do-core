@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { withModuleGuard, PermissionGuard } from '@/src/tenant/components/ModuleGuard';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useSoundNotifications } from '@/src/tenant/context/SoundNotificationsContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,11 +37,13 @@ function isSoundNotificationUserRole(value: string): value is SoundNotificationU
   return Object.values(SOUND_NOTIFICATION_USER_ROLES).some((v) => v === value);
 }
 
-async function apiRequestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function apiRequestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
@@ -143,7 +146,8 @@ function buildStateFromList(
 }
 
 function SoundNotificationsSettingsPageContent() {
-  const { accessToken, user } = useSession();
+  const { tenantSlug } = useTenant();
+  const { user } = useSession();
   const { refreshSettings } = useSoundNotifications();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -161,7 +165,6 @@ function SoundNotificationsSettingsPageContent() {
   }, [user?.role]);
 
   useEffect(() => {
-    if (!accessToken) return;
     if (!currentRole) {
       setIsLoading(false);
       return;
@@ -174,7 +177,7 @@ function SoundNotificationsSettingsPageContent() {
       try {
         const list = await apiRequestJson<SoundNotificationSettingsDTO[]>(
           '/api/v1/tenant/sound-notifications/settings',
-          accessToken,
+          tenantSlug,
         );
         if (cancelled) return;
 
@@ -191,10 +194,9 @@ function SoundNotificationsSettingsPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, currentRole]);
+  }, [currentRole, tenantSlug]);
 
   async function save(): Promise<void> {
-    if (!accessToken) return;
     if (!currentRole) {
       setError('Role inválida para configurar notificações');
       return;
@@ -215,7 +217,7 @@ function SoundNotificationsSettingsPageContent() {
 
       const updated = await apiRequestJson<SoundNotificationSettingsDTO[]>(
         '/api/v1/tenant/sound-notifications/settings',
-        accessToken,
+        tenantSlug,
         { method: 'PUT', body: JSON.stringify(payload) },
       );
 
@@ -228,8 +230,6 @@ function SoundNotificationsSettingsPageContent() {
       setIsSaving(false);
     }
   }
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="notifications.manage">

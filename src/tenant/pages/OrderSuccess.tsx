@@ -22,10 +22,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiGet<T>(url: string, accessToken: string): Promise<T> {
+async function apiGet<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -42,19 +44,18 @@ async function apiGet<T>(url: string, accessToken: string): Promise<T> {
 
 function OrderSuccessPageContent({ orderId }: { orderId: string }) {
   const { tenantSlug } = useTenant();
-  const { accessToken } = useSession();
+  useSession();
   const [order, setOrder] = useState<CheckoutOrderDTO | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       setError('');
       try {
-        const data = await apiGet<CheckoutOrderDTO>(`/api/v1/orders/${orderId}`, accessToken);
+        const data = await apiGet<CheckoutOrderDTO>(`/api/v1/orders/${orderId}`, tenantSlug);
         if (!cancelled) setOrder(data);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erro ao carregar pedido');
@@ -65,9 +66,7 @@ function OrderSuccessPageContent({ orderId }: { orderId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, orderId]);
-
-  if (!accessToken) return null;
+  }, [orderId, tenantSlug]);
 
   const basePath = `/tenant/${tenantSlug}`;
   return (

@@ -95,7 +95,8 @@ export async function refreshRouteEta(
   const routes = await listAllRoutes(tenantSlug);
   const route = pickActiveRoute(routes, driverId, activeOrderId);
   if (!route) return null;
-  const updated = await updateRoute(accessToken, tenantSlug, route.id, {
+  void accessToken;
+  const updated = await updateRoute(tenantSlug, route.id, {
     status: route.status === 'completed' ? route.status : 'in_progress',
     driverId: route.driverId ?? driverId,
     orderIds: route.orderIds,

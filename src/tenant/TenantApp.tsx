@@ -3,7 +3,6 @@ import { SessionProvider, useSession } from '@/src/tenant/context/SessionContext
 import { TenantProvider, useTenant } from '@/src/contexts/TenantContext';
 import { TenantLayout } from '@/src/tenant/components/TenantLayout';
 import { HomePage } from '@/src/tenant/pages/Home';
-import { HelloModulePage } from '@/src/tenant/pages/HelloModule';
 import { OnboardPage } from '@/src/tenant/pages/Onboard';
 import { MenuOnlinePage } from '@/src/tenant/pages/MenuOnline';
 import { MenuOnlineProductsPage } from '@/src/tenant/pages/MenuOnlineProducts';
@@ -111,12 +110,6 @@ function TenantRouter() {
     );
   } else if (restPath === '/dashboard' || restPath === '/home') {
     page = <HomePage />;
-  } else if (restPath === '/hello' || restPath === '/hello-module') {
-    page = (
-      <PlanGuard moduleId="hello-module">
-        <HelloModulePage />
-      </PlanGuard>
-    );
   } else if (restPath === '/menu-online') {
     page = (
       <PlanGuard moduleId="menu-online">

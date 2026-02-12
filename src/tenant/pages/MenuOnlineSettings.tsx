@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,11 +30,13 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiRequestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function apiRequestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
@@ -51,7 +54,8 @@ async function apiRequestJson<T>(url: string, accessToken: string, init?: Reques
 }
 
 function MenuOnlineSettingsPageContent() {
-  const { accessToken } = useSession();
+  const { tenantSlug } = useTenant();
+  useSession();
   const [settings, setSettings] = useState<MenuOnlineSettingsDTO | null>(null);
   const [currency, setCurrency] = useState<string>('BRL');
   const [showOutOfStock, setShowOutOfStock] = useState<boolean>(false);
@@ -62,7 +66,6 @@ function MenuOnlineSettingsPageContent() {
   const [success, setSuccess] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
@@ -70,7 +73,7 @@ function MenuOnlineSettingsPageContent() {
       try {
         const data = await apiRequestJson<MenuOnlineSettingsDTO>(
           '/api/v1/tenant/menu-online/settings',
-          accessToken,
+          tenantSlug,
         );
         if (cancelled) return;
         setSettings(data);
@@ -87,10 +90,9 @@ function MenuOnlineSettingsPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   async function save(): Promise<void> {
-    if (!accessToken) return;
     setIsSaving(true);
     setError('');
     setSuccess('');
@@ -102,7 +104,7 @@ function MenuOnlineSettingsPageContent() {
       };
       const data = await apiRequestJson<MenuOnlineSettingsDTO>(
         '/api/v1/tenant/menu-online/settings',
-        accessToken,
+        tenantSlug,
         { method: 'PUT', body: JSON.stringify(payload) },
       );
       setSettings(data);
@@ -123,8 +125,6 @@ function MenuOnlineSettingsPageContent() {
       setIsSaving(false);
     }
   }
-
-  if (!accessToken) return null;
 
   const isDirty =
     settings !== null &&

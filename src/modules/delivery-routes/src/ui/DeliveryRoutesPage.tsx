@@ -32,10 +32,10 @@ function formatEta(value: number | null): string {
 
 function DeliveryRoutesPageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings, hasPermission } = useSession();
+  const { tenantSettings, hasPermission } = useSession();
   const realtimeEnabled = tenantSettings?.realtimeEnabled ?? true;
   const canManage = hasPermission('delivery-routes.manage');
-  const { routes, orders, loading, error, create, remove, reload } = useDeliveryRoutes(accessToken, tenantSlug, {
+  const { routes, orders, loading, error, create, remove, reload } = useDeliveryRoutes(tenantSlug, {
     realtimeEnabled,
   });
 
@@ -69,8 +69,6 @@ function DeliveryRoutesPageContent() {
       };
     });
   }, [selectedOrders, stopInputs]);
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="delivery-routes.view">

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Plus, Filter, ArrowUpDown } from 'lucide-react';
 import { MenuIfoodHeader } from './MenuIfoodHeader';
 import { MenuCategoryHeader } from './MenuCategoryHeader';
@@ -241,78 +240,76 @@ export function MenuIfoodView({
               </Button>
             </div>
 
-            <ScrollArea className="h-[600px]">
-              <div className="space-y-6">
-                {Array.from(productsByCategory.entries())
-                  .sort(([categoryIdA], [categoryIdB]) => {
-                    const categoryA = categories.find((category) => category.id === categoryIdA);
-                    const categoryB = categories.find((category) => category.id === categoryIdB);
-                    return (categoryA?.sortOrder ?? 0) - (categoryB?.sortOrder ?? 0);
-                  })
-                  .map(([categoryId, categoryProducts]) => {
-                    const category = categories.find((categoryItem) => categoryItem.id === categoryId);
-                    if (!category) return null;
+            <div className="space-y-6">
+              {Array.from(productsByCategory.entries())
+                .sort(([categoryIdA], [categoryIdB]) => {
+                  const categoryA = categories.find((category) => category.id === categoryIdA);
+                  const categoryB = categories.find((category) => category.id === categoryIdB);
+                  return (categoryA?.sortOrder ?? 0) - (categoryB?.sortOrder ?? 0);
+                })
+                .map(([categoryId, categoryProducts]) => {
+                  const category = categories.find((categoryItem) => categoryItem.id === categoryId);
+                  if (!category) return null;
 
-                    const categoryStatsEntry = categoryStats.get(categoryId) || { total: 0, active: 0, inactive: 0 };
-                    const isExpanded = expandedCategories.has(categoryId);
-                    const isCategoryInactive = category.status !== 'active';
+                  const categoryStatsEntry = categoryStats.get(categoryId) || { total: 0, active: 0, inactive: 0 };
+                  const isExpanded = expandedCategories.has(categoryId);
+                  const isCategoryInactive = category.status !== 'active';
 
-                    return (
-                      <div
-                        key={categoryId}
-                        className={`
-                          space-y-4
-                          ${isCategoryInactive ? 'opacity-50' : ''}
-                        `}
-                      >
-                        <MenuCategoryHeader
-                          category={category}
-                          isExpanded={isExpanded}
-                          onExpandedChange={() => handleToggleCategoryExpanded(categoryId)}
-                          onToggleAllProducts={handleToggleAllProducts}
-                          onEditCategory={onEditCategory}
-                          onDeleteCategory={onDeleteCategory}
-                          onDuplicateCategory={onDuplicateCategory}
-                          productStats={categoryStatsEntry}
-                        />
+                  return (
+                    <div
+                      key={categoryId}
+                      className={`
+                        space-y-4
+                        ${isCategoryInactive ? 'opacity-50' : ''}
+                      `}
+                    >
+                      <MenuCategoryHeader
+                        category={category}
+                        isExpanded={isExpanded}
+                        onExpandedChange={() => handleToggleCategoryExpanded(categoryId)}
+                        onToggleAllProducts={handleToggleAllProducts}
+                        onEditCategory={onEditCategory}
+                        onDeleteCategory={onDeleteCategory}
+                        onDuplicateCategory={onDuplicateCategory}
+                        productStats={categoryStatsEntry}
+                      />
 
-                        {isExpanded && (
-                          <div className="space-y-3">
-                            {categoryProducts
-                              .sort((a, b) => a.sortOrder - b.sortOrder)
-                              .map((product) => (
-                                <MenuProductCard
-                                  key={product.id}
-                                  product={product}
-                                  onToggleStatus={onToggleProductStatus}
-                                  onEditProduct={onEditProduct}
-                                  onDeleteProduct={onDeleteProduct}
-                                  onDuplicateProduct={onDuplicateProduct}
-                                  onOpenModifiers={handleOpenModifiers}
-                                />
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      {isExpanded && (
+                        <div className="space-y-3">
+                          {categoryProducts
+                            .sort((a, b) => a.sortOrder - b.sortOrder)
+                            .map((product) => (
+                              <MenuProductCard
+                                key={product.id}
+                                product={product}
+                                onToggleStatus={onToggleProductStatus}
+                                onEditProduct={onEditProduct}
+                                onDeleteProduct={onDeleteProduct}
+                                onDuplicateProduct={onDuplicateProduct}
+                                onOpenModifiers={handleOpenModifiers}
+                              />
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
-                {filteredProducts.length === 0 && !isLoading && (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">
-                      {searchQuery 
-                        ? 'Nenhum produto encontrado para esta busca'
-                        : 'Nenhum produto cadastrado'
-                      }
-                    </p>
-                    <Button size="sm" className="mt-4" onClick={onNewProduct}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Criar primeiro produto
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+              {filteredProducts.length === 0 && !isLoading && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">
+                    {searchQuery 
+                      ? 'Nenhum produto encontrado para esta busca'
+                      : 'Nenhum produto cadastrado'
+                    }
+                  </p>
+                  <Button size="sm" className="mt-4" onClick={onNewProduct}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar primeiro produto
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -332,39 +329,37 @@ export function MenuIfoodView({
               </Button>
             </div>
 
-            <ScrollArea className="h-[600px]">
-              <div className="space-y-3">
-                {modifierGroups.map((group) => (
-                  <Card key={group.id}>
-                    <CardContent className="flex items-center justify-between gap-4 p-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">{group.name}</p>
-                        {group.description && (
-                          <p className="text-xs text-muted-foreground">
-                            {group.description}
-                          </p>
-                        )}
-                        <p className="text-[11px] text-muted-foreground">
-                          Mínimo {group.minSelect} · Máximo {group.maxSelect} ·{' '}
-                          {group.isRequired ? 'Obrigatório' : 'Opcional'}
+            <div className="space-y-3">
+              {modifierGroups.map((group) => (
+                <Card key={group.id}>
+                  <CardContent className="flex items-center justify-between gap-4 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">{group.name}</p>
+                      {group.description && (
+                        <p className="text-xs text-muted-foreground">
+                          {group.description}
                         </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                          {group.status === 'active' ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      )}
+                      <p className="text-[11px] text-muted-foreground">
+                        Mínimo {group.minSelect} · Máximo {group.maxSelect} ·{' '}
+                        {group.isRequired ? 'Obrigatório' : 'Opcional'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {group.status === 'active' ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
 
-                {modifierGroups.length === 0 && (
-                  <div className="text-center py-12 text-sm text-muted-foreground">
-                    Nenhum grupo de complementos cadastrado.
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+              {modifierGroups.length === 0 && (
+                <div className="text-center py-12 text-sm text-muted-foreground">
+                  Nenhum grupo de complementos cadastrado.
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -374,15 +369,15 @@ export function MenuIfoodView({
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <MenuIfoodHeader
         stats={stats}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
       
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full py-4 md:py-6">
+      <div className="flex-1">
+        <div className="py-4 md:py-6">
           {renderTabContent()}
         </div>
       </div>

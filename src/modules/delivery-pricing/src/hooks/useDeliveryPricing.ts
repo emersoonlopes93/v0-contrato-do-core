@@ -25,7 +25,7 @@ type State = {
   reload: () => Promise<void>;
 };
 
-export function useDeliveryPricing(accessToken: string | null): State {
+export function useDeliveryPricing(tenantSlug: string): State {
   const [settings, setSettings] = React.useState<DeliveryPricingSettingsDTO | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -33,11 +33,10 @@ export function useDeliveryPricing(accessToken: string | null): State {
   const [previewLoading, setPreviewLoading] = React.useState(false);
 
   const load = React.useCallback(async () => {
-    if (!accessToken) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchDeliveryPricing(accessToken);
+      const data = await fetchDeliveryPricing(tenantSlug);
       setSettings(data);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Erro ao carregar precificação';
@@ -45,7 +44,7 @@ export function useDeliveryPricing(accessToken: string | null): State {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   React.useEffect(() => {
     void load();
@@ -53,34 +52,31 @@ export function useDeliveryPricing(accessToken: string | null): State {
 
   const save = React.useCallback(
     async (input: DeliveryPricingSettingsCreateRequest) => {
-      if (!accessToken) return;
-      const data = await createDeliveryPricing(accessToken, input);
+      const data = await createDeliveryPricing(tenantSlug, input);
       setSettings(data);
     },
-    [accessToken],
+    [tenantSlug],
   );
 
   const update = React.useCallback(
     async (input: DeliveryPricingSettingsUpdateRequest) => {
-      if (!accessToken) return;
-      const data = await updateDeliveryPricing(accessToken, input);
+      const data = await updateDeliveryPricing(tenantSlug, input);
       if (data) setSettings(data);
     },
-    [accessToken],
+    [tenantSlug],
   );
 
   const simulate = React.useCallback(
     async (input: DeliveryPricingPreviewRequest) => {
-      if (!accessToken) return;
       setPreviewLoading(true);
       try {
-        const data = await previewDeliveryPricing(accessToken, input);
+        const data = await previewDeliveryPricing(tenantSlug, input);
         setPreview(data);
       } finally {
         setPreviewLoading(false);
       }
     },
-    [accessToken],
+    [tenantSlug],
   );
 
   return {

@@ -13,9 +13,7 @@ import type { AuthSessionResponse } from '@/src/types/auth';
 const authRepo = new AuthRepository();
 const prisma = getPrismaClient();
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isString(value: unknown): value is string {
   return typeof value === 'string';
@@ -27,6 +25,18 @@ function isBoolean(value: unknown): value is boolean {
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || isString(value);
+}
+
+function parseCookieValue(cookieHeader: string, key: string): string | null {
+  const parts = cookieHeader.split(';');
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith(`${key}=`)) continue;
+    const value = trimmed.slice(key.length + 1);
+    const decoded = decodeURIComponent(value);
+    return decoded.length > 0 ? decoded : null;
+  }
+  return null;
 }
 
 type TenantSettingsSessionRow = {
@@ -63,17 +73,39 @@ function isTenantSettingsSessionRow(value: unknown): value is TenantSettingsSess
 }
 
 export async function getSession(req: Request, res: Response) {
+  const authContextHeader = req.headers['x-auth-context'];
+  const authContext = typeof authContextHeader === 'string' ? authContextHeader : null;
+
+  const cookieHeader = req.headers['cookie'];
   const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status = 401;
-    res.body = { error: 'Missing authorization header' };
-    return;
+
+  let token: string | null = null;
+
+  if (typeof cookieHeader === 'string') {
+    if (authContext === 'saas_admin') {
+      token = parseCookieValue(cookieHeader, 'saas_auth_token');
+    } else if (authContext === 'tenant_user') {
+      token = parseCookieValue(cookieHeader, 'tenant_auth_token');
+    } else {
+      token =
+        parseCookieValue(cookieHeader, 'saas_auth_token') ??
+        parseCookieValue(cookieHeader, 'tenant_auth_token');
+    }
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1] ?? null;
+  }
+
   if (!token) {
+    console.log('[Session] Missing auth token', {
+      hasCookie: typeof cookieHeader === 'string',
+      hasAuthorization: typeof req.headers['authorization'] === 'string',
+      authContext,
+      tenantSlug: req.headers['x-tenant-slug'],
+    });
     res.status = 401;
-    res.body = { error: 'Missing authorization header' };
+    res.body = { error: 'Missing auth token' };
     return;
   }
 
@@ -85,61 +117,57 @@ export async function getSession(req: Request, res: Response) {
     }
 
     const context = decoded.context;
-    if (context !== 'saas_admin' && context !== 'tenant_user') {
-      throw new Error('Invalid token context');
-    }
-
+    console.log('[Session] Incoming session validation', {
+      context,
+      hasTenantSlug: typeof req.headers['x-tenant-slug'] === 'string' && req.headers['x-tenant-slug'].trim() !== '',
+    });
+    
     // Check token type based on context field in payload
-    if (context === 'saas_admin') {
-       const payload = JWTService.verifySaaSAdminToken(token);
-       const user = await authRepo.findSaaSAdminById(payload.userId);
-       
-       if (!user) throw new Error('User not found');
-
-       res.status = 200;
-       const body: AuthSessionResponse = {
-         user: {
-           id: user.id,
-           email: user.email,
-           role: 'SAAS_ADMIN'
-         },
-         tenant: null,
-         activeModules: [],
-         permissions: [],
-         plan: null,
-         theme: null
-       };
-       res.body = body;
-       return;
-    }
-
     if (context === 'tenant_user') {
+       console.log('[Session] Validating as tenant_user token');
        const payload = JWTService.verifyTenantUserToken(token);
+       console.log('[Session] Tenant user token validated successfully:', { userId: payload.userId, tenantId: payload.tenantId, role: payload.role });
 
        if (typeof payload.userId !== 'string' || payload.userId.length === 0) {
-         throw new Error('Invalid token');
+         throw new Error('Invalid userId in token');
        }
        if (typeof payload.tenantId !== 'string' || payload.tenantId.length === 0) {
-         throw new Error('Invalid token');
+         throw new Error('Invalid tenantId in token');
        }
 
        const tenantId = payload.tenantId;
+       
+       // Try to get tenant from header first, fallback to token
+       let tenant;
+       const tenantSlugFromHeader = req.headers['x-tenant-slug'];
+       
+       if (tenantSlugFromHeader && typeof tenantSlugFromHeader === 'string') {
+         console.log('[Session] Looking for tenant by slug:', tenantSlugFromHeader);
+         tenant = await prisma.tenant.findFirst({
+           where: { slug: tenantSlugFromHeader },
+           select: { id: true, name: true, slug: true, status: true, onboarded: true },
+         });
+       } else {
+         console.log('[Session] Looking for tenant by ID:', tenantId);
+         tenant = await prisma.tenant.findUnique({
+           where: { id: tenantId },
+           select: { id: true, name: true, slug: true, status: true, onboarded: true },
+         });
+       }
 
-       const tenant = await prisma.tenant.findUnique({
-         where: { id: tenantId },
-         select: { id: true, name: true, slug: true, status: true, onboarded: true },
-       });
+       console.log('[Session] Tenant found:', tenant ? { id: tenant.id, slug: tenant.slug, status: tenant.status } : 'NOT FOUND');
 
        if (!tenant) {
-         throw new Error('Tenant not found');
+         throw new Error(`Tenant not found: ${tenantSlugFromHeader || tenantId}`);
        }
 
        if (tenant.status !== 'active') {
          throw new Error('Tenant is not active');
        }
 
+       console.log('[Session] Looking for tenant user:', { userId: payload.userId, tenantId: tenant.id });
        const tenantUser = await prisma.tenantUser.findFirst({
-         where: { id: payload.userId, tenant_id: tenantId },
+         where: { id: payload.userId, tenant_id: tenant.id },
          include: {
            userRoles: {
              include: { role: true },
@@ -147,12 +175,16 @@ export async function getSession(req: Request, res: Response) {
          },
        });
 
+       console.log('[Session] Tenant user found:', !!tenantUser);
+
        if (!tenantUser) {
-         throw new Error('User not found');
+         throw new Error('User not found in tenant');
        }
 
+       console.log('[Session] Tenant user authentication successful');
+       
        const subscription = await prisma.tenantSubscription.findFirst({
-         where: { tenant_id: tenantId, status: 'active' },
+         where: { tenant_id: tenant.id, status: 'active' },
          include: { plan: true },
          orderBy: { created_at: 'desc' },
        });
@@ -170,10 +202,10 @@ export async function getSession(req: Request, res: Response) {
            }
          : null;
 
-       const permissions = await authRepo.getTenantUserPermissions(tenantUser.id, tenantId);
-       const activeModules = await authRepo.getTenantActiveModules(tenantId);
+       const permissions = await authRepo.getTenantUserPermissions(tenantUser.id, tenant.id);
+       const activeModules = await authRepo.getTenantActiveModules(tenant.id);
        const tenantSettingsRow: unknown = await prisma.tenantSettings.findUnique({
-        where: { tenant_id: tenantId },
+        where: { tenant_id: tenant.id },
       });
       const tenantSettings = isTenantSettingsSessionRow(tenantSettingsRow)
          ? {
@@ -220,9 +252,42 @@ export async function getSession(req: Request, res: Response) {
        return;
     }
 
+    if (context === 'saas_admin') {
+       console.log('[Session] Validating as saas_admin token');
+       const payload = JWTService.verifySaaSAdminToken(token);
+       console.log('[Session] SaaS admin token validated successfully:', { userId: payload.userId, role: payload.role });
+       
+       console.log('[Session] Looking for SaaS admin user:', payload.userId);
+       const user = await authRepo.findSaaSAdminById(payload.userId);
+       console.log('[Session] SaaS admin user found:', !!user);
+       
+       if (!user) throw new Error('SaaS Admin user not found');
+
+       console.log('[Session] SaaS admin authentication successful');
+
+       res.status = 200;
+       const body: AuthSessionResponse = {
+         user: {
+           id: user.id,
+           email: user.email,
+           role: 'SAAS_ADMIN'
+         },
+         tenant: null,
+         activeModules: [],
+         permissions: [],
+         plan: null,
+         theme: null
+       };
+       res.body = body;
+       return;
+    }
+
     throw new Error('Invalid token context');
 
   } catch (error: unknown) {
+    console.log('[Session] Session validation error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     res.status = 401;
     res.body = {
       error:

@@ -22,7 +22,6 @@ type CashierOptions = {
 };
 
 export function useCashier(
-  accessToken: string | null,
   tenantSlug: string,
   options?: CashierOptions,
 ): CashierState {
@@ -36,13 +35,12 @@ export function useCashier(
   const hintTimerRef = React.useRef<number | null>(null);
 
   const load = React.useCallback(async (withLoading = true) => {
-    if (!accessToken) return;
     if (withLoading) {
       setLoading(true);
       setError(null);
     }
     try {
-      const data = await fetchCashierOrders(accessToken);
+      const data = await fetchCashierOrders(tenantSlug);
       setOrders(data);
       setSession(getCashier(tenantSlug));
     } catch (e: unknown) {
@@ -51,7 +49,7 @@ export function useCashier(
     } finally {
       if (withLoading) setLoading(false);
     }
-  }, [accessToken, tenantSlug]);
+  }, [tenantSlug]);
 
   React.useEffect(() => {
     void load();

@@ -2,9 +2,7 @@ import type { DomainEvent, EventBus, EventHandler } from '@/src/core/events/cont
 import { ORDERS_EVENTS } from '@/src/modules/orders-module/src/events';
 import type { SoundNotificationsService } from '../services/sound-notifications.service';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 export class SoundNotificationsListener implements EventHandler {
   constructor(

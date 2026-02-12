@@ -27,27 +27,29 @@ async function handleMapConfig(req: Request, res: Response): Promise<void> {
   if (!getAuth(req, res)) return;
 
   const config = getMapsConfig();
-  let googleMapsScript: string | null = null;
+  let googleMapsScriptUrl: string | null = null;
   if (config.googleMapsApiKey) {
     try {
       const url = new URL('https://maps.googleapis.com/maps/api/js');
       url.searchParams.set('key', config.googleMapsApiKey);
-      const response = await fetch(url.toString());
-      if (!response.ok) {
-        res.status = 502;
-        res.body = { error: 'Bad Gateway', message: 'Falha ao carregar Google Maps' };
-        return;
+      url.searchParams.set('libraries', 'geometry');
+      url.searchParams.set('v', 'weekly');
+      
+      // Adicionar map_id se disponível
+      if (config.googleMapsMapId) {
+        url.searchParams.set('map_ids', config.googleMapsMapId);
       }
-      googleMapsScript = await response.text();
+      
+      googleMapsScriptUrl = url.toString();
     } catch (error) {
       res.status = 502;
-      res.body = { error: 'Bad Gateway', message: error instanceof Error ? error.message : 'Falha ao carregar Google Maps' };
+      res.body = { error: 'Bad Gateway', message: error instanceof Error ? error.message : 'Falha ao configurar Google Maps' };
       return;
     }
   }
 
   const data: DeliveryTrackingMapConfig = {
-    googleMapsScript,
+    googleMapsScript: googleMapsScriptUrl,
     googleMapsMapId: config.googleMapsMapId,
   };
   res.status = 200;

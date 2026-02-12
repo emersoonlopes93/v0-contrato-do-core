@@ -98,6 +98,8 @@ model Tenant {
   menuOnlineCouponRedemptions MenuCouponRedemption[]
   menuOnlineLoyaltyConfig     MenuLoyaltyConfig?
   menuOnlineCashbackConfig    MenuCashbackConfig?
+  deliverySettlementSettings DeliverySettlementSettings?
+  deliverySettlements         DeliverySettlement[]
   menuOnlineCustomerBalances  MenuCustomerBalance[]
   orders                    Order[]
   orderItems                OrderItem[]
@@ -109,10 +111,30 @@ model Tenant {
   soundNotificationSettings SoundNotificationSettings[]
   whiteBrandConfig WhiteBrandConfig?
   publicTrackingTokens      PublicTrackingToken[]
+  customers                 Customer[]
 
   @@index([slug])
   @@index([status])
   @@map("tenants")
+}
+
+model Customer {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  phone      String?
+  email      String?
+  notes      String?
+  status     String   @default("normal")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, phone])
+  @@index([tenant_id])
+  @@index([tenant_id, phone])
+  @@map("customers")
 }
 
 model StoreSettings {
@@ -717,6 +739,45 @@ model MenuCustomerBalance {
   @@map("menu_online_customer_balances")
 }
 
+model DeliverySettlement {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  order_id         String   @unique
+  distance_km      Float
+  delivery_fee     Float
+  driver_amount    Float
+  store_amount     Float
+  platform_amount  Float
+  settled_at       DateTime @default(now())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  tenant           Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order            Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  
+  @@index([tenant_id])
+  @@index([order_id])
+  @@index([settled_at])
+  @@map("delivery_settlements")
+}
+
+model DeliverySettlementSettings {
+  id                           String   @id @default(uuid())
+  tenant_id                    String   @unique
+  driver_percentage            Float    @default(0)
+  driver_fixed_per_km          Float    @default(0)
+  driver_minimum_amount        Float    @default(0)
+  driver_maximum_amount        Float?
+  store_percentage             Float    @default(0)
+  platform_percentage          Float    @default(0)
+  created_at                   DateTime @default(now())
+  updated_at                   DateTime @updatedAt
+  
+  tenant                       Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  
+  @@map("delivery_settlement_settings")
+}
+
 model Order {
   id             String   @id @default(uuid())
   tenant_id      String
@@ -741,6 +802,7 @@ model Order {
   items          OrderItem[]
   timelineEvents OrderTimelineEvent[]
   publicTrackingTokens PublicTrackingToken[]
+  deliverySettlement DeliverySettlement?
 
   @@unique([tenant_id, order_number])
   @@index([tenant_id, public_order_code])

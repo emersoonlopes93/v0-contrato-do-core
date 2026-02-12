@@ -5,9 +5,7 @@ import { ORDERS_OPERATIONAL_STATUS } from '@/src/types/orders';
 import type { PrintOrderSnapshot, PrintJobPayload } from '@/src/types/printing';
 import type { PrintingService } from './printing.service';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isString(value: unknown): value is string {
   return typeof value === 'string';

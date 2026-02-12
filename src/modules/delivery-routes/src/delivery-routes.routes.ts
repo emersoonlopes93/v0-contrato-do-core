@@ -13,9 +13,7 @@ import type { DistanceMatrixInput } from '@/src/types/delivery-routes';
 import { getMapsConfig } from '@/src/config/maps.config';
 import { GoogleDistanceMatrixProvider } from './providers/googleDistanceMatrix.provider';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

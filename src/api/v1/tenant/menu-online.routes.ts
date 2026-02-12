@@ -45,9 +45,7 @@ const CHECKOUT_RATE_LIMIT_WINDOW_MS = 60_000;
 const CHECKOUT_RATE_LIMIT_MAX = 8;
 const checkoutRateLimit = new Map<string, { count: number; resetAt: number }>();
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isString(value: unknown): value is string {
   return typeof value === 'string';

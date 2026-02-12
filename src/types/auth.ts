@@ -26,6 +26,31 @@ export interface GlobalTenantLoginResponse {
   refreshToken: string;
 }
 
+export interface GlobalTenantLoginCookieResponse {
+  ok: true;
+  user: GlobalTenantLoginUserDTO;
+  tenant: GlobalTenantLoginTenantDTO;
+}
+
+export interface SaaSAdminLoginCookieResponse {
+  ok: true;
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    role: string;
+  };
+}
+
+export interface TenantLoginCookieResponse {
+  ok: true;
+  tenantId: string;
+  activeModules: string[];
+  role: string;
+  permissions: string[];
+  email: string;
+}
+
 export interface TenantLoginResponse {
   accessToken: string;
   refreshToken: string;

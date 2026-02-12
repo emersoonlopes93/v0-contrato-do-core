@@ -13,6 +13,23 @@ import { getPrismaClient } from '../../../adapters/prisma/client';
 const tenantAuth = new TenantAuthService();
 const prisma = getPrismaClient();
 
+function buildDevCookie(name: string, value: string): string {
+  const encoded = encodeURIComponent(value);
+  return `${name}=${encoded}; HttpOnly; SameSite=Lax; Path=/`;
+}
+
+function parseCookieValue(cookieHeader: string, key: string): string | null {
+  const parts = cookieHeader.split(';');
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith(`${key}=`)) continue;
+    const value = trimmed.slice(key.length + 1);
+    const decoded = decodeURIComponent(value);
+    return decoded.length > 0 ? decoded : null;
+  }
+  return null;
+}
+
 function isTenantUserLoginBody(
   body: unknown,
 ): body is Pick<TenantUserLoginRequest, 'email' | 'password'> {
@@ -76,9 +93,14 @@ export async function tenantLogin(req: Request, res: Response) {
     });
 
     res.status = 200;
+    res.headers = {
+      'Set-Cookie': [
+        buildDevCookie('tenant_auth_token', result.accessToken),
+        buildDevCookie('tenant_refresh_token', result.refreshToken),
+      ],
+    };
     res.body = {
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
+      ok: true,
       tenantId: tenant.id,
       activeModules: result.activeModules,
       role: result.user.role,
@@ -103,17 +125,29 @@ function isRefreshBody(body: unknown): body is { refreshToken: string } {
 }
 
 export async function tenantRefresh(req: Request, res: Response) {
+  const cookieHeader = req.headers['cookie'];
+  const cookieRefresh =
+    typeof cookieHeader === 'string'
+      ? parseCookieValue(cookieHeader, 'tenant_refresh_token')
+      : null;
+
   const body = req.body;
-  if (!isRefreshBody(body)) {
+  const bodyRefresh = isRefreshBody(body) ? body.refreshToken : null;
+  const refreshToken = cookieRefresh ?? bodyRefresh;
+
+  if (!refreshToken) {
     res.status = 400;
     res.body = { error: 'refreshToken is required' };
     return;
   }
 
   try {
-    const result = await tenantAuth.refreshToken(body.refreshToken);
+    const result = await tenantAuth.refreshToken(refreshToken);
     res.status = 200;
-    res.body = { accessToken: result.accessToken };
+    res.headers = {
+      'Set-Cookie': [buildDevCookie('tenant_auth_token', result.accessToken)],
+    };
+    res.body = { ok: true };
   } catch (error: unknown) {
     res.status = 401;
     res.body = {

@@ -34,7 +34,7 @@ function formatHistoryItem(item: DeliveryDriverHistoryEntryDTO): string {
 
 function DeliveryDriversPageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings, hasPermission } = useSession();
+  const { tenantSettings, hasPermission } = useSession();
   const realtimeEnabled = tenantSettings?.realtimeEnabled ?? true;
   const canManage = hasPermission('delivery-drivers.manage');
   const canAssign = hasPermission('delivery-drivers.assign');
@@ -48,7 +48,7 @@ function DeliveryDriversPageContent() {
     updateStatus,
     assignOrder,
     reload,
-  } = useDeliveryDrivers(accessToken, tenantSlug, { realtimeEnabled });
+  } = useDeliveryDrivers(tenantSlug, { realtimeEnabled });
 
   const [driverName, setDriverName] = React.useState('');
   const [driverPhone, setDriverPhone] = React.useState('');
@@ -62,8 +62,6 @@ function DeliveryDriversPageContent() {
         order.status !== 'canceled',
     );
   }, [orders]);
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="delivery-drivers.view">

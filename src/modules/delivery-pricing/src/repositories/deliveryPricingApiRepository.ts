@@ -8,9 +8,7 @@ import type {
   DeliveryPricingSettingsUpdateRequest,
 } from '@/src/types/delivery-pricing';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
   return isRecord(value) && value.success === true && 'data' in value;
@@ -20,11 +18,13 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function requestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function requestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
@@ -42,46 +42,46 @@ async function requestJson<T>(url: string, accessToken: string, init?: RequestIn
 }
 
 export async function fetchDeliveryPricing(
-  accessToken: string,
+  tenantSlug: string,
 ): Promise<DeliveryPricingSettingsDTO | null> {
-  return requestJson<DeliveryPricingSettingsDTO | null>('/api/v1/tenant/delivery-pricing', accessToken);
+  return requestJson<DeliveryPricingSettingsDTO | null>('/api/v1/tenant/delivery-pricing', tenantSlug);
 }
 
 export async function createDeliveryPricing(
-  accessToken: string,
+  tenantSlug: string,
   input: DeliveryPricingSettingsCreateRequest,
 ): Promise<DeliveryPricingSettingsDTO> {
-  return requestJson<DeliveryPricingSettingsDTO>('/api/v1/tenant/delivery-pricing', accessToken, {
+  return requestJson<DeliveryPricingSettingsDTO>('/api/v1/tenant/delivery-pricing', tenantSlug, {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function updateDeliveryPricing(
-  accessToken: string,
+  tenantSlug: string,
   input: DeliveryPricingSettingsUpdateRequest,
 ): Promise<DeliveryPricingSettingsDTO | null> {
-  return requestJson<DeliveryPricingSettingsDTO | null>('/api/v1/tenant/delivery-pricing', accessToken, {
+  return requestJson<DeliveryPricingSettingsDTO | null>('/api/v1/tenant/delivery-pricing', tenantSlug, {
     method: 'PATCH',
     body: JSON.stringify(input),
   });
 }
 
 export async function previewDeliveryPricing(
-  accessToken: string,
+  tenantSlug: string,
   input: DeliveryPricingPreviewRequest,
 ): Promise<DeliveryPricingPreviewDTO> {
-  return requestJson<DeliveryPricingPreviewDTO>('/api/v1/tenant/delivery-pricing/preview', accessToken, {
+  return requestJson<DeliveryPricingPreviewDTO>('/api/v1/tenant/delivery-pricing/preview', tenantSlug, {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function applyDeliveryPricingRoute(
-  accessToken: string,
+  tenantSlug: string,
   input: DeliveryPricingApplyRouteRequest,
 ): Promise<void> {
-  await requestJson<null>('/api/v1/tenant/delivery-pricing/apply-route', accessToken, {
+  await requestJson<null>('/api/v1/tenant/delivery-pricing/apply-route', tenantSlug, {
     method: 'POST',
     body: JSON.stringify(input),
   });

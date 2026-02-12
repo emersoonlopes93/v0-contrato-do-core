@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { withModuleGuard } from '@/src/tenant/components/ModuleGuard';
 import { useSession } from '@/src/tenant/context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +59,8 @@ type DraftPriceVariation = {
 };
 
 function MenuOnlineProductsPageContent() {
-  const { accessToken } = useSession();
+  const { tenantSlug } = useTenant();
+  useSession();
   const { isIfoodMode, setMode } = useMenuUxMode();
   const [categories, setCategories] = useState<MenuOnlineCategoryDTO[]>([]);
   const [modifierGroups, setModifierGroups] = useState<MenuOnlineModifierGroupDTO[]>([]);
@@ -100,21 +102,28 @@ function MenuOnlineProductsPageContent() {
   const [isSavingCategoryOrder, setIsSavingCategoryOrder] = useState<boolean>(false);
   const [categoryOrder, setCategoryOrder] = useState<MenuOnlineCategoryDTO[]>([]);
 
+  const authHeaders = useCallback(
+    (withContentType: boolean): Record<string, string> => {
+      const base: Record<string, string> = {
+        'X-Auth-Context': 'tenant_user',
+        'X-Tenant-Slug': tenantSlug,
+      };
+      return withContentType ? { ...base, 'Content-Type': 'application/json' } : base;
+    },
+    [tenantSlug],
+  );
+
   // Carregar dados
   const load = useCallback(async () => {
-    if (!accessToken) {
-      return;
-    }
-
     setIsLoading(true);
     setError('');
 
     try {
       // Carregar categorias
       const categoriesRes = await fetch('/api/v1/tenant/menu-online/categories', {
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          ...authHeaders(true),
         },
       });
 
@@ -128,9 +137,9 @@ function MenuOnlineProductsPageContent() {
 
       // Carregar produtos
       const productsRes = await fetch('/api/v1/tenant/menu-online/products', {
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          ...authHeaders(true),
         },
       });
 
@@ -144,9 +153,9 @@ function MenuOnlineProductsPageContent() {
 
       // Carregar grupos de modificadores
       const modifiersRes = await fetch('/api/v1/tenant/menu-online/modifiers/groups', {
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          ...authHeaders(true),
         },
       });
 
@@ -163,7 +172,7 @@ function MenuOnlineProductsPageContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken]);
+  }, [authHeaders]);
 
   useEffect(() => {
     load();
@@ -213,8 +222,6 @@ function MenuOnlineProductsPageContent() {
   };
 
   const handleSaveCategoryOrder = async () => {
-    if (!accessToken) return;
-
     setIsSavingCategoryOrder(true);
 
     try {
@@ -231,9 +238,9 @@ function MenuOnlineProductsPageContent() {
 
         const res = await fetch(`/api/v1/tenant/menu-online/categories/${category.id}`, {
           method: 'PATCH',
+          credentials: 'include',
           headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+            ...authHeaders(true),
           },
           body: JSON.stringify(payload),
         });
@@ -324,9 +331,9 @@ function MenuOnlineProductsPageContent() {
       
       const res = await fetch(`/api/v1/tenant/menu-online/products/${product.id}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          ...authHeaders(true),
         },
         body: JSON.stringify({
           status: newStatus,
@@ -366,9 +373,10 @@ function MenuOnlineProductsPageContent() {
     try {
       const res = await fetch(`/api/v1/tenant/menu-online/products/${productId}`, {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
       });
 
@@ -401,9 +409,10 @@ function MenuOnlineProductsPageContent() {
     try {
       const res = await fetch(`/api/v1/tenant/menu-online/categories/${categoryId}`, {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
       });
 
@@ -445,9 +454,10 @@ function MenuOnlineProductsPageContent() {
 
       const res = await fetch(`/api/v1/tenant/menu-online/products`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
         body: JSON.stringify(duplicateData),
       });
@@ -487,9 +497,10 @@ function MenuOnlineProductsPageContent() {
 
       const res = await fetch(`/api/v1/tenant/menu-online/categories`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
         body: JSON.stringify(duplicateData),
       });
@@ -528,9 +539,10 @@ function MenuOnlineProductsPageContent() {
         categoryProducts.map(async (product) => {
           const res = await fetch(`/api/v1/tenant/menu-online/products/${product.id}`, {
             method: 'PUT',
+            credentials: 'include',
             headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
+              'X-Auth-Context': 'tenant_user',
+              'X-Tenant-Slug': tenantSlug,
             },
             body: JSON.stringify({
               status: enabled ? 'active' : 'inactive',
@@ -599,9 +611,10 @@ function MenuOnlineProductsPageContent() {
 
       const res = await fetch(url, {
         method: isEditing ? 'PUT' : 'POST',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
         body: JSON.stringify(productData),
       });
@@ -654,9 +667,10 @@ function MenuOnlineProductsPageContent() {
 
       const res = await fetch('/api/v1/tenant/menu-online/modifiers/groups', {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
         body: JSON.stringify(payload),
       });
@@ -722,9 +736,10 @@ function MenuOnlineProductsPageContent() {
 
       const res = await fetch(url, {
         method,
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': tenantSlug,
         },
         body: JSON.stringify(payload),
       });
@@ -763,8 +778,6 @@ function MenuOnlineProductsPageContent() {
     }
   };
 
-  if (!accessToken) return null;
-  
   // Se estiver no modo iFood, renderizar a nova UX com fallback
   if (isIfoodMode) {
     return (

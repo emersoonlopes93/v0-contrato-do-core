@@ -54,7 +54,7 @@ function resolveIcon(name: string, active: boolean): React.ReactNode {
 
 export function MobileBottomNav() {
   const { tenantSlug } = useTenant();
-  const { isModuleEnabled } = useSession();
+  const { isModuleEnabled, hasPermission } = useSession();
   const basePath = `/tenant/${tenantSlug}`;
   const [modules, setModules] = useState<ModuleRegisterPayload[]>([]);
 
@@ -75,6 +75,7 @@ export function MobileBottomNav() {
     const entries = modules
       .filter((module) => module.uiEntry)
       .filter((module) => isModuleEnabled(module.id))
+      .filter((module) => module.permissions.some((p) => hasPermission(p.id)))
       .map((module) => {
         const entry = module.uiEntry!;
         const href = `${basePath}${entry.tenantBasePath}`;
@@ -93,7 +94,7 @@ export function MobileBottomNav() {
         icon: resolveIcon(item.icon, item.isActive),
       }));
     return entries as NavItem[];
-  }, [modules, isModuleEnabled, basePath]);
+  }, [modules, isModuleEnabled, hasPermission, basePath]);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">

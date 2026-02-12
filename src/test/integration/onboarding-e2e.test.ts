@@ -102,14 +102,11 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
   });
 
   it('4. Should Onboard the Tenant (Create User & Activate Modules)', async () => {
-    // First, let's find the hello-module slug/id to be sure, or just use 'hello-module'
-    // The seed creates 'hello-module'.
-    
     const res = await request('POST', `/api/v1/admin/tenants/${tenantId}/onboard`, {
       email: tenantEmail,
       password: tenantPassword,
       name: 'Test Admin',
-      modules: ['hello-module'],
+      modules: ['employees'],
     }, adminToken);
 
     if (res.status !== 200) {
@@ -167,11 +164,8 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
     console.log('✅ Session Verified');
   });
 
-  it('8. Should Access Protected Hello Module Route (RBAC & Module Guard)', async () => {
-    // Try to create a hello message
-    const res = await request('POST', '/api/v1/tenant/hello/create', {
-      message: 'Hello Integration Test'
-    }, tenantToken, {
+  it('8. Should Access Protected Employees Route (RBAC & Module Guard)', async () => {
+    const res = await request('GET', '/api/v1/tenant/employees', undefined, tenantToken, {
       'X-Tenant-ID': tenantId
     });
 
@@ -180,8 +174,7 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
       console.warn('Body:', res.body);
     }
 
-    // Expect 201. If this fails, it might be the missing Role issue.
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(200);
     console.log('✅ Protected Route Accessed (Module & Permission OK)');
   });
 
@@ -205,20 +198,18 @@ suite('Tenant Onboarding E2E Flow', { timeout: 30000 }, () => {
      const modRes = await request('GET', '/api/v1/admin/modules', undefined, adminToken);
      const modulesBody = modRes.body as { data?: { id: string; slug: string }[] };
      const modules = Array.isArray(modulesBody.data) ? modulesBody.data : [];
-     const helloMod = modules.find((m) => m.slug === 'hello-module');
-     if (!helloMod) {
-       throw new Error('hello-module not found');
+     const employeesMod = modules.find((m) => m.slug === 'employees');
+     if (!employeesMod) {
+       throw new Error('employees module not found');
      }
      
-     const deactivateRes = await request('POST', `/api/v1/admin/tenants/${tenantId}/modules/${helloMod.id}/deactivate`, {}, adminToken);
+     const deactivateRes = await request('POST', `/api/v1/admin/tenants/${tenantId}/modules/${employeesMod.id}/deactivate`, {}, adminToken);
      expect(deactivateRes.status).toBe(200);
      
      // 2. Try access again
-     const res = await request('POST', '/api/v1/tenant/hello/create', {
-      message: 'Should Fail'
-    }, tenantToken, {
-      'X-Tenant-ID': tenantId
-    });
+     const res = await request('GET', '/api/v1/tenant/employees', undefined, tenantToken, {
+       'X-Tenant-ID': tenantId
+     });
     
     expect(res.status).toBe(403);
     expect(res.body.message).toMatch(/Module access denied|Module .* not active|Module .* is not enabled/i);

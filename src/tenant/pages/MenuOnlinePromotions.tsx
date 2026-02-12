@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -33,11 +34,13 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiRequestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function apiRequestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
@@ -57,7 +60,8 @@ async function apiRequestJson<T>(url: string, accessToken: string, init?: Reques
 type TabId = 'coupons' | 'combos' | 'upsell';
 
 function MenuOnlinePromotionsPageContent() {
-  const { accessToken } = useSession();
+  const { tenantSlug } = useTenant();
+  useSession();
   const [tab, setTab] = useState<TabId>('coupons');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -88,17 +92,16 @@ function MenuOnlinePromotionsPageContent() {
   const [upsellSuggestedProductId, setUpsellSuggestedProductId] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       setError('');
       try {
         const [productsData, couponsData, combosData, upsellData] = await Promise.all([
-          apiRequestJson<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', accessToken),
-          apiRequestJson<MenuOnlineCouponDTO[]>('/api/v1/tenant/menu-online/coupons', accessToken),
-          apiRequestJson<MenuOnlineComboDTO[]>('/api/v1/tenant/menu-online/combos', accessToken),
-          apiRequestJson<MenuOnlineUpsellSuggestionDTO[]>('/api/v1/tenant/menu-online/upsell-suggestions', accessToken),
+          apiRequestJson<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', tenantSlug),
+          apiRequestJson<MenuOnlineCouponDTO[]>('/api/v1/tenant/menu-online/coupons', tenantSlug),
+          apiRequestJson<MenuOnlineComboDTO[]>('/api/v1/tenant/menu-online/combos', tenantSlug),
+          apiRequestJson<MenuOnlineUpsellSuggestionDTO[]>('/api/v1/tenant/menu-online/upsell-suggestions', tenantSlug),
         ]);
         if (cancelled) return;
         setProducts(productsData);
@@ -115,10 +118,9 @@ function MenuOnlinePromotionsPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   async function createCoupon(): Promise<void> {
-    if (!accessToken) return;
     setError('');
     try {
       const payload: MenuOnlineCreateCouponRequest = {
@@ -129,7 +131,7 @@ function MenuOnlinePromotionsPageContent() {
       };
       const created = await apiRequestJson<MenuOnlineCouponDTO>(
         '/api/v1/tenant/menu-online/coupons',
-        accessToken,
+        tenantSlug,
         { method: 'POST', body: JSON.stringify(payload) },
       );
       setCoupons((prev) => [...prev, created]);
@@ -143,10 +145,9 @@ function MenuOnlinePromotionsPageContent() {
   }
 
   async function deleteCoupon(id: string): Promise<void> {
-    if (!accessToken) return;
     setError('');
     try {
-      await apiRequestJson<unknown>(`/api/v1/tenant/menu-online/coupons/${id}`, accessToken, { method: 'DELETE' });
+      await apiRequestJson<unknown>(`/api/v1/tenant/menu-online/coupons/${id}`, tenantSlug, { method: 'DELETE' });
       setCoupons((prev) => prev.filter((c) => c.id !== id));
       toast({ title: 'Cupom removido' });
     } catch (e) {
@@ -157,7 +158,6 @@ function MenuOnlinePromotionsPageContent() {
   }
 
   async function createCombo(): Promise<void> {
-    if (!accessToken) return;
     setError('');
     try {
       const items = comboItems
@@ -181,7 +181,7 @@ function MenuOnlinePromotionsPageContent() {
       };
       const created = await apiRequestJson<MenuOnlineComboDTO>(
         '/api/v1/tenant/menu-online/combos',
-        accessToken,
+        tenantSlug,
         { method: 'POST', body: JSON.stringify(payload) },
       );
       setCombos((prev) => [...prev, created]);
@@ -196,10 +196,9 @@ function MenuOnlinePromotionsPageContent() {
   }
 
   async function deleteCombo(id: string): Promise<void> {
-    if (!accessToken) return;
     setError('');
     try {
-      await apiRequestJson<unknown>(`/api/v1/tenant/menu-online/combos/${id}`, accessToken, { method: 'DELETE' });
+      await apiRequestJson<unknown>(`/api/v1/tenant/menu-online/combos/${id}`, tenantSlug, { method: 'DELETE' });
       setCombos((prev) => prev.filter((c) => c.id !== id));
       toast({ title: 'Combo removido' });
     } catch (e) {
@@ -210,7 +209,6 @@ function MenuOnlinePromotionsPageContent() {
   }
 
   async function createUpsell(): Promise<void> {
-    if (!accessToken) return;
     setError('');
     try {
       const payload: MenuOnlineCreateUpsellSuggestionRequest = {
@@ -220,7 +218,7 @@ function MenuOnlinePromotionsPageContent() {
       };
       const created = await apiRequestJson<MenuOnlineUpsellSuggestionDTO>(
         '/api/v1/tenant/menu-online/upsell-suggestions',
-        accessToken,
+        tenantSlug,
         { method: 'POST', body: JSON.stringify(payload) },
       );
       setUpsellSuggestions((prev) => [...prev, created]);
@@ -235,12 +233,11 @@ function MenuOnlinePromotionsPageContent() {
   }
 
   async function deleteUpsell(id: string): Promise<void> {
-    if (!accessToken) return;
     setError('');
     try {
       await apiRequestJson<unknown>(
         `/api/v1/tenant/menu-online/upsell-suggestions/${id}`,
-        accessToken,
+        tenantSlug,
         { method: 'DELETE' },
       );
       setUpsellSuggestions((prev) => prev.filter((u) => u.id !== id));
@@ -251,8 +248,6 @@ function MenuOnlinePromotionsPageContent() {
       toast({ variant: 'destructive', title: 'Erro', description: message });
     }
   }
-
-  if (!accessToken) return null;
 
   return (
     <div className="space-y-6 pb-4">

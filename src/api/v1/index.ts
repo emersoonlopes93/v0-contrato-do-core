@@ -25,7 +25,6 @@ import {
 import type { IDatabaseAdapter, IRepository } from '@/src/core/db/contracts';
 import { asModuleId, type ModuleId } from '@/src/core/types';
 import type { ModuleContext } from '@/src/core/modules/contracts';
-import { HelloService } from '@/src/modules/hello-module/src/services/hello.service';
 import ordersModule from '@/src/modules/orders-module/src';
 import menuOnlineModule from '@/src/modules/menu-online/src';
 import soundNotificationsModule from '@/src/modules/sound-notifications/src';
@@ -41,9 +40,11 @@ import cashierModule from '@/src/modules/cashier/src';
 import deliveryDriverAppModule from '@/src/modules/delivery-driver-app/src';
 import deliveryPricingModule from '@/src/modules/delivery-pricing/src';
 import clientTrackingModule from '@/src/modules/client-tracking/src';
+import customersCrmModule from '@/src/modules/customers-crm/src';
+import { manifest as employeesManifest } from '@/src/modules/employees/src/manifest';
+import { manifest as rolesPermissionsManifest } from '@/src/modules/roles-permissions/src/manifest';
 
 // Tenant Controllers
-import * as helloController from './tenant/hello/hello.controller';
 import * as tenantWhiteLabelController from './tenant/white-label.controller';
 import * as publicWhiteLabelController from './public/white-label.controller';
 
@@ -63,6 +64,7 @@ import { checkoutRoutes } from '@/src/modules/checkout/src/checkout.routes';
 import { paymentsRoutes } from '@/src/modules/payments/src/payments.routes';
 import { financialRoutes } from '@/src/modules/financial/src/financial.routes';
 import { clientTrackingPublicRoutes } from '@/src/modules/client-tracking/src/client-tracking.routes';
+import { customersCrmRoutes } from '@/src/modules/customers-crm/src/customers-crm.routes';
 
 /**
  * API Routes Configuration
@@ -84,49 +86,11 @@ export const routes: Route[] = [
 
   ...tenantRoutes,
 
+  ...customersCrmRoutes,
+
   ...checkoutRoutes,
   ...paymentsRoutes,
   ...financialRoutes,
-
-  // ==========================================
-  // TENANT ROUTES - Hello Module
-  // ==========================================
-  {
-    method: 'POST',
-    path: '/api/v1/tenant/hello/create',
-    middlewares: [
-      requestLogger,
-      errorHandler,
-      requireTenantAuth,
-      requireModule('hello-module'),
-      requirePermission('hello.create'),
-    ],
-    handler: helloController.createHello,
-  },
-  {
-    method: 'POST',
-    path: '/api/v1/tenant/hello/greet',
-    middlewares: [
-      requestLogger,
-      errorHandler,
-      requireTenantAuth,
-      requireModule('hello-module'),
-      requirePermission('hello.read'),
-    ],
-    handler: helloController.greet,
-  },
-  {
-    method: 'GET',
-    path: '/api/v1/tenant/hello/list',
-    middlewares: [
-      requestLogger,
-      errorHandler,
-      requireTenantAuth,
-      requireModule('hello-module'),
-      requirePermission('hello.read'),
-    ],
-    handler: helloController.listHellos,
-  },
 
   {
     method: 'GET',
@@ -298,19 +262,6 @@ const moduleContext: ModuleContext = {
   },
 };
 
-const helloService = new HelloService(moduleContext);
-
-void globalModuleRegistry.register({
-  id: asModuleId('hello-module'),
-  name: 'Hello Module',
-  version: '1.0.0',
-  permissions: [],
-  eventTypes: [],
-  requiredPlan: 'pro',
-});
-
-globalModuleServiceRegistry.register(asModuleId('hello-module'), 'HelloService', helloService);
-
 void globalModuleRegistry.register(ordersModule.manifest);
 void ordersModule.register(moduleContext);
 
@@ -355,6 +306,13 @@ void deliveryPricingModule.register(moduleContext);
 
 void globalModuleRegistry.register(clientTrackingModule.manifest);
 void clientTrackingModule.register(moduleContext);
+
+void globalModuleRegistry.register(customersCrmModule.manifest);
+void customersCrmModule.register(moduleContext);
+
+void globalModuleRegistry.register(employeesManifest);
+
+void globalModuleRegistry.register(rolesPermissionsManifest);
 
 /**
  * Execute middleware chain

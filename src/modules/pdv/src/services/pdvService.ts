@@ -4,25 +4,25 @@ import type { OrdersCreateOrderRequest, OrdersOrderDTO } from '@/src/types/order
 import type { OrdersOrderSummaryDTO } from '@/src/types/orders';
 import type { MenuOnlineCategoryDTO, MenuOnlineProductDTO, MenuOnlineSettingsDTO } from '@/src/types/menu-online';
 
-export async function fetchPdvProducts(accessToken: string): Promise<MenuOnlineProductDTO[]> {
-  return listMenuProducts(accessToken);
+export async function fetchPdvProducts(tenantSlug: string): Promise<MenuOnlineProductDTO[]> {
+  return listMenuProducts(tenantSlug);
 }
 
-export async function fetchPdvCategories(accessToken: string): Promise<MenuOnlineCategoryDTO[]> {
-  return listMenuCategories(accessToken);
+export async function fetchPdvCategories(tenantSlug: string): Promise<MenuOnlineCategoryDTO[]> {
+  return listMenuCategories(tenantSlug);
 }
 
-export async function fetchPdvSettings(accessToken: string): Promise<MenuOnlineSettingsDTO> {
-  return getMenuSettings(accessToken);
+export async function fetchPdvSettings(tenantSlug: string): Promise<MenuOnlineSettingsDTO> {
+  return getMenuSettings(tenantSlug);
 }
 
 export async function submitPdvOrder(
-  accessToken: string,
+  tenantSlug: string,
   input: OrdersCreateOrderRequest,
 ): Promise<OrdersOrderDTO> {
-  return createOrder(accessToken, input);
+  return createOrder(tenantSlug, input);
 }
 
-export async function fetchPdvOrders(accessToken: string): Promise<OrdersOrderSummaryDTO[]> {
-  return listOrders(accessToken);
+export async function fetchPdvOrders(tenantSlug: string): Promise<OrdersOrderSummaryDTO[]> {
+  return listOrders(tenantSlug);
 }

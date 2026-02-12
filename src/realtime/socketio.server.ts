@@ -3,10 +3,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { prisma } from '@/src/adapters/prisma/client';
 import { JWTService, setRealtimeEmitter } from '@/src/core';
 import type { RealtimeEmitter, RealtimeEnvelope, RealtimeEventName } from '@/src/core';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function getBearerToken(value: unknown): string | null {
   if (typeof value !== 'string') return null;

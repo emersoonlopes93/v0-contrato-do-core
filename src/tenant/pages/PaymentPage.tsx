@@ -22,11 +22,13 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiRequestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function apiRequestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
@@ -50,7 +52,7 @@ function normalizeProvider(value: string | null | undefined): PaymentsProvider {
 
 function PaymentPageContent({ orderId }: { orderId: string }) {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings } = useSession();
+  const { tenantSettings } = useSession();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -58,7 +60,6 @@ function PaymentPageContent({ orderId }: { orderId: string }) {
   const basePath = `/tenant/${tenantSlug}`;
 
   async function createPayment(method: PaymentsMethod): Promise<void> {
-    if (!accessToken) return;
     setIsLoading(true);
     setError('');
     try {
@@ -67,7 +68,7 @@ function PaymentPageContent({ orderId }: { orderId: string }) {
         method,
         provider,
       };
-      const payment = await apiRequestJson<PaymentsDTO>('/api/v1/payments', accessToken, {
+      const payment = await apiRequestJson<PaymentsDTO>('/api/v1/payments', tenantSlug, {
         method: 'POST',
         body: JSON.stringify(payload),
       });
@@ -78,8 +79,6 @@ function PaymentPageContent({ orderId }: { orderId: string }) {
       setIsLoading(false);
     }
   }
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="payments:create">

@@ -8,13 +8,13 @@ type State = {
   error: string | null;
 };
 
-export function useDeliveryTrackingMapConfig(accessToken: string | null): State {
+export function useDeliveryTrackingMapConfig(tenantSlug: string): State {
   const [mapConfig, setMapConfig] = React.useState<DeliveryTrackingMapConfig | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!accessToken) {
+    if (!tenantSlug) {
       setLoading(false);
       return;
     }
@@ -23,7 +23,7 @@ export function useDeliveryTrackingMapConfig(accessToken: string | null): State 
       setLoading(true);
       setError(null);
       try {
-        const data = await getDeliveryTrackingMapConfig(accessToken);
+        const data = await getDeliveryTrackingMapConfig(tenantSlug);
         if (!cancelled) setMapConfig(data);
       } catch (e: unknown) {
         if (!cancelled) {
@@ -37,7 +37,7 @@ export function useDeliveryTrackingMapConfig(accessToken: string | null): State 
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   return {
     mapConfig,

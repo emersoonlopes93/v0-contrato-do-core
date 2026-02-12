@@ -59,7 +59,7 @@ function isRouteActive(href?: string): boolean {
 
 export function TenantSidebar() {
   const { tenantSlug } = useTenant();
-  const { isModuleEnabled } = useSession();
+  const { isModuleEnabled, hasPermission } = useSession();
   const basePath = `/tenant/${tenantSlug}`;
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
@@ -76,6 +76,10 @@ export function TenantSidebar() {
     modules.forEach((module) => {
       const entry = module.uiEntry;
       if (!entry) return;
+      if (!isModuleEnabled(module.id)) return;
+
+      const hasAnyPermission = module.permissions.some((p) => hasPermission(p.id));
+      if (!hasAnyPermission) return;
       const category = entry.category || 'Módulos';
       if (!grouped.has(category)) {
         grouped.set(category, { label: category, iconName: entry.icon || 'box', items: [] });
@@ -87,7 +91,7 @@ export function TenantSidebar() {
         label: entry.homeLabel,
         href,
         isActive: isRouteActive(href),
-        disabled: !isModuleEnabled(module.id),
+        disabled: false,
       });
     });
     return Array.from(grouped.values()).map((section, index) => ({
@@ -96,7 +100,7 @@ export function TenantSidebar() {
       icon: resolveIcon(section.iconName),
       items: section.items.sort((a, b) => a.label.localeCompare(b.label)),
     }));
-  }, [modules, basePath, isModuleEnabled]);
+  }, [modules, basePath, isModuleEnabled, hasPermission]);
 
   const visibleSections = sections.filter((section) => section.items.length > 0);
 

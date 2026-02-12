@@ -1,0 +1,102 @@
+NOME
+Auth Contract — SaaS Multi-Tenant (Oficial)
+
+OBJETIVO
+Definir regras imutáveis de autenticação entre:
+- Frontend
+- Backend
+- SaaS-Admin
+- Tenant-Admin
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ FONTE DE AUTENTICAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✔ Fonte única de autenticação:
+COOKIE HTTP-ONLY
+
+🚫 Proibido:
+- JWT no localStorage
+- Token manual no header
+- Auth híbrida
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2️⃣ FLUXO DE LOGIN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Usuário envia credenciais
+2. Backend valida
+3. Backend:
+   - Gera token
+   - Salva sessão (DB ou memória)
+   - Emite cookie HTTP-only
+4. Frontend NÃO recebe token em JSON
+5. Navegação liberada
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3️⃣ FLUXO DE SESSÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Endpoint oficial:
+GET /api/v1/auth/session
+
+Responsabilidades:
+- Ler cookie
+- Validar sessão
+- Retornar:
+  - authenticated: true/false
+  - role
+  - tenantId (quando aplicável)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4️⃣ FLUXO DE REFRESH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Endpoint:
+POST /api/v1/auth/refresh
+
+Regras:
+- Cookie é enviado automaticamente
+- Novo cookie é emitido
+- Frontend não percebe
+
+🚫 Nunca:
+- Forçar refresh manual no frontend
+- Loop infinito de refresh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5️⃣ MULTI-CONTEXTO (SAAS x TENANT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- SaaS-Admin e Tenant-Admin compartilham:
+  - Mesmo contrato de cookie
+  - Mesmo mecanismo de sessão
+
+Diferença:
+- Role
+- TenantId
+
+Erro padrão:
+"Invalid or expired SaaS Admin token"
+→ SEMPRE indica cookie ausente ou inválido
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6️⃣ LOGOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Backend remove cookie
+- Backend invalida sessão
+- Frontend apenas redireciona
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7️⃣ REGRAS DE OURO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✔ Auth não depende de módulo
+✔ Auth não depende de sprint
+✔ Auth vem ANTES de qualquer feature
+✔ Se login volta pra tela → cookie falhou
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STATUS
+Este contrato NÃO deve ser alterado sem revisão arquitetural.

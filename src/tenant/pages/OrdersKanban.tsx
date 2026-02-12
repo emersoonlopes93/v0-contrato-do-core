@@ -29,10 +29,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiGet<T>(url: string, accessToken: string): Promise<T> {
+async function apiGet<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -63,25 +65,24 @@ const COLUMNS: KanbanColumn[] = [
 
 function OrdersKanbanPageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings: tenantSettingsSession } = useSession();
+  const { tenantSettings: tenantSettingsSession } = useSession();
   const [orders, setOrders] = useState<OrdersOrderSummaryDTO[]>([]);
   const [tenantSettings, setTenantSettings] = useState<TenantSettingsDTO | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       setError('');
       try {
-        const data = await apiGet<OrdersOrderSummaryDTO[]>('/api/v1/tenant/orders', accessToken);
+        const data = await apiGet<OrdersOrderSummaryDTO[]>('/api/v1/tenant/orders', tenantSlug);
         if (cancelled) return;
         setOrders(data);
 
         try {
-          const settings = await apiGet<TenantSettingsDTO | null>('/api/v1/tenant/settings', accessToken);
+          const settings = await apiGet<TenantSettingsDTO | null>('/api/v1/tenant/settings', tenantSlug);
           if (!cancelled) setTenantSettings(settings);
         } catch {
           if (!cancelled) setTenantSettings(null);
@@ -96,14 +97,13 @@ function OrdersKanbanPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   const handleRealtimeUpdate = useCallback(
     (event: OrdersKanbanUpdatableEvent, payload: { orderId: string; status?: string }) => {
       if (event === REALTIME_ORDER_EVENTS.ORDER_CREATED) {
         // Para order.created, buscamos os detalhes do pedido
-        if (!accessToken) return;
-        apiGet<OrdersOrderSummaryDTO>(`/api/v1/tenant/orders/${payload.orderId}`, accessToken)
+        apiGet<OrdersOrderSummaryDTO>(`/api/v1/tenant/orders/${payload.orderId}`, tenantSlug)
           .then((newOrder) => {
             setOrders((prev) => {
               const existingIndex = prev.findIndex((o) => o.id === payload.orderId);
@@ -137,7 +137,7 @@ function OrdersKanbanPageContent() {
         return prev;
       });
     },
-    [accessToken],
+    [tenantSlug],
   );
 
   useRealtimeEvent(REALTIME_ORDER_EVENTS.ORDER_CREATED, (envelope) => {
@@ -173,8 +173,6 @@ function OrdersKanbanPageContent() {
     }
     return map;
   }, [orders]);
-
-  if (!accessToken) return null;
 
   const basePath = `/tenant/${tenantSlug}`;
   const effectiveTimezone = tenantSettings?.timezone ?? tenantSettingsSession?.timezone ?? null;

@@ -27,10 +27,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiGet<T>(url: string, accessToken: string): Promise<T> {
+async function apiGet<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
   const raw: unknown = await response.json().catch(() => null);
@@ -51,21 +53,19 @@ async function apiGet<T>(url: string, accessToken: string): Promise<T> {
 
 function MenuOnlinePageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings } = useSession();
+  const { tenantSettings } = useSession();
   const [error, setError] = useState<string>('');
   const [stats, setStats] = useState<{ categories: number; products: number; modifierGroups: number } | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
-
     let cancelled = false;
     (async () => {
       setError('');
       try {
         const [categories, products, modifierGroups] = await Promise.all([
-          apiGet<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', accessToken),
-          apiGet<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', accessToken),
-          apiGet<MenuOnlineModifierGroupDTO[]>('/api/v1/tenant/menu-online/modifiers/groups', accessToken),
+          apiGet<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', tenantSlug),
+          apiGet<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', tenantSlug),
+          apiGet<MenuOnlineModifierGroupDTO[]>('/api/v1/tenant/menu-online/modifiers/groups', tenantSlug),
         ]);
         if (cancelled) return;
         setStats({
@@ -82,9 +82,7 @@ function MenuOnlinePageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
-
-  if (!accessToken) return null;
+  }, []);
 
   const basePath = `/tenant/${tenantSlug}`;
   const showSettingsWarning =

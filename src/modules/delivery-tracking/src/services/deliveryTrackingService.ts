@@ -46,13 +46,12 @@ function mapRoutes(routes: DeliveryRouteDTO[]) {
 }
 
 export async function getDeliveryTrackingSnapshot(
-  accessToken: string,
   tenantSlug: string,
 ): Promise<DeliveryTrackingSnapshot> {
   const { drivers, routes } = await loadDeliveryTrackingData(tenantSlug);
   let restaurant: DeliveryTrackingSnapshot['restaurant'] = null;
   try {
-    const settings = await fetchTenantSettings(accessToken);
+    const settings = await fetchTenantSettings(tenantSlug);
     if (settings) {
       restaurant = {
         latitude: settings.latitude,

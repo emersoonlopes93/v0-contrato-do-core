@@ -22,10 +22,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiGet<T>(url: string, accessToken: string): Promise<T> {
+async function apiGet<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -73,19 +75,18 @@ function formatDateTime(value: string, timezone: string | null): string {
 
 function FinancialDashboardPageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings } = useSession();
+  const { tenantSettings } = useSession();
   const [summary, setSummary] = useState<FinancialSummaryDTO | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       setError('');
       try {
-        const data = await apiGet<FinancialSummaryDTO>('/api/v1/financial/summary', accessToken);
+        const data = await apiGet<FinancialSummaryDTO>('/api/v1/financial/summary', tenantSlug);
         if (!cancelled) setSummary(data);
       } catch (e) {
         if (cancelled) return;
@@ -97,9 +98,7 @@ function FinancialDashboardPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
-
-  if (!accessToken) return null;
+  }, [tenantSlug]);
 
   const basePath = `/tenant/${tenantSlug}`;
   const currency: string | null = null;
@@ -232,13 +231,12 @@ function FinancialDashboardPageContent() {
 
 function FinancialOrdersPageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings } = useSession();
+  const { tenantSettings } = useSession();
   const [orders, setOrders] = useState<FinancialOrderDTO[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
@@ -246,7 +244,7 @@ function FinancialOrdersPageContent() {
       try {
         const data = await apiGet<FinancialOrdersListDTO>(
           '/api/v1/financial/orders?page=1&pageSize=20',
-          accessToken,
+          tenantSlug,
         );
         if (!cancelled) setOrders(data.items);
       } catch (e) {
@@ -259,7 +257,7 @@ function FinancialOrdersPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   const basePath = `/tenant/${tenantSlug}`;
   const currency: string | null = null;
@@ -270,8 +268,6 @@ function FinancialOrdersPageContent() {
   }, [orders]);
 
   const hasOrders = ordered.length > 0;
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="financial.orders.read">

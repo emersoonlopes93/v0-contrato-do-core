@@ -8,8 +8,8 @@ import {
 import type { CashierCloseRequest, CashierOpenRequest, CashierSession } from '@/src/types/cashier';
 import type { OrdersOrderSummaryDTO } from '@/src/types/orders';
 
-export async function fetchCashierOrders(accessToken: string): Promise<OrdersOrderSummaryDTO[]> {
-  return listOrders(accessToken);
+export async function fetchCashierOrders(tenantSlug: string): Promise<OrdersOrderSummaryDTO[]> {
+  return listOrders(tenantSlug);
 }
 
 export function getCashier(tenantSlug: string): CashierSession | null {

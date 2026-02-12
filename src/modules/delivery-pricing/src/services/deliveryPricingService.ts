@@ -15,9 +15,7 @@ import type {
 import { calculateDeliveryPricing } from '../rules/deliveryPricingRules';
 import { DeliveryPricingRepository, type DeliveryPricingRow } from '../repositories/deliveryPricingRepository';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isString(value: unknown): value is string {
   return typeof value === 'string';

@@ -21,9 +21,7 @@ import {
   type SoundNotificationUserRole,
 } from '@/src/types/sound-notifications';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function getAuthOrFail(req: Request, res: Response): { tenantId: string; userId: string } | null {
   const authReq = req as AuthenticatedRequest;

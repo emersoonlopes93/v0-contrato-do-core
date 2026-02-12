@@ -39,7 +39,7 @@ export type DeliveryTrackingSnapshot = {
 };
 
 export type DeliveryTrackingMapConfig = {
-  googleMapsScript: string | null;
+  googleMapsScript: string | null; // URL do script do Google Maps
   googleMapsMapId: string | null;
 };
 

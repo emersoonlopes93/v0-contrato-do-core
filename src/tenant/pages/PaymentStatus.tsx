@@ -24,10 +24,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiGet<T>(url: string, accessToken: string): Promise<T> {
+async function apiGet<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -44,7 +46,7 @@ async function apiGet<T>(url: string, accessToken: string): Promise<T> {
 
 function PaymentStatusPageContent({ paymentId }: { paymentId: string }) {
   const { tenantSlug } = useTenant();
-  const { accessToken } = useSession();
+  useSession();
   const [payment, setPayment] = useState<PaymentsDTO | null>(null);
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -55,13 +57,12 @@ function PaymentStatusPageContent({ paymentId }: { paymentId: string }) {
   const showPix = payment?.method === 'pix';
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
 
     const load = async () => {
       setError('');
       try {
-        const data = await apiGet<PaymentsDTO>(`/api/v1/payments/${paymentId}`, accessToken);
+        const data = await apiGet<PaymentsDTO>(`/api/v1/payments/${paymentId}`, tenantSlug);
         if (!cancelled) setPayment(data);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erro ao carregar pagamento');
@@ -72,7 +73,9 @@ function PaymentStatusPageContent({ paymentId }: { paymentId: string }) {
 
     void load();
 
-    if (!canPoll) return () => { cancelled = true; };
+    if (!canPoll) return () => {
+      cancelled = true;
+    };
 
     const interval = window.setInterval(() => {
       void load();
@@ -82,9 +85,7 @@ function PaymentStatusPageContent({ paymentId }: { paymentId: string }) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [accessToken, paymentId, canPoll]);
-
-  if (!accessToken) return null;
+  }, [paymentId, canPoll, tenantSlug]);
 
   return (
     <PermissionGuard permission="payments:create">

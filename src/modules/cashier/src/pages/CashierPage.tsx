@@ -23,10 +23,9 @@ function formatCurrency(value: number, currency: string): string {
 
 function CashierPageContent() {
   const { tenantSlug } = useTenant();
-  const { accessToken, tenantSettings } = useSession();
+  const { tenantSettings } = useSession();
   const realtimeEnabled = tenantSettings?.realtimeEnabled ?? true;
   const { session, orders, loading, error, updateHint, openCashier, closeCashier, resetCashier, reload } = useCashier(
-    accessToken,
     tenantSlug,
     { realtimeEnabled },
   );
@@ -70,8 +69,6 @@ function CashierPageContent() {
     closeCashier(value);
     setProcessingAction(null);
   };
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="cashier.view">

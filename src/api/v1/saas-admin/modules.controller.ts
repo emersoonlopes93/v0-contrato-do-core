@@ -1,7 +1,7 @@
 import type { Request, Response } from '../middleware';
 import { globalModuleRegistry } from '../../../core/modules/registry';
 import { tenantModuleService } from '../../../adapters/prisma/modules/tenant-module.service';
-import { asUUID, type ModuleId } from '../../../core/types';
+import { asModuleId, asUUID, type ModuleId } from '../../../core/types';
 import { ensureTenantUiRegistry } from '@/src/modules/registry';
 
 /**
@@ -14,7 +14,10 @@ export async function listModules(req: Request, res: Response): Promise<void> {
     await ensureTenantUiRegistry();
     const modules = await globalModuleRegistry.listRegisteredModules();
     const visibleModules = modules.filter(
-      (module) => module.type !== 'driver-app' && module.scope !== 'public',
+      (module) =>
+        module.id !== asModuleId('hello-module') &&
+        module.type !== 'driver-app' &&
+        module.scope !== 'public',
     );
     
     let activeForTenant = new Set<ModuleId>();

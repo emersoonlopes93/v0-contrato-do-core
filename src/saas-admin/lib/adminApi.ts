@@ -7,9 +7,6 @@
  */
 
 const BASE_URL = '/api/v1/admin';
-const ADMIN_ACCESS_TOKEN_KEY = 'saas_admin_access_token';
-const ADMIN_REFRESH_TOKEN_KEY = 'saas_admin_refresh_token';
-const LEGACY_ACCESS_TOKEN_KEY = 'auth_token';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
@@ -20,36 +17,18 @@ class AdminApiClient {
     return typeof value === 'object' && value !== null;
   }
 
-  private getAccessToken(): string {
-    const token =
-      localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY) ??
-      localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
-    if (!token) {
-      throw new Error('Sessão expirada. Faça login novamente.');
-    }
-    return token;
-  }
-
-  private async refreshAccessToken(): Promise<string | null> {
-    const refreshToken = localStorage.getItem(ADMIN_REFRESH_TOKEN_KEY);
-    if (!refreshToken) return null;
-
+  private async refreshSession(): Promise<boolean> {
     const res = await fetch('/api/v1/auth/saas-admin/refresh', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      body: JSON.stringify({}),
     });
-    const raw: unknown = await res.json().catch(() => null);
-    if (!res.ok || !raw || typeof raw !== 'object') return null;
-    const candidate = raw as { accessToken?: unknown };
-    if (typeof candidate.accessToken !== 'string' || candidate.accessToken.trim().length === 0) return null;
-    localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, candidate.accessToken);
-    return candidate.accessToken;
+    return res.ok;
   }
 
   private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { params, headers, ...customConfig } = options;
-    const token = this.getAccessToken();
 
     const url = new URL(`${BASE_URL}${endpoint}`, window.location.origin);
     if (params) {
@@ -58,12 +37,13 @@ class AdminApiClient {
       });
     }
 
-    const doFetch = async (accessToken: string) => {
+    const doFetch = async () => {
       const config: RequestInit = {
         ...customConfig,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          'X-Auth-Context': 'saas_admin',
           ...headers,
         },
       };
@@ -72,13 +52,13 @@ class AdminApiClient {
       return { response, data };
     };
 
-    let { response, data } = await doFetch(token);
+    let { response, data } = await doFetch();
 
     if (!response.ok) {
       if (response.status === 401) {
-        const refreshed = await this.refreshAccessToken();
+        const refreshed = await this.refreshSession();
         if (refreshed) {
-          ({ response, data } = await doFetch(refreshed));
+          ({ response, data } = await doFetch());
         }
       }
       if (!response.ok) {

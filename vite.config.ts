@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: devPort,
+      host: true, // Adicionado para resolver problemas de WebSocket
       proxy: {
         '/api': {
           target: apiUrl,

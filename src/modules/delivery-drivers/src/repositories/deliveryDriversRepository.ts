@@ -15,9 +15,7 @@ type HistoryPayload = {
   history: DeliveryDriverHistoryEntryDTO[];
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isString(value: unknown): value is string {
   return typeof value === 'string';

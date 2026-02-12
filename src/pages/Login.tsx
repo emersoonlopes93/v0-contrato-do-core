@@ -18,12 +18,10 @@ function isString(value: unknown): value is string {
 
 function parsePublicLoginResponse(value: unknown): PublicLoginResponse {
   if (!isRecord(value)) throw new Error('Resposta inválida');
-  const accessToken = value.accessToken;
-  const refreshToken = value.refreshToken;
+  const ok = value.ok;
   const user = value.user;
   const tenant = value.tenant;
-  if (!isString(accessToken)) throw new Error('Resposta inválida');
-  if (!isString(refreshToken)) throw new Error('Resposta inválida');
+  if (ok !== true) throw new Error('Resposta inválida');
   if (!isRecord(user) || !isRecord(tenant)) throw new Error('Resposta inválida');
   if (!isString(user.id) || !isString(user.email) || !isString(user.role)) throw new Error('Resposta inválida');
   if (!isString(tenant.id) || !isString(tenant.slug) || !isString(tenant.name)) throw new Error('Resposta inválida');
@@ -34,8 +32,7 @@ function parsePublicLoginResponse(value: unknown): PublicLoginResponse {
   const nameRaw = user.name;
   const name = typeof nameRaw === 'string' ? nameRaw : null;
   return {
-    accessToken,
-    refreshToken,
+    ok: true,
     user: {
       id: user.id,
       email: user.email,
@@ -76,6 +73,7 @@ export function GlobalTenantLoginPage() {
 
       const response = await fetch('/api/v1/public/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -89,28 +87,28 @@ export function GlobalTenantLoginPage() {
       }
 
       const login = parsePublicLoginResponse(raw);
-      localStorage.setItem('tenant_access_token', login.accessToken);
-      localStorage.setItem('tenant_refresh_token', login.refreshToken);
 
       const sessionRes = await fetch('/api/v1/auth/session', {
-        headers: { Authorization: `Bearer ${login.accessToken}` },
+        credentials: 'include',
+        headers: {
+          'X-Auth-Context': 'tenant_user',
+          'X-Tenant-Slug': login.tenant.slug,
+        },
       });
-      const sessionRaw: unknown = await sessionRes.json().catch(() => null);
+      
       if (!sessionRes.ok) {
-        localStorage.removeItem('tenant_access_token');
-        localStorage.removeItem('tenant_refresh_token');
+        const sessionRaw: unknown = await sessionRes.json().catch(() => null);
         if (isRecord(sessionRaw) && isString(sessionRaw.error)) {
           throw new Error(sessionRaw.error);
         }
         throw new Error('Sessão inválida');
       }
 
+      const sessionRaw: unknown = await sessionRes.json().catch(() => null);
       const sessionTenantSlug = parseSessionTenantSlug(sessionRaw);
       window.location.replace(`/tenant/${sessionTenantSlug}/dashboard`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login');
-      localStorage.removeItem('tenant_access_token');
-      localStorage.removeItem('tenant_refresh_token');
     } finally {
       setIsLoading(false);
     }

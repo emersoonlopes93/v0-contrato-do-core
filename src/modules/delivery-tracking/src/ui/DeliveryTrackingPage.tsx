@@ -90,6 +90,8 @@ function DeliveryTrackingMap(props: MapProps) {
 
     if (scriptStatusRef.current !== 'idle') return;
     scriptStatusRef.current = 'loading';
+    
+    // Verificar se já existe um script do Google Maps
     const existing = document.querySelector('script[data-google-maps="delivery-tracking"]');
     if (existing) {
       scriptStatusRef.current = 'ready';
@@ -97,16 +99,37 @@ function DeliveryTrackingMap(props: MapProps) {
       if (loaded) setMaps(loaded);
       return;
     }
+
+    // Criar script com parâmetros corretos para async loading
     const script = document.createElement('script');
     script.dataset.googleMaps = 'delivery-tracking';
-    script.text = mapConfig.googleMapsScript;
+    script.async = true;
+    script.defer = true;
+    
+    // Usar a URL diretamente já que agora recebemos a URL completa
+    const url = new URL(mapConfig.googleMapsScript);
+    url.searchParams.set('callback', 'googleMapsCallback');
+    url.searchParams.set('loading', 'async');
+    script.src = url.toString();
+    
+    // Definir callback global para quando o Google Maps carregar
+    (window as any).googleMapsCallback = () => {
+      scriptStatusRef.current = 'ready';
+      const loaded = getGoogleNamespace();
+      if (loaded) {
+        setMaps(loaded);
+      } else {
+        console.error('Google Maps callback executed but namespace not found');
+      }
+      delete (window as any).googleMapsCallback;
+    };
+    
     script.onerror = () => {
       scriptStatusRef.current = 'idle';
+      console.error('Falha ao carregar o Google Maps');
     };
-    document.body.appendChild(script);
-    scriptStatusRef.current = 'ready';
-    const loaded = getGoogleNamespace();
-    if (loaded) setMaps(loaded);
+    
+    document.head.appendChild(script);
   }, [mapConfig, maps]);
 
   React.useEffect(() => {
@@ -128,6 +151,7 @@ function DeliveryTrackingMap(props: MapProps) {
     if (!maps) return;
     if (!map) return;
     if (!snapshot) return;
+    
     const bounds = new maps.maps.LatLngBounds();
     let hasPoints = false;
 
@@ -162,7 +186,18 @@ function DeliveryTrackingMap(props: MapProps) {
       return;
     }
 
-    map.fitBounds(bounds, 80);
+    // Se temos apenas o restaurante, centralizar nele com zoom adequado
+    const totalPoints = 
+      snapshot.drivers.filter(d => hasCoordinates(d)).length +
+      snapshot.routes.flatMap(r => r.stops).filter(s => hasCoordinates(s)).length +
+      (snapshot.restaurant && hasCoordinates(snapshot.restaurant) ? 1 : 0);
+    
+    if (totalPoints === 1 && snapshot.restaurant && hasCoordinates(snapshot.restaurant)) {
+      map.setCenter({ lat: snapshot.restaurant.latitude, lng: snapshot.restaurant.longitude });
+      map.setZoom(15);
+    } else {
+      map.fitBounds(bounds, 80);
+    }
   }, [maps, map, snapshot]);
 
   React.useEffect(() => {
@@ -282,7 +317,7 @@ function DeliveryTrackingMap(props: MapProps) {
   if (!maps) {
     return (
       <div className="flex h-[320px] items-center justify-center rounded-lg border text-sm text-muted-foreground md:h-[420px] lg:h-[520px]">
-        Mapa indisponível no momento.
+        Carregando mapa...
       </div>
     );
   }
@@ -292,14 +327,11 @@ function DeliveryTrackingMap(props: MapProps) {
 
 function DeliveryTrackingPageContent() {
   const { tenantSlug } = useTenant();
-  const { tenantSettings, accessToken } = useSession();
+  const { tenantSettings } = useSession();
   const { toast } = useToast();
   const realtimeEnabled = tenantSettings?.realtimeEnabled ?? true;
-  const { snapshot, loading, error, reload } = useDeliveryTracking(tenantSlug, {
-    realtimeEnabled,
-    accessToken,
-  });
-  const mapConfigState = useDeliveryTrackingMapConfig(accessToken);
+  const { snapshot, loading, error, reload } = useDeliveryTracking(tenantSlug, { realtimeEnabled });
+  const mapConfigState = useDeliveryTrackingMapConfig(tenantSlug);
   const notificationsRef = React.useRef<Record<string, string>>({});
 
   React.useEffect(() => {

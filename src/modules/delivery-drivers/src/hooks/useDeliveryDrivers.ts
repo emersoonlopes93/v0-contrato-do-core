@@ -46,7 +46,6 @@ function buildHistoryMap(
 }
 
 export function useDeliveryDrivers(
-  accessToken: string | null,
   tenantSlug: string,
   options?: Options,
 ): State {
@@ -61,14 +60,13 @@ export function useDeliveryDrivers(
 
   const load = React.useCallback(
     async (withLoading = true) => {
-      if (!accessToken) return;
       if (withLoading) {
         setLoading(true);
         setError(null);
       }
       try {
         const nextDrivers = listDeliveryDrivers(tenantSlug);
-        const nextOrders = await listOrders(accessToken);
+        const nextOrders = await listOrders(tenantSlug);
         setDrivers(nextDrivers);
         setOrders(nextOrders);
         setHistoryByDriver(buildHistoryMap(tenantSlug, nextDrivers));
@@ -79,7 +77,7 @@ export function useDeliveryDrivers(
         if (withLoading) setLoading(false);
       }
     },
-    [accessToken, tenantSlug],
+    [tenantSlug],
   );
 
   React.useEffect(() => {

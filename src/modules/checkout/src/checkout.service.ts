@@ -10,9 +10,7 @@ import type {
 } from '@/src/types/checkout';
 import { CheckoutRepository, type CheckoutOrderItemRow, type CheckoutOrderRow } from './checkout.repository';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isString(value: unknown): value is string {
   return typeof value === 'string';

@@ -25,7 +25,6 @@ type Options = {
 };
 
 export function useDeliveryRoutes(
-  accessToken: string | null,
   tenantSlug: string,
   options?: Options,
 ): State {
@@ -37,13 +36,12 @@ export function useDeliveryRoutes(
 
   const load = React.useCallback(
     async (withLoading = true) => {
-      if (!accessToken) return;
       if (withLoading) {
         setLoading(true);
         setError(null);
       }
       try {
-        const nextOrders = await listOrders(accessToken);
+        const nextOrders = await listOrders(tenantSlug);
         const nextRoutes = await listAllRoutes(tenantSlug);
         setOrders(nextOrders);
         setRoutes(nextRoutes);
@@ -54,7 +52,7 @@ export function useDeliveryRoutes(
         if (withLoading) setLoading(false);
       }
     },
-    [accessToken, tenantSlug],
+    [tenantSlug],
   );
 
   React.useEffect(() => {
@@ -63,11 +61,10 @@ export function useDeliveryRoutes(
 
   const create = React.useCallback(
     async (input: DeliveryRouteCreateRequest, options?: DeliveryRouteOptimizationOptions) => {
-      if (!accessToken) return;
-      const created = await createRoute(accessToken, tenantSlug, input, options);
+      const created = await createRoute(tenantSlug, input, options);
       setRoutes((prev) => [created, ...prev]);
     },
-    [accessToken, tenantSlug],
+    [tenantSlug],
   );
 
   const remove = React.useCallback(

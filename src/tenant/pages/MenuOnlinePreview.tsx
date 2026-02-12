@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { withModuleGuard, PermissionGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProductCard } from '@/src/tenant/components/cards';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -26,10 +27,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiGet<T>(url: string, accessToken: string): Promise<T> {
+async function apiGet<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -45,7 +48,8 @@ async function apiGet<T>(url: string, accessToken: string): Promise<T> {
 }
 
 function MenuOnlinePreviewPageContent() {
-  const { accessToken } = useSession();
+  const { tenantSlug } = useTenant();
+  useSession();
   const [categories, setCategories] = useState<MenuOnlineCategoryDTO[]>([]);
   const [products, setProducts] = useState<MenuOnlineProductDTO[]>([]);
   const [settings, setSettings] = useState<MenuOnlineSettingsDTO | null>(null);
@@ -53,16 +57,15 @@ function MenuOnlinePreviewPageContent() {
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       setError('');
       try {
         const [cats, prods, s] = await Promise.all([
-          apiGet<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', accessToken),
-          apiGet<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', accessToken),
-          apiGet<MenuOnlineSettingsDTO>('/api/v1/tenant/menu-online/settings', accessToken),
+          apiGet<MenuOnlineCategoryDTO[]>('/api/v1/tenant/menu-online/categories', tenantSlug),
+          apiGet<MenuOnlineProductDTO[]>('/api/v1/tenant/menu-online/products', tenantSlug),
+          apiGet<MenuOnlineSettingsDTO>('/api/v1/tenant/menu-online/settings', tenantSlug),
         ]);
         if (cancelled) return;
         setCategories(cats);
@@ -78,7 +81,7 @@ function MenuOnlinePreviewPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   const categoryOrder = useMemo(() => {
     return [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -100,8 +103,6 @@ function MenuOnlinePreviewPageContent() {
 
   const currency = settings?.currency ?? 'BRL';
   const showImages = settings?.showImages ?? true;
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="menu.view">

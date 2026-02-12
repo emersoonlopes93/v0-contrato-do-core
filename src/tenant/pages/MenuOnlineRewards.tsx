@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { withModuleGuard } from '../components/ModuleGuard';
 import { useSession } from '../context/SessionContext';
+import { useTenant } from '@/src/contexts/TenantContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,11 +32,13 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function apiRequestJson<T>(url: string, accessToken: string, init?: RequestInit): Promise<T> {
+async function apiRequestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
@@ -53,7 +56,8 @@ async function apiRequestJson<T>(url: string, accessToken: string, init?: Reques
 }
 
 function MenuOnlineRewardsPageContent() {
-  const { accessToken } = useSession();
+  const { tenantSlug } = useTenant();
+  useSession();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -70,15 +74,14 @@ function MenuOnlineRewardsPageContent() {
   const [cashbackExpiresDays, setCashbackExpiresDays] = useState<string>('');
 
   useEffect(() => {
-    if (!accessToken) return;
     let cancelled = false;
     (async () => {
       setIsLoading(true);
       setError('');
       try {
         const [loyaltyData, cashbackData] = await Promise.all([
-          apiRequestJson<MenuOnlineLoyaltyConfigDTO>('/api/v1/tenant/menu-online/loyalty', accessToken),
-          apiRequestJson<MenuOnlineCashbackConfigDTO>('/api/v1/tenant/menu-online/cashback', accessToken),
+          apiRequestJson<MenuOnlineLoyaltyConfigDTO>('/api/v1/tenant/menu-online/loyalty', tenantSlug),
+          apiRequestJson<MenuOnlineCashbackConfigDTO>('/api/v1/tenant/menu-online/cashback', tenantSlug),
         ]);
         if (cancelled) return;
         setLoyalty(loyaltyData);
@@ -101,7 +104,7 @@ function MenuOnlineRewardsPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken]);
+  }, [tenantSlug]);
 
   const isDirty =
     loyalty !== null &&
@@ -114,7 +117,6 @@ function MenuOnlineRewardsPageContent() {
       (cashbackExpiresDays.trim() === '' ? null : Number(cashbackExpiresDays)) !== cashback.expiresDays);
 
   async function save(): Promise<void> {
-    if (!accessToken) return;
     setIsSaving(true);
     setError('');
     try {
@@ -132,11 +134,11 @@ function MenuOnlineRewardsPageContent() {
       };
 
       const [nextLoyalty, nextCashback] = await Promise.all([
-        apiRequestJson<MenuOnlineLoyaltyConfigDTO>('/api/v1/tenant/menu-online/loyalty', accessToken, {
+        apiRequestJson<MenuOnlineLoyaltyConfigDTO>('/api/v1/tenant/menu-online/loyalty', tenantSlug, {
           method: 'PATCH',
           body: JSON.stringify(loyaltyPayload),
         }),
-        apiRequestJson<MenuOnlineCashbackConfigDTO>('/api/v1/tenant/menu-online/cashback', accessToken, {
+        apiRequestJson<MenuOnlineCashbackConfigDTO>('/api/v1/tenant/menu-online/cashback', tenantSlug, {
           method: 'PATCH',
           body: JSON.stringify(cashbackPayload),
         }),
@@ -153,8 +155,6 @@ function MenuOnlineRewardsPageContent() {
       setIsSaving(false);
     }
   }
-
-  if (!accessToken) return null;
 
   return (
     <form

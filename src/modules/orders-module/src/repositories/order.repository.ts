@@ -9,9 +9,7 @@ type OrderRow = Prisma.OrderGetPayload<{
   };
 }>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

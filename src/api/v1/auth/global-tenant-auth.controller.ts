@@ -13,9 +13,12 @@ import type { GlobalTenantLoginRequest, GlobalTenantLoginResponse } from '@/src/
 const prisma = getPrismaClient();
 const tenantAuth = new TenantAuthService();
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+function buildDevCookie(name: string, value: string): string {
+  const encoded = encodeURIComponent(value);
+  return `${name}=${encoded}; HttpOnly; SameSite=Lax; Path=/`;
 }
+
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isGlobalTenantLoginBody(body: unknown): body is GlobalTenantLoginRequest {
   if (!isRecord(body)) return false;
@@ -105,7 +108,17 @@ export async function tenantGlobalLogin(req: Request, res: Response) {
     };
 
     res.status = 200;
-    res.body = response;
+    res.headers = {
+      'Set-Cookie': [
+        buildDevCookie('tenant_auth_token', result.accessToken),
+        buildDevCookie('tenant_refresh_token', result.refreshToken),
+      ],
+    };
+    res.body = {
+      ok: true,
+      user: response.user,
+      tenant: response.tenant,
+    };
   } catch (error: unknown) {
     res.status = 401;
     res.body = {

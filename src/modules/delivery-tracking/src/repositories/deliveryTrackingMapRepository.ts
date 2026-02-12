@@ -1,9 +1,7 @@
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { DeliveryTrackingMapConfig } from '@/src/types/delivery-tracking';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord } from '@/src/core/utils/type-guards';
 
 function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
   return isRecord(value) && value.success === true && 'data' in value;
@@ -13,10 +11,12 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-async function requestJson<T>(url: string, accessToken: string): Promise<T> {
+async function requestJson<T>(url: string, tenantSlug: string): Promise<T> {
   const response = await fetch(url, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
     },
   });
 
@@ -32,10 +32,10 @@ async function requestJson<T>(url: string, accessToken: string): Promise<T> {
 }
 
 export async function fetchDeliveryTrackingMapConfig(
-  accessToken: string,
+  tenantSlug: string,
 ): Promise<DeliveryTrackingMapConfig> {
   return requestJson<DeliveryTrackingMapConfig>(
     '/api/v1/tenant/delivery-tracking/map-config',
-    accessToken,
+    tenantSlug,
   );
 }

@@ -33,12 +33,13 @@ export function createApiServer(): http.Server {
   const server = http.createServer(async (req, res) => {
     console.log(`[Server] ${req.method} ${req.url}`);
 
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CORS headers (DEV)
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, X-Tenant-ID, X-Tenant-Slug, X-Tenant-Subdomain'
+      'Content-Type, Authorization, X-Tenant-ID, X-Tenant-Slug, X-Tenant-Subdomain, X-Auth-Context'
     );
 
     if (req.method === 'OPTIONS') {
@@ -65,8 +66,20 @@ export function createApiServer(): http.Server {
       query[key] = value;
     });
 
+    const normalizedHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (typeof value === 'string') {
+        normalizedHeaders[key] = value;
+      } else if (Array.isArray(value)) {
+        const first = value[0];
+        if (typeof first === 'string') {
+          normalizedHeaders[key] = first;
+        }
+      }
+    }
+
     const apiReq: Request = {
-      headers: req.headers as Record<string, string>,
+      headers: normalizedHeaders,
       method: req.method || 'GET',
       url: urlObj.pathname,
       query,
@@ -76,10 +89,11 @@ export function createApiServer(): http.Server {
     try {
       const apiRes = await handleRequest(apiReq);
 
-      res.writeHead(apiRes.status, {
+      const responseHeaders: Record<string, string | string[]> = {
         'Content-Type': 'application/json',
         ...apiRes.headers,
-      });
+      };
+      res.writeHead(apiRes.status, responseHeaders);
       res.end(JSON.stringify(apiRes.body));
     } catch (err) {
       console.error('Server error:', err);

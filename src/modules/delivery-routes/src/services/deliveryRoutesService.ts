@@ -65,7 +65,6 @@ function findDriverOrigin(
 
 async function resolveOrigin(
   tenantSlug: string,
-  accessToken: string,
   stops: DeliveryRouteDTO['stops'],
   orderIds: string[],
 ): Promise<Coordinate | null> {
@@ -73,7 +72,7 @@ async function resolveOrigin(
   if (driverOrigin) return driverOrigin;
 
   try {
-    const settings = await fetchTenantSettings(accessToken);
+    const settings = await fetchTenantSettings(tenantSlug);
     if (settings && typeof settings.latitude === 'number' && typeof settings.longitude === 'number') {
       return { latitude: settings.latitude, longitude: settings.longitude };
     }
@@ -87,7 +86,7 @@ async function resolveOrigin(
 }
 
 async function optimizeStops(
-  accessToken: string,
+  tenantSlug: string,
   origin: Coordinate | null,
   stops: DeliveryRouteDTO['stops'],
   options?: DeliveryRouteOptimizationOptions,
@@ -108,7 +107,7 @@ async function optimizeStops(
 
   while (remaining.length > 0) {
     const destinations = remaining.map((stop) => ({ latitude: stop.latitude, longitude: stop.longitude }));
-    const matrix = await calculateDistanceMatrix(accessToken, {
+    const matrix = await calculateDistanceMatrix(tenantSlug, {
       origins: [current],
       destinations,
     });
@@ -136,7 +135,7 @@ async function optimizeStops(
 }
 
 async function applyMetrics(
-  accessToken: string,
+  tenantSlug: string,
   origin: Coordinate | null,
   stops: DeliveryRouteDTO['stops'],
 ): Promise<DeliveryRouteDTO['stops']> {
@@ -162,7 +161,7 @@ async function applyMetrics(
     return stops.map((stop) => ({ ...stop, distanceKm: null, etaMinutes: null }));
   }
 
-  const matrix = await calculateDistanceMatrix(accessToken, {
+  const matrix = await calculateDistanceMatrix(tenantSlug, {
     origins: legs.map((leg) => leg.origin),
     destinations: legs.map((leg) => leg.destination),
   });
@@ -189,7 +188,6 @@ async function applyMetrics(
 }
 
 export async function createRoute(
-  accessToken: string,
   tenantSlug: string,
   input: DeliveryRouteCreateRequest,
   options?: DeliveryRouteOptimizationOptions,
@@ -216,13 +214,16 @@ export async function createRoute(
     updatedAt: new Date().toISOString(),
   };
 
-  const origin = await resolveOrigin(tenantSlug, accessToken, route.stops, route.orderIds);
-  const optimized = await optimizeStops(accessToken, origin, route.stops, options);
-  const withMetrics = await applyMetrics(accessToken, origin, optimized);
-  const computed = computeTotals({ ...route, stops: withMetrics });
-  const persisted = persistRoute(tenantSlug, computed);
+  const origin = await resolveOrigin(tenantSlug, route.stops, route.orderIds);
+  const optimized = await optimizeStops(tenantSlug, origin, route.stops, options);
+  const withMetrics = await applyMetrics(tenantSlug, origin, optimized);
+  const nextRoute = computeTotals({
+    ...route,
+    stops: withMetrics,
+  });
+  const persisted = persistRoute(tenantSlug, nextRoute);
   try {
-    await applyDeliveryPricingRoute(accessToken, {
+    await applyDeliveryPricingRoute(tenantSlug, {
       routeId: persisted.id,
       stops: persisted.stops.map((stop) => ({
         orderId: stop.orderId,
@@ -241,7 +242,6 @@ export async function listAllRoutes(tenantSlug: string): Promise<DeliveryRouteDT
 }
 
 export async function updateRoute(
-  accessToken: string,
   tenantSlug: string,
   routeId: string,
   input: DeliveryRouteUpdateRequest,
@@ -268,13 +268,13 @@ export async function updateRoute(
       })) ?? existing.stops,
     updatedAt: new Date().toISOString(),
   };
-  const origin = await resolveOrigin(tenantSlug, accessToken, next.stops, next.orderIds);
-  const optimized = await optimizeStops(accessToken, origin, next.stops);
-  const withMetrics = await applyMetrics(accessToken, origin, optimized);
+  const origin = await resolveOrigin(tenantSlug, next.stops, next.orderIds);
+  const optimized = await optimizeStops(tenantSlug, origin, next.stops);
+  const withMetrics = await applyMetrics(tenantSlug, origin, optimized);
   const computed = computeTotals({ ...next, stops: withMetrics });
   const persisted = persistRoute(tenantSlug, computed);
   try {
-    await applyDeliveryPricingRoute(accessToken, {
+    await applyDeliveryPricingRoute(tenantSlug, {
       routeId: persisted.id,
       stops: persisted.stops.map((stop) => ({
         orderId: stop.orderId,

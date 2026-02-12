@@ -13,15 +13,14 @@ export function AdminLoginPage() {
     try {
       const res = await fetch('/api/v1/auth/saas-admin/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok || !data.accessToken || !data.refreshToken) {
+      if (!res.ok) {
         throw new Error(data.error || 'Falha ao autenticar');
       }
-      localStorage.setItem('saas_admin_access_token', data.accessToken);
-      localStorage.setItem('saas_admin_refresh_token', data.refreshToken);
       window.location.replace('/admin');
     } catch (error: unknown) {
       const message =

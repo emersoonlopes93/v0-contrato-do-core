@@ -49,7 +49,7 @@ function readCashierSession(tenantSlug: string): CashierSession | null {
 }
 
 function PdvPageContent() {
-  const { accessToken, tenantSettings } = useSession();
+  const { tenantSettings } = useSession();
   const { tenantSlug } = useTenant();
   const pdvEnabled = tenantSettings?.pdvEnabled ?? true;
   const realtimeEnabled = tenantSettings?.realtimeEnabled ?? true;
@@ -79,7 +79,7 @@ function PdvPageContent() {
     submitOrder,
     refreshMenu,
     refreshOrders,
-  } = usePdv(accessToken, { enabled: pdvEnabled, realtimeEnabled });
+  } = usePdv(tenantSlug, { enabled: pdvEnabled, realtimeEnabled });
 
   const currency = settings?.currency ?? 'BRL';
   const hasProducts = products.length > 0;
@@ -98,8 +98,6 @@ function PdvPageContent() {
   const cashierSession = React.useMemo(() => readCashierSession(tenantSlug), [tenantSlug]);
   const cashierOpen = cashierSession?.closedAt === null;
   const canSubmit = hasCart && cashierOpen && !submitting && pdvEnabled;
-
-  if (!accessToken) return null;
 
   return (
     <PermissionGuard permission="pdv.view">
