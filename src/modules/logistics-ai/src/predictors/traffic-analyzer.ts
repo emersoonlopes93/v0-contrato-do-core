@@ -64,6 +64,7 @@ export class TrafficAnalyzer {
     for (let i = 0; i < waypoints.length - 1; i++) {
       const start = waypoints[i];
       const end = waypoints[i + 1];
+      if (!start || !end) continue;
       
       const segmentDistance = this.calculateDistance(start, end);
       const segmentTraffic = await this.analyzeTrafficConditions(
@@ -223,23 +224,32 @@ export class TrafficAnalyzer {
   }
 
   private generateReorderedRoute(waypoints: Array<{ latitude: number; longitude: number }>) {
-    const reordered = [waypoints[0]];
+    const first = waypoints[0];
+    if (!first) return [];
+    const reordered = [first];
     const remaining = waypoints.slice(1);
 
     while (remaining.length > 0) {
       const current = reordered[reordered.length - 1];
+      if (!current) break;
+      const firstRemaining = remaining[0];
+      if (!firstRemaining) break;
       let nearestIndex = 0;
-      let nearestDistance = this.calculateDistance(current, remaining[0]);
+      let nearestDistance = this.calculateDistance(current, firstRemaining);
 
       for (let i = 1; i < remaining.length; i++) {
-        const distance = this.calculateDistance(current, remaining[i]);
+        const candidate = remaining[i];
+        if (!candidate) continue;
+        const distance = this.calculateDistance(current, candidate);
         if (distance < nearestDistance) {
           nearestDistance = distance;
           nearestIndex = i;
         }
       }
 
-      reordered.push(remaining[nearestIndex]);
+      const nearest = remaining[nearestIndex];
+      if (!nearest) break;
+      reordered.push(nearest);
       remaining.splice(nearestIndex, 1);
     }
 

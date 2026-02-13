@@ -48,11 +48,11 @@ function toMinutes(value: number | null): number | null {
   return Math.round(value / 60);
 }
 
-function findDriverOrigin(
+async function findDriverOrigin(
   tenantSlug: string,
   orderIds: string[],
-): Coordinate | null {
-  const drivers = listDeliveryDrivers(tenantSlug);
+): Promise<Coordinate | null> {
+  const drivers = await listDeliveryDrivers(tenantSlug);
   const candidate = drivers.find(
     (driver): driver is DeliveryDriverDTO & Coordinate =>
       driver.status !== 'offline' &&
@@ -68,7 +68,7 @@ async function resolveOrigin(
   stops: DeliveryRouteDTO['stops'],
   orderIds: string[],
 ): Promise<Coordinate | null> {
-  const driverOrigin = findDriverOrigin(tenantSlug, orderIds);
+  const driverOrigin = await findDriverOrigin(tenantSlug, orderIds);
   if (driverOrigin) return driverOrigin;
 
   try {
@@ -126,11 +126,12 @@ async function optimizeStops(
     });
 
     const next = remaining.splice(bestIndex, 1)[0];
+    if (!next) break;
     ordered.push(next);
     current = { latitude: next.latitude, longitude: next.longitude };
   }
 
-  const nextStops = [...ordered, ...invalidStops];
+  const nextStops = [...ordered, ...remaining, ...invalidStops];
   return nextStops.map((stop, index) => ({ ...stop, sequence: index + 1 }));
 }
 
@@ -177,8 +178,10 @@ async function applyMetrics(
     if (!element) return;
     const distanceKm = toKm(element.distanceMeters);
     const etaMinutes = toMinutes(element.durationSeconds);
+    const current = nextStops[leg.stopIndex];
+    if (!current) return;
     nextStops[leg.stopIndex] = {
-      ...nextStops[leg.stopIndex],
+      ...current,
       distanceKm,
       etaMinutes,
     };
@@ -221,7 +224,7 @@ export async function createRoute(
     ...route,
     stops: withMetrics,
   });
-  const persisted = persistRoute(tenantSlug, nextRoute);
+  const persisted = await persistRoute(tenantSlug, nextRoute);
   try {
     await applyDeliveryPricingRoute(tenantSlug, {
       routeId: persisted.id,
@@ -238,7 +241,7 @@ export async function createRoute(
 }
 
 export async function listAllRoutes(tenantSlug: string): Promise<DeliveryRouteDTO[]> {
-  return listRoutes(tenantSlug);
+  return await listRoutes(tenantSlug);
 }
 
 export async function updateRoute(
@@ -246,7 +249,7 @@ export async function updateRoute(
   routeId: string,
   input: DeliveryRouteUpdateRequest,
 ): Promise<DeliveryRouteDTO> {
-  const existing = listRoutes(tenantSlug).find((r) => r.id === routeId);
+  const existing = (await listRoutes(tenantSlug)).find((r) => r.id === routeId);
   if (!existing) {
     throw new Error('Rota não encontrada');
   }
@@ -272,7 +275,7 @@ export async function updateRoute(
   const optimized = await optimizeStops(tenantSlug, origin, next.stops);
   const withMetrics = await applyMetrics(tenantSlug, origin, optimized);
   const computed = computeTotals({ ...next, stops: withMetrics });
-  const persisted = persistRoute(tenantSlug, computed);
+  const persisted = await persistRoute(tenantSlug, computed);
   try {
     await applyDeliveryPricingRoute(tenantSlug, {
       routeId: persisted.id,
@@ -289,5 +292,5 @@ export async function updateRoute(
 }
 
 export async function deleteRoute(tenantSlug: string, routeId: string): Promise<void> {
-  removeRoute(tenantSlug, routeId);
+  await removeRoute(tenantSlug, routeId);
 }

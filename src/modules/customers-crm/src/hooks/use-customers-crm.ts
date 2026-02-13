@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { 
-  CustomersCrmCustomerDTO, 
   CustomersCrmCustomerDetailsDTO,
   CustomersCrmCustomerListItemDTO,
   CustomersCrmUpdateCustomerRequest,

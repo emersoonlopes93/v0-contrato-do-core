@@ -54,3 +54,15 @@ export type DeliveryDriversServiceContract = {
   assignOrder(tenantId: string, input: DeliveryDriverAssignmentRequest): Promise<DeliveryDriverDTO>;
   listHistory(tenantId: string, driverId: string): Promise<DeliveryDriverHistoryEntryDTO[]>;
 };
+
+export type DeliveryDriversListResponse = DeliveryDriverDTO[];
+
+export type DeliveryDriversHistoryListResponse = DeliveryDriverHistoryEntryDTO[];
+
+export type DeliveryDriverHistoryAppendRequest = {
+  driverId: string;
+  orderId: string;
+  status: DeliveryDriverStatus;
+};
+
+export type DeliveryDriverHistoryAppendResponse = DeliveryDriverHistoryEntryDTO;

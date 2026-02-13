@@ -8,6 +8,8 @@ export class WeatherDataProvider {
     pressureMb: number;
     impactOnDelivery: 'low' | 'medium' | 'high';
   }> {
+    void latitude;
+    void longitude;
     const mockWeatherData = this.generateMockWeatherData();
     
     return {
@@ -22,6 +24,8 @@ export class WeatherDataProvider {
     temperatureCelsius: number;
     impactOnDelivery: 'low' | 'medium' | 'high';
   }>> {
+    void latitude;
+    void longitude;
     const forecast = [];
     const now = new Date();
 

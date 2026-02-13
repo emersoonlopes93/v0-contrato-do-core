@@ -250,7 +250,8 @@ export function AdminModulesPage() {
     }
 
     const current = globalModules[module.id] ?? true;
-    if (current && moduleDependencies[module.id] && moduleDependencies[module.id].length > 0) {
+    const dependencies = moduleDependencies[module.id] ?? [];
+    if (current && dependencies.length > 0) {
       toast({
         title: 'Desativação bloqueada',
         description: 'Dependências ativas impedem a desativação',
@@ -269,8 +270,9 @@ export function AdminModulesPage() {
 
   const openDetails = async (module: ModuleDef) => {
     setDetailsModule(module);
-    if (tenantCache[module.id]) {
-      setDetailsTenants(tenantCache[module.id]);
+    const cachedTenants = tenantCache[module.id];
+    if (cachedTenants) {
+      setDetailsTenants(cachedTenants);
       return;
     }
     setDetailsLoading(true);

@@ -112,6 +112,10 @@ model Tenant {
   whiteBrandConfig WhiteBrandConfig?
   publicTrackingTokens      PublicTrackingToken[]
   customers                 Customer[]
+  deliveryRoutes            DeliveryRoute[]
+  deliveryDrivers           DeliveryDriver[]
+  driverPositions           DriverPosition[]
+  driverStatusHistory       DriverStatusHistory[]
 
   @@index([slug])
   @@index([status])
@@ -652,6 +656,33 @@ model MenuComboItem {
   @@map("menu_online_combo_items")
 }
 
+model EventStore {
+  id             String    @id @default(uuid())
+  tenant_id      String?
+  event_name     String
+  aggregate_type String?
+  aggregate_id   String?
+  payload        Json
+  version        Int       @default(1)
+  occurred_at    DateTime
+  processed_at   DateTime?
+  status         String    @default("pending")
+  retries        Int       @default(0)
+
+  @@index([tenant_id, status, occurred_at])
+  @@map("event_store")
+}
+
+model EventConsumer {
+  id            String   @id @default(uuid())
+  event_id      String
+  consumer_name String
+  processed_at  DateTime @default(now())
+
+  @@unique([event_id, consumer_name])
+  @@map("event_consumers")
+}
+
 model MenuCoupon {
   id                   String        @id @default(uuid())
   tenant_id             String
@@ -776,6 +807,86 @@ model DeliverySettlementSettings {
   tenant                       Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   
   @@map("delivery_settlement_settings")
+}
+
+model DeliveryRoute {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  name              String
+  status            String
+  driver_id         String?
+  order_ids         Json
+  stops             Json
+  total_distance_km Float?
+  total_eta_minutes Int?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  driver DeliveryDriver? @relation(fields: [driver_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([driver_id])
+  @@map("delivery_routes")
+}
+
+model DeliveryDriver {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  name             String
+  phone            String?
+  status           String
+  active_order_id  String?
+  latitude         Float?
+  longitude        Float?
+  last_location_at DateTime?
+  last_delivery_at DateTime?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  tenant        Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  routes        DeliveryRoute[]
+  positions     DriverPosition[]
+  statusHistory DriverStatusHistory[]
+
+  @@index([tenant_id])
+  @@index([active_order_id])
+  @@map("delivery_drivers")
+}
+
+model DriverPosition {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  driver_id   String
+  latitude    Float
+  longitude   Float
+  recorded_at DateTime @default(now())
+
+  tenant Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  driver DeliveryDriver @relation(fields: [driver_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([driver_id])
+  @@index([recorded_at])
+  @@map("driver_positions")
+}
+
+model DriverStatusHistory {
+  id        String   @id @default(uuid())
+  tenant_id String
+  driver_id String
+  order_id  String
+  status    String
+  timestamp DateTime @default(now())
+
+  tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  driver DeliveryDriver @relation(fields: [driver_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([driver_id])
+  @@index([order_id])
+  @@index([timestamp])
+  @@map("driver_status_history")
 }
 
 model Order {

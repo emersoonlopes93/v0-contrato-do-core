@@ -31,6 +31,7 @@ export function DeliverySettlementDetailPage() {
         setSettlement(data);
       }
     } catch (err) {
+      void err;
       setError('Erro ao carregar repasse');
     } finally {
       setLoading(false);

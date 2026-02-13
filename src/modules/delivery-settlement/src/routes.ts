@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react';
 import type { TenantModuleRoute } from '@/src/modules/registry';
 import { asModuleId } from '@/src/core/types';
 import { DeliverySettlementSettingsPage } from './ui/DeliverySettlementSettingsPage';

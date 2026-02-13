@@ -41,7 +41,10 @@ function formatCurrencyInput(value: string): string {
   // Garante apenas uma vírgula decimal
   const parts = cleanValue.split(',');
   if (parts.length > 2) {
-    parts[1] = parts[1].slice(0, 2);
+    const decimal = parts[1];
+    if (decimal) {
+      parts[1] = decimal.slice(0, 2);
+    }
   }
   
   return parts.join(',');
@@ -216,6 +219,9 @@ function MenuOnlineProductsPageContent() {
         return prev;
       }
       const [item] = next.splice(index, 1);
+      if (!item) {
+        return prev;
+      }
       next.splice(targetIndex, 0, item);
       return next;
     });
@@ -229,6 +235,9 @@ function MenuOnlineProductsPageContent() {
 
       for (let index = 0; index < categoryOrder.length; index += 1) {
         const category = categoryOrder[index];
+        if (!category) {
+          continue;
+        }
         const payload: MenuOnlineUpdateCategoryRequest = {
           name: category.name,
           description: category.description ?? null,

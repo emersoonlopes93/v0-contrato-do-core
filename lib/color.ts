@@ -14,6 +14,7 @@ export function parseHslTriplet(input: string): HslTriplet | null {
   const hRaw = parts[0];
   const sRaw = parts[1];
   const lRaw = parts[2];
+  if (!hRaw || !sRaw || !lRaw) return null;
 
   const h = Number(hRaw);
   const s = Number(sRaw.replace('%', ''));
@@ -99,4 +100,3 @@ export function getContrastRatioFromHsl(a: HslTriplet, b: HslTriplet): number {
   const lb = getRelativeLuminanceFromHsl(b);
   return getContrastRatioFromLuminance(la, lb);
 }
-

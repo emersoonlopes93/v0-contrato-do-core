@@ -170,6 +170,9 @@ export function AdminWhiteLabelPage() {
       return;
     }
     const file = files[0];
+    if (!file) {
+      return;
+    }
     const reader = new FileReader();
     reader.onloadend = () => {
       const result = reader.result;

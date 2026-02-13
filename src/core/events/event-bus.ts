@@ -1,5 +1,10 @@
 import type { DomainEvent, EventBus, EventHandler, AuditLogger } from "./contracts";
 import type { AuditEvent } from "../types";
+import { reliableEventBus } from "./reliable-event-bus";
+import { eventDispatcher } from "./event-dispatcher";
+
+// Start the reliable event dispatcher
+eventDispatcher.start();
 
 class InMemoryEventBus implements EventBus {
   private handlers: Map<string, Set<EventHandler>> = new Map();
@@ -62,5 +67,5 @@ class InMemoryAuditLogger implements AuditLogger {
   }
 }
 
-export const globalEventBus = new InMemoryEventBus();
+export const globalEventBus = reliableEventBus;
 export const globalAuditLogger = new InMemoryAuditLogger();

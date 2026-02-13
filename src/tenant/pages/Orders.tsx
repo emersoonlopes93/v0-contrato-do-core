@@ -112,6 +112,7 @@ function OrdersPageContent() {
           if (existingIndex === -1) return prev;
           const next = [...prev];
           const current = next[existingIndex];
+          if (!current) return prev;
           const nextStatus = payload.status ?? current.status;
           next[existingIndex] = { ...current, status: nextStatus };
           return next;

@@ -26,12 +26,12 @@ const KDS_COLUMNS: KdsColumn[] = [
   },
   {
     key: 'preparing',
-    title: ORDERS_STATUS_LABELS.preparing,
+    title: ORDERS_STATUS_LABELS.preparing ?? 'Em preparo',
     statuses: [ORDERS_OPERATIONAL_STATUS.PREPARING],
   },
   {
     key: 'ready',
-    title: ORDERS_STATUS_LABELS.ready,
+    title: ORDERS_STATUS_LABELS.ready ?? 'Pronto',
     statuses: [ORDERS_OPERATIONAL_STATUS.READY],
   },
 ];

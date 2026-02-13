@@ -18,7 +18,7 @@ interface TenantMiddlewareParams {
 type TenantMiddlewareNext = (params: TenantMiddlewareParams) => Promise<unknown>;
 
 // Tabelas que possuem tenant_id
-const TENANT_TABLES = [
+export const TENANT_TABLES = [
   'TenantUser',
   'TenantModule',
   'Role',
@@ -51,6 +51,10 @@ const TENANT_TABLES = [
   'CheckoutOrder',
   'CheckoutOrderItem',
   'Payment',
+  'DeliveryRoute',
+  'DeliveryDriver',
+  'DriverPosition',
+  'DriverStatusHistory',
 ];
 
 export function createTenantMiddleware(

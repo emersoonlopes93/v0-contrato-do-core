@@ -157,6 +157,16 @@ export interface LogisticsPerformanceData {
   region: string;
 }
 
+export interface OperationalEfficiencyData {
+  date: Date;
+  totalDeliveries: number;
+  totalDrivers: number;
+  averageDeliveryTime: number;
+  fuelConsumption: number;
+  customerSatisfaction: number;
+  operationalCost: number;
+}
+
 export interface LogisticsPerformanceMetrics {
   overallScore: number;
   trend: 'improving' | 'stable' | 'declining';

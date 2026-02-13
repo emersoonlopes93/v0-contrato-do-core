@@ -34,8 +34,8 @@ function toDriverAppOrderDTO(order: OrdersOrderDTO): DeliveryDriverAppOrderDTO {
   };
 }
 
-export function getDriverById(tenantSlug: string, driverId: string): DeliveryDriverDTO | null {
-  const drivers = listDeliveryDrivers(tenantSlug);
+export async function getDriverById(tenantSlug: string, driverId: string): Promise<DeliveryDriverDTO | null> {
+  const drivers = await listDeliveryDrivers(tenantSlug);
   return drivers.find((driver) => driver.id === driverId) ?? null;
 }
 
@@ -47,12 +47,12 @@ export async function getCurrentOrder(
   return toDriverAppOrderDTO(order);
 }
 
-export function setDriverStatus(
+export async function setDriverStatus(
   tenantSlug: string,
   driverId: string,
   input: { status: DeliveryDriverDTO['status']; activeOrderId?: string | null },
-): DeliveryDriverDTO {
-  return updateDeliveryDriver(tenantSlug, driverId, {
+): Promise<DeliveryDriverDTO> {
+  return await updateDeliveryDriver(tenantSlug, driverId, {
     status: input.status,
     activeOrderId: input.activeOrderId,
   });
@@ -115,7 +115,7 @@ export async function updateDriverLocation(args: {
   accessToken: string | null;
   activeOrderId: string | null;
 }): Promise<DeliveryDriverDTO> {
-  const updated = updateDeliveryDriver(args.tenantSlug, args.driverId, {
+  const updated = await updateDeliveryDriver(args.tenantSlug, args.driverId, {
     latitude: args.latitude,
     longitude: args.longitude,
     lastLocationAt: args.timestamp,

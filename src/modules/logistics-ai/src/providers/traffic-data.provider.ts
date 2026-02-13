@@ -10,6 +10,8 @@ export class TrafficDataProvider {
       distanceKm: number;
     }>;
   }> {
+    void latitude;
+    void longitude;
     const hour = new Date().getHours();
     const dayOfWeek = new Date().getDay();
 
@@ -107,6 +109,7 @@ export class TrafficDataProvider {
     for (let i = 0; i < waypoints.length - 1; i++) {
       const start = waypoints[i];
       const end = waypoints[i + 1];
+      if (!start || !end) continue;
       
       const segmentDistance = this.calculateDistance(start, end);
       const segmentTraffic = await this.getCurrentTraffic(

@@ -61,8 +61,6 @@ export class RouteOptimizationService {
     }
 
     try {
-      const startTime = Date.now();
-      
       // Apply timeout to optimization
       const optimizedPoints = await withTimeout(
         this.optimizeRoutePoints(request.orderIds, request.constraints),
@@ -127,6 +125,7 @@ export class RouteOptimizationService {
   }
 
   private async getCurrentRoute(driverId: string): Promise<{ points: RoutePoint[] } | null> {
+    void driverId;
     return null;
   }
 
@@ -218,6 +217,8 @@ export class RouteOptimizationService {
   }
 
   private async optimizeRoutePoints(orderIds: string[], constraints: RouteConstraints): Promise<RoutePoint[]> {
+    void orderIds;
+    void constraints;
     return [];
   }
 
@@ -232,7 +233,10 @@ export class RouteOptimizationService {
   private calculateTotalDistance(points: RoutePoint[]): number {
     let totalDistance = 0;
     for (let i = 1; i < points.length; i++) {
-      const distance = this.calculateDistance(points[i - 1], points[i]);
+      const prev = points[i - 1];
+      const next = points[i];
+      if (!prev || !next) continue;
+      const distance = this.calculateDistance(prev, next);
       totalDistance += distance;
     }
     return totalDistance;
@@ -262,6 +266,7 @@ export class RouteOptimizationService {
   }
 
   private async assessRouteDelayRisk(points: RoutePoint[]): Promise<PredictedDelay> {
+    void points;
     return 'low';
   }
 
@@ -270,6 +275,7 @@ export class RouteOptimizationService {
   }
 
   private async getDriverPerformance(orderId: string): Promise<{ averageDelayMinutes: number } | null> {
+    void orderId;
     return null;
   }
 

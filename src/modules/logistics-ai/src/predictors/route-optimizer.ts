@@ -24,6 +24,7 @@ export class RouteOptimizer {
       totalDistanceKm: totalDistance,
       estimatedDurationMinutes: estimatedDuration,
       estimatedDelayRisk,
+      fallbackUsed: false,
       createdAt: new Date(),
     };
   }
@@ -39,6 +40,7 @@ export class RouteOptimizer {
     };
     confidence: number;
   }>> {
+    void constraints;
     const alternatives = [];
 
     const reorderedRoute = await this.tryReorderStops(originalRoute);
@@ -81,13 +83,14 @@ export class RouteOptimizer {
   }
 
   private async getRoutePoints(orderIds: string[]): Promise<RoutePoint[]> {
+    const priorities = ['low', 'medium', 'high'] as const;
     return orderIds.map((orderId, index) => ({
       orderId,
       latitude: -23.5505 + (Math.random() - 0.5) * 0.1,
       longitude: -46.6333 + (Math.random() - 0.5) * 0.1,
       address: `Endereço ${index + 1}`,
       estimatedServiceTime: 5 + Math.random() * 10,
-      priority: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as 'low' | 'medium' | 'high',
+      priority: priorities[Math.floor(Math.random() * priorities.length)] ?? 'medium',
     }));
   }
 
@@ -124,8 +127,10 @@ export class RouteOptimizer {
     const now = new Date();
     const currentHour = now.getHours();
     
-    const workingStart = parseInt(constraints.workingHoursStart.split(':')[0]);
-    const workingEnd = parseInt(constraints.workingHoursEnd.split(':')[0]);
+    const workingStartPart = constraints.workingHoursStart.split(':')[0];
+    const workingEndPart = constraints.workingHoursEnd.split(':')[0];
+    const workingStart = workingStartPart ? Number(workingStartPart) : currentHour;
+    const workingEnd = workingEndPart ? Number(workingEndPart) : currentHour;
 
     if (currentHour < workingStart || currentHour > workingEnd) {
       return points;
@@ -137,23 +142,32 @@ export class RouteOptimizer {
   private applyDistanceOptimization(points: RoutePoint[]): RoutePoint[] {
     if (points.length <= 3) return points;
 
-    const optimized = [points[0]];
+    const firstPoint = points[0];
+    if (!firstPoint) return points;
+    const optimized = [firstPoint];
     const remaining = points.slice(1);
 
     while (remaining.length > 0) {
       const current = optimized[optimized.length - 1];
+      if (!current) break;
+      const firstRemaining = remaining[0];
+      if (!firstRemaining) break;
       let nearestIndex = 0;
-      let nearestDistance = this.calculateDistance(current, remaining[0]);
+      let nearestDistance = this.calculateDistance(current, firstRemaining);
 
       for (let i = 1; i < remaining.length; i++) {
-        const distance = this.calculateDistance(current, remaining[i]);
+        const candidate = remaining[i];
+        if (!candidate) continue;
+        const distance = this.calculateDistance(current, candidate);
         if (distance < nearestDistance) {
           nearestDistance = distance;
           nearestIndex = i;
         }
       }
 
-      optimized.push(remaining[nearestIndex]);
+      const nearest = remaining[nearestIndex];
+      if (!nearest) break;
+      optimized.push(nearest);
       remaining.splice(nearestIndex, 1);
     }
 
@@ -193,7 +207,10 @@ export class RouteOptimizer {
   private calculateTotalDistance(points: RoutePoint[]): number {
     let totalDistance = 0;
     for (let i = 1; i < points.length; i++) {
-      totalDistance += this.calculateDistance(points[i - 1], points[i]);
+      const prev = points[i - 1];
+      const next = points[i];
+      if (!prev || !next) continue;
+      totalDistance += this.calculateDistance(prev, next);
     }
     return totalDistance;
   }

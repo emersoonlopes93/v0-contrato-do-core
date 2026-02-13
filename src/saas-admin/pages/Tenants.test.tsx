@@ -66,6 +66,9 @@ describe('AdminTenantsPage', () => {
     
     // Select plan (should default to first, but let's change it)
     const [planSelect] = screen.getAllByRole('combobox');
+    if (!planSelect) {
+      throw new Error('Select de plano não encontrado');
+    }
     fireEvent.change(planSelect, {
       target: { value: 'plan-2' },
     });

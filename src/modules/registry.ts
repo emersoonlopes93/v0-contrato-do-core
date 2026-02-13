@@ -21,6 +21,9 @@ import { manifest as logisticsAiManifest } from '@/src/modules/logistics-ai/src/
 import { manifest as employeesManifest } from '@/src/modules/employees/src/manifest';
 import { manifest as rolesPermissionsManifest } from '@/src/modules/roles-permissions/src/manifest';
 import { manifest as customersCrmManifest } from './customers-crm/src/manifest';
+import { manifest as dashboardExecutivoManifest } from '@/src/modules/dashboard-executivo/src/manifest';
+
+// Routes
 import { kdsRoutes } from './kds/src/routes';
 import { pdvRoutes } from './pdv/src/routes';
 import { cashierRoutes } from './cashier/src/routes';
@@ -32,7 +35,8 @@ import { deliverySettlementRoutes } from './delivery-settlement/src/routes';
 import { logisticsAiRoutes } from './logistics-ai/src/routes';
 import { employeesRoutes } from './employees/src/routes';
 import { rolesPermissionsRoutes } from './roles-permissions/src/routes';
-import { customersCrmRoutes } from './customers-crm/src/routes';
+import { customersCrmRoutes } from '@/src/modules/customers-crm/src/routes';
+import { dashboardExecutivoUiRoutes } from '@/src/modules/dashboard-executivo/src/routes';
 
 export type TenantModuleRoute = {
   path: string;
@@ -60,6 +64,7 @@ const uiManifests: ModuleRegisterPayload[] = [
   employeesManifest,
   rolesPermissionsManifest,
   customersCrmManifest,
+  dashboardExecutivoManifest,
 ];
 
 let uiRegistryReady = false;
@@ -89,4 +94,5 @@ export const tenantModuleRoutes: TenantModuleRoute[] = [
   ...employeesRoutes,
   ...rolesPermissionsRoutes,
   ...customersCrmRoutes,
+  ...dashboardExecutivoUiRoutes,
 ];

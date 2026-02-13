@@ -6,7 +6,7 @@ import { PermissionGuard, withModuleGuard } from '@/src/tenant/components/Module
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
 import { useCustomersCrm } from '@/src/modules/customers-crm/src/hooks';
-import { type CustomersCrmCustomerDTO, type CustomersCrmUpdateCustomerRequest, type CustomersCrmCustomerStatus, type CustomersCrmCustomerOrderSummaryDTO } from '@/src/types/customers-crm';
+import { type CustomersCrmUpdateCustomerRequest, type CustomersCrmCustomerStatus, type CustomersCrmCustomerOrderSummaryDTO } from '@/src/types/customers-crm';
 import { CUSTOMERS_CRM_PERMISSIONS } from '@/src/modules/customers-crm/src/permissions';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';

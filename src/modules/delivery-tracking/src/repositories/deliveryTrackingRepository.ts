@@ -9,11 +9,10 @@ export type DeliveryTrackingRawData = {
 };
 
 export async function loadDeliveryTrackingData(tenantSlug: string): Promise<DeliveryTrackingRawData> {
-  const drivers = listDeliveryDrivers(tenantSlug);
+  const drivers = await listDeliveryDrivers(tenantSlug);
   const routes = await listAllRoutes(tenantSlug);
   return {
     drivers,
     routes,
   };
 }
-

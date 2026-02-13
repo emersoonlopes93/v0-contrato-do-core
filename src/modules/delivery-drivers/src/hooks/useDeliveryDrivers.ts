@@ -23,10 +23,10 @@ type State = {
   historyByDriver: Record<string, DeliveryDriverHistoryEntryDTO[]>;
   loading: boolean;
   error: string | null;
-  createDriver: (input: { name: string; phone: string | null }) => void;
-  updateDriver: (driverId: string, input: { name?: string; phone?: string | null }) => void;
-  updateStatus: (driverId: string, status: DeliveryDriverStatus) => void;
-  assignOrder: (driverId: string, orderId: string | null) => void;
+  createDriver: (input: { name: string; phone: string | null }) => Promise<void>;
+  updateDriver: (driverId: string, input: { name?: string; phone?: string | null }) => Promise<void>;
+  updateStatus: (driverId: string, status: DeliveryDriverStatus) => Promise<void>;
+  assignOrder: (driverId: string, orderId: string | null) => Promise<void>;
   reload: (withLoading?: boolean) => Promise<void>;
 };
 
@@ -34,15 +34,17 @@ type Options = {
   realtimeEnabled?: boolean;
 };
 
-function buildHistoryMap(
+async function buildHistoryMap(
   tenantSlug: string,
   drivers: DeliveryDriverDTO[],
-): Record<string, DeliveryDriverHistoryEntryDTO[]> {
-  const map: Record<string, DeliveryDriverHistoryEntryDTO[]> = {};
-  drivers.forEach((driver) => {
-    map[driver.id] = listDeliveryDriverHistory(tenantSlug, driver.id);
-  });
-  return map;
+): Promise<Record<string, DeliveryDriverHistoryEntryDTO[]>> {
+  const entries = await Promise.all(
+    drivers.map(async (driver) => [driver.id, await listDeliveryDriverHistory(tenantSlug, driver.id)] as const),
+  );
+  return entries.reduce<Record<string, DeliveryDriverHistoryEntryDTO[]>>((acc, [id, history]) => {
+    acc[id] = history;
+    return acc;
+  }, {});
 }
 
 export function useDeliveryDrivers(
@@ -65,11 +67,11 @@ export function useDeliveryDrivers(
         setError(null);
       }
       try {
-        const nextDrivers = listDeliveryDrivers(tenantSlug);
+        const nextDrivers = await listDeliveryDrivers(tenantSlug);
         const nextOrders = await listOrders(tenantSlug);
         setDrivers(nextDrivers);
         setOrders(nextOrders);
-        setHistoryByDriver(buildHistoryMap(tenantSlug, nextDrivers));
+        setHistoryByDriver(await buildHistoryMap(tenantSlug, nextDrivers));
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'Erro ao carregar entregadores';
         setError(message);
@@ -85,20 +87,21 @@ export function useDeliveryDrivers(
   }, [load]);
 
   const createDriver = React.useCallback(
-    (input: { name: string; phone: string | null }) => {
-      const created = createDeliveryDriver(tenantSlug, input);
+    async (input: { name: string; phone: string | null }) => {
+      const created = await createDeliveryDriver(tenantSlug, input);
       setDrivers((prev) => [...prev, created]);
+      const history = await listDeliveryDriverHistory(tenantSlug, created.id);
       setHistoryByDriver((prev) => ({
         ...prev,
-        [created.id]: listDeliveryDriverHistory(tenantSlug, created.id),
+        [created.id]: history,
       }));
     },
     [tenantSlug],
   );
 
   const updateDriver = React.useCallback(
-    (driverId: string, input: { name?: string; phone?: string | null }) => {
-      const updated = updateDeliveryDriver(tenantSlug, driverId, {
+    async (driverId: string, input: { name?: string; phone?: string | null }) => {
+      const updated = await updateDeliveryDriver(tenantSlug, driverId, {
         name: input.name,
         phone: input.phone,
       });
@@ -108,20 +111,21 @@ export function useDeliveryDrivers(
   );
 
   const updateStatus = React.useCallback(
-    (driverId: string, status: DeliveryDriverStatus) => {
-      const updated = updateDeliveryDriver(tenantSlug, driverId, { status });
+    async (driverId: string, status: DeliveryDriverStatus) => {
+      const updated = await updateDeliveryDriver(tenantSlug, driverId, { status });
       setDrivers((prev) => prev.map((driver) => (driver.id === driverId ? updated : driver)));
     },
     [tenantSlug],
   );
 
   const assignOrder = React.useCallback(
-    (driverId: string, orderId: string | null) => {
-      const updated = assignDeliveryOrder(tenantSlug, { driverId, orderId });
+    async (driverId: string, orderId: string | null) => {
+      const updated = await assignDeliveryOrder(tenantSlug, { driverId, orderId });
       setDrivers((prev) => prev.map((driver) => (driver.id === driverId ? updated : driver)));
+      const history = await listDeliveryDriverHistory(tenantSlug, driverId);
       setHistoryByDriver((prev) => ({
         ...prev,
-        [driverId]: listDeliveryDriverHistory(tenantSlug, driverId),
+        [driverId]: history,
       }));
     },
     [tenantSlug],
@@ -134,18 +138,21 @@ export function useDeliveryDrivers(
 
   useRealtimeEvent(REALTIME_ORDER_EVENTS.ORDER_STATUS_CHANGED, (envelope) => {
     if (!realtimeEnabled) return;
-    const updated = syncDriverWithOrderStatus({
-      tenantSlug,
-      orderId: envelope.payload.orderId,
-      status: envelope.payload.status,
-    });
-    if (updated) {
-      setDrivers((prev) => prev.map((driver) => (driver.id === updated.id ? updated : driver)));
-      setHistoryByDriver((prev) => ({
-        ...prev,
-        [updated.id]: listDeliveryDriverHistory(tenantSlug, updated.id),
-      }));
-    }
+    void (async () => {
+      const updated = await syncDriverWithOrderStatus({
+        tenantSlug,
+        orderId: envelope.payload.orderId,
+        status: envelope.payload.status,
+      });
+      if (updated) {
+        setDrivers((prev) => prev.map((driver) => (driver.id === updated.id ? updated : driver)));
+        const history = await listDeliveryDriverHistory(tenantSlug, updated.id);
+        setHistoryByDriver((prev) => ({
+          ...prev,
+          [updated.id]: history,
+        }));
+      }
+    })();
     void load(false);
   });
 

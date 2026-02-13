@@ -7,6 +7,16 @@ import { initRealtimeServer } from '@/src/realtime/socketio.server';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
+function checkSecurityHardening() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    console.error('FATAL ERROR: Security Hardening Failed');
+    console.error('JWT_SECRET is missing or too short (must be >= 32 characters).');
+    console.error('The server cannot start in an insecure state.');
+    process.exit(1);
+  }
+}
+
 async function readBody(req: http.IncomingMessage): Promise<unknown> {
   if (req.method !== 'POST' && req.method !== 'PUT' && req.method !== 'PATCH') {
     return null;
@@ -52,6 +62,10 @@ export function createApiServer(): http.Server {
     let body: unknown = null;
     try {
       body = await readBody(req);
+      if (req.method === 'POST') {
+        // console.log('[Server] Parsed body:', JSON.stringify(body, null, 2));
+        // console.log('[Server] Headers:', JSON.stringify(req.headers, null, 2));
+      }
     } catch (e) {
       console.error('Error parsing body:', e);
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -107,6 +121,9 @@ export function createApiServer(): http.Server {
 }
 
 export async function startApiServer(port = PORT): Promise<http.Server> {
+  // Hardening Check
+  checkSecurityHardening();
+
   const server = createApiServer();
   await new Promise<void>((resolve, reject) => {
     server.once('error', (err) => reject(err));

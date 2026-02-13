@@ -7,10 +7,8 @@ import type {
   CustomersCrmOverviewMetricsDTO,
   CustomersCrmUpdateCustomerRequest,
 } from '@/src/types/customers-crm';
-import type { ModuleContext } from '@/src/core/modules/contracts';
-import { PrismaClient } from '@prisma/client';
 import { getPrismaClient } from '@/src/adapters/prisma/client';
-import type { OrderAggregate, TotalAggregate } from '../types';
+import type { TotalAggregate } from '../types';
 
 import { isRecord } from '@/src/core/utils/type-guards';
 
@@ -299,7 +297,11 @@ export class CustomersCrmRepository {
     })();
 
     return {
-      items: filteredBySegment.map(({ __internal, ...dto }) => dto),
+      items: filteredBySegment.map((item) => {
+        const { __internal, ...dto } = item;
+        void __internal;
+        return dto;
+      }),
       page,
       pageSize,
       totalItems,

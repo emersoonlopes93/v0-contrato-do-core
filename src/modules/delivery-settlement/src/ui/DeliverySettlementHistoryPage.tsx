@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { DeliverySettlementDTO, DeliverySettlementListResponse } from '@/src/types/delivery-settlement';
+import type { DeliverySettlementDTO } from '@/src/types/delivery-settlement';
 import { deliverySettlementProvider } from '../providers/deliverySettlementProvider';
 
 export function DeliverySettlementHistoryPage() {
@@ -39,6 +39,7 @@ export function DeliverySettlementHistoryPage() {
       setTotalPages(response.totalPages);
       setTotal(response.total);
     } catch (err) {
+      void err;
       setError('Erro ao carregar repasses');
     } finally {
       setLoading(false);

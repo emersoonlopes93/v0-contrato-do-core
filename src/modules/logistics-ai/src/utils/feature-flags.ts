@@ -31,7 +31,9 @@ export class LogisticsAiFeatureFlags {
           decisionType: 'feature_flag',
           metadata: {
             plan: planInfo.plan,
-            features: planInfo.features
+            delayPrediction: planInfo.features.delayPrediction,
+            routeOptimization: planInfo.features.routeOptimization,
+            autoAlerts: planInfo.features.autoAlerts
           }
         });
       }
@@ -90,6 +92,7 @@ export class LogisticsAiFeatureFlags {
   }
 
   private static async fetchTenantPlanFromDatabase(tenantId: string): Promise<TenantPlanInfo | null> {
+    void tenantId;
     // Mock implementation - in production this would query actual tenant data
     // For now, assume all tenants are on 'pro' plan with full features
     return {

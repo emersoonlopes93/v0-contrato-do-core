@@ -18,11 +18,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { 
   Users, 
   Phone, 
-  Mail, 
   Search, 
   Filter,
   TrendingUp,
-  Calendar,
   DollarSign,
   Star,
   UserCheck
@@ -35,7 +33,9 @@ const STATUS_LABELS: Record<CustomersCrmCustomerStatus, string> = {
   inativo: 'Inativo',
 };
 
-const BADGE_LABELS: Record<string, string> = {
+type CustomersCrmBadgeKey = CustomersCrmCustomerListItemDTO['badge'];
+
+const BADGE_LABELS: Record<CustomersCrmBadgeKey, string> = {
   normal: 'Normal',
   vip: 'VIP',
   recorrente: 'Recorrente',
@@ -49,7 +49,7 @@ const STATUS_VARIANTS: Record<CustomersCrmCustomerStatus, { variant: NonNullable
   inativo: { variant: 'outline', className: 'text-muted-foreground border-muted-foreground/40' },
 };
 
-const BADGE_VARIANTS: Record<string, { variant: NonNullable<BadgeProps['variant']>; className: string }> = {
+const BADGE_VARIANTS: Record<CustomersCrmBadgeKey, { variant: NonNullable<BadgeProps['variant']>; className: string }> = {
   normal: { variant: 'outline', className: 'border-blue-500 text-blue-600' },
   vip: { variant: 'default', className: 'bg-purple-100 text-purple-800 border-purple-200' },
   recorrente: { variant: 'default', className: 'bg-green-100 text-green-800 border-green-200' },
@@ -57,7 +57,7 @@ const BADGE_VARIANTS: Record<string, { variant: NonNullable<BadgeProps['variant'
 };
 
 const SEGMENT_OPTIONS = [
-  { value: '', label: 'Todos' },
+  { value: 'all', label: 'Todos' },
   { value: 'vip', label: 'VIP' },
   { value: 'recorrente', label: 'Recorrentes' },
   { value: 'novo', label: 'Novos' },
@@ -70,11 +70,10 @@ const SEGMENT_OPTIONS = [
 function CustomersCRMPageContent() {
   const { tenantSlug } = useTenant();
   const { hasPermission } = useSession();
-  const canManage = hasPermission(CUSTOMERS_CRM_PERMISSIONS.MANAGE);
   const canView = hasPermission(CUSTOMERS_CRM_PERMISSIONS.VIEW);
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSegment, setSelectedSegment] = useState('');
+  const [selectedSegment, setSelectedSegment] = useState('all');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomersCrmCustomerListItemDTO | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
@@ -87,16 +86,19 @@ function CustomersCRMPageContent() {
   } = useCustomersCrm(tenantSlug);
 
   const handleSearch = () => {
-    loadCustomers(1, { search: searchTerm, segment: selectedSegment });
+    const segment = selectedSegment === 'all' ? '' : selectedSegment;
+    loadCustomers(1, { search: searchTerm, segment });
   };
 
   const handleSegmentChange = (value: string) => {
     setSelectedSegment(value);
-    loadCustomers(1, { search: searchTerm, segment: value });
+    const segment = value === 'all' ? '' : value;
+    loadCustomers(1, { search: searchTerm, segment });
   };
 
   const handlePageChange = (page: number) => {
-    loadCustomers(page, { search: searchTerm, segment: selectedSegment });
+    const segment = selectedSegment === 'all' ? '' : selectedSegment;
+    loadCustomers(page, { search: searchTerm, segment });
   };
 
   const handleCustomerClick = (customer: CustomersCrmCustomerListItemDTO) => {

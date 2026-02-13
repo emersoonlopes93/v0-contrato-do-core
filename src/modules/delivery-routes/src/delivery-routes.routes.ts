@@ -9,9 +9,10 @@ import {
   type Response,
   type Route,
 } from '@/src/api/v1/middleware';
-import type { DistanceMatrixInput } from '@/src/types/delivery-routes';
+import type { DistanceMatrixInput, DeliveryRouteDTO, DeliveryRoutesUpsertRequest } from '@/src/types/delivery-routes';
 import { getMapsConfig } from '@/src/config/maps.config';
 import { GoogleDistanceMatrixProvider } from './providers/googleDistanceMatrix.provider';
+import { DeliveryRoutesApiService } from './services/deliveryRoutesApiService';
 
 import { isRecord } from '@/src/core/utils/type-guards';
 
@@ -19,11 +20,55 @@ function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isNullableNumber(value: unknown): value is number | null {
+  return typeof value === 'number' || value === null;
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return typeof value === 'string' || value === null;
+}
+
 function isCoordinate(value: unknown): value is { latitude: number; longitude: number } {
   return (
     isRecord(value) &&
     isNumber(value.latitude) &&
     isNumber(value.longitude)
+  );
+}
+
+function isStop(value: unknown): value is DeliveryRouteDTO['stops'][number] {
+  if (!isRecord(value)) return false;
+  return (
+    isString(value.orderId) &&
+    isNullableNumber(value.latitude) &&
+    isNullableNumber(value.longitude) &&
+    isNullableString(value.label) &&
+    isNumber(value.sequence) &&
+    isNullableNumber(value.distanceKm) &&
+    isNullableNumber(value.etaMinutes)
+  );
+}
+
+function isRoute(value: unknown): value is DeliveryRouteDTO {
+  if (!isRecord(value)) return false;
+  return (
+    isString(value.id) &&
+    isString(value.tenantId) &&
+    isString(value.name) &&
+    isString(value.status) &&
+    isNullableString(value.driverId) &&
+    Array.isArray(value.orderIds) &&
+    value.orderIds.every(isString) &&
+    Array.isArray(value.stops) &&
+    value.stops.every(isStop) &&
+    isNullableNumber(value.totalDistanceKm) &&
+    isNullableNumber(value.totalEtaMinutes) &&
+    isString(value.createdAt) &&
+    isString(value.updatedAt)
   );
 }
 
@@ -45,6 +90,15 @@ function parseDistanceMatrixInput(
   };
 }
 
+function parseUpsertRequest(
+  value: unknown,
+): { data: DeliveryRoutesUpsertRequest } | { error: string } {
+  if (!isRecord(value)) return { error: 'Body inválido' };
+  const route = value.route;
+  if (!isRoute(route)) return { error: 'route inválido' };
+  return { data: { route } };
+}
+
 function getAuth(req: Request, res: Response): { tenantId: string } | null {
   const authReq = req as AuthenticatedRequest;
   const auth = authReq.auth;
@@ -54,6 +108,10 @@ function getAuth(req: Request, res: Response): { tenantId: string } | null {
     return null;
   }
   return { tenantId: auth.tenantId };
+}
+
+function getService(): DeliveryRoutesApiService {
+  return new DeliveryRoutesApiService();
 }
 
 async function handleCalculateMatrix(req: Request, res: Response): Promise<void> {
@@ -83,7 +141,101 @@ async function handleCalculateMatrix(req: Request, res: Response): Promise<void>
   }
 }
 
+async function handleListRoutes(req: Request, res: Response): Promise<void> {
+  const auth = getAuth(req, res);
+  if (!auth) return;
+
+  try {
+    const service = getService();
+    const routes = await service.listRoutes(auth.tenantId);
+    res.status = 200;
+    res.body = { success: true, data: routes };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Falha ao listar rotas' };
+  }
+}
+
+async function handleUpsertRoute(req: Request, res: Response): Promise<void> {
+  const auth = getAuth(req, res);
+  if (!auth) return;
+
+  const parsed = parseUpsertRequest(req.body);
+  if ('error' in parsed) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: parsed.error };
+    return;
+  }
+
+  try {
+    const service = getService();
+    const saved = await service.upsertRoute(auth.tenantId, parsed.data.route);
+    res.status = 200;
+    res.body = { success: true, data: saved };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Falha ao salvar rota' };
+  }
+}
+
+async function handleDeleteRoute(req: Request, res: Response): Promise<void> {
+  const auth = getAuth(req, res);
+  if (!auth) return;
+  const routeId = req.params?.routeId;
+  if (!routeId) {
+    res.status = 400;
+    res.body = { error: 'Bad Request', message: 'routeId inválido' };
+    return;
+  }
+
+  try {
+    const service = getService();
+    const removed = await service.deleteRoute(auth.tenantId, routeId);
+    res.status = 200;
+    res.body = { success: true, data: { removed } };
+  } catch (error) {
+    res.status = 500;
+    res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Falha ao remover rota' };
+  }
+}
+
 export const deliveryRoutesTenantRoutes: Route[] = [
+  {
+    method: 'GET',
+    path: '/api/v1/tenant/delivery-routes',
+    middlewares: [
+      requestLogger,
+      errorHandler,
+      requireTenantAuth,
+      requireModule('delivery-routes'),
+      requirePermission('delivery-routes.view'),
+    ],
+    handler: handleListRoutes,
+  },
+  {
+    method: 'POST',
+    path: '/api/v1/tenant/delivery-routes',
+    middlewares: [
+      requestLogger,
+      errorHandler,
+      requireTenantAuth,
+      requireModule('delivery-routes'),
+      requirePermission('delivery-routes.manage'),
+    ],
+    handler: handleUpsertRoute,
+  },
+  {
+    method: 'DELETE',
+    path: '/api/v1/tenant/delivery-routes/:routeId',
+    middlewares: [
+      requestLogger,
+      errorHandler,
+      requireTenantAuth,
+      requireModule('delivery-routes'),
+      requirePermission('delivery-routes.manage'),
+    ],
+    handler: handleDeleteRoute,
+  },
   {
     method: 'POST',
     path: '/api/v1/tenant/delivery-routes/distance-matrix',

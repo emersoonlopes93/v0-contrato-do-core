@@ -48,8 +48,9 @@ export function AdminTenantsPage() {
     try {
       const data = await adminApi.get<SaaSAdminPlanDTO[]>('/plans');
       setPlans(data);
-      if (data.length > 0) {
-        setPlanId(data[0].id);
+      const firstPlan = data[0];
+      if (firstPlan) {
+        setPlanId(firstPlan.id);
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Erro ao carregar planos';
@@ -68,8 +69,9 @@ export function AdminTenantsPage() {
       await adminApi.post('/tenants', { name, slug, planId });
       setName('');
       setSlug('');
-      if (plans.length > 0) {
-        setPlanId(plans[0].id);
+      const firstPlan = plans[0];
+      if (firstPlan) {
+        setPlanId(firstPlan.id);
       }
       await fetchTenants();
       toast({ title: 'Tenant criado', description: 'Tenant criado com sucesso' });

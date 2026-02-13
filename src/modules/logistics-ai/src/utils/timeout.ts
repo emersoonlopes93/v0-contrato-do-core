@@ -36,14 +36,14 @@ export async function withTimeout<T>(
   }
 }
 
-export function createTimeoutWrapper<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export function createTimeoutWrapper<TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
   timeoutMs: number,
   operation: string
 ) {
-  return async (...args: Parameters<T>): Promise<ReturnType<T>> => {
-    const tenantId = args[0] as string; // Assume first parameter is always tenantId
-    
+  return async (...args: TArgs): Promise<TResult> => {
+    const tenantIdValue = args[0];
+    const tenantId = typeof tenantIdValue === 'string' ? tenantIdValue : String(tenantIdValue ?? '');
     try {
       return await withTimeout(fn(...args), timeoutMs, tenantId, operation);
     } catch (error) {

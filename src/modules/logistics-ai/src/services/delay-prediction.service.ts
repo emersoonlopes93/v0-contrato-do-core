@@ -1,5 +1,5 @@
-import type { DelayPrediction, DelayFactor, DeliveryHistoryData, PredictedDelay } from '../types';
-import type { CurrentConditions, DelayPredictionInput } from '../types/internal';
+import type { DelayPrediction, DeliveryHistoryData } from '../types';
+import type { CurrentConditions } from '../types/internal';
 import { DelayPredictor } from '../predictors/delay-predictor';
 import { LogisticsAiLogger } from '../utils/logistics-ai.logger';
 import { LogisticsAiFeatureFlags } from '../utils/feature-flags';
@@ -23,8 +23,6 @@ export class DelayPredictionService {
     }
 
     try {
-      const startTime = Date.now();
-      
       const historicalData = await this.getHistoricalData(tenantId, orderId);
       const currentConditions = await this.getCurrentConditions(orderId);
       
@@ -99,10 +97,13 @@ export class DelayPredictionService {
   }
 
   private async getHistoricalData(tenantId: string, orderId: string): Promise<DeliveryHistoryData[]> {
+    void tenantId;
+    void orderId;
     return [];
   }
 
   private async getCurrentConditions(orderId: string): Promise<CurrentConditions> {
+    void orderId;
     return {
       trafficLevel: 'medium',
       weatherCondition: 'clear',

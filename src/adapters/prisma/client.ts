@@ -5,19 +5,22 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { withTenantProxy } from './prisma-tenant-proxy';
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: ReturnType<typeof withTenantProxy> | undefined;
 };
+
+const baseClient = new PrismaClient({
+  log:
+    process.env.NODE_ENV === 'development'
+      ? ['query', 'error', 'warn']
+      : ['error'],
+});
 
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient({
-    log:
-      process.env.NODE_ENV === 'development'
-        ? ['query', 'error', 'warn']
-        : ['error'],
-  });
+  withTenantProxy(baseClient);
 
 export function getPrismaClient() {
   return prisma;
@@ -33,6 +36,8 @@ if (typeof window === 'undefined') {
     if (disconnecting) return;
     disconnecting = true;
     try {
+      // @ts-expect-error $disconnect exists on extended client usually, but safe to call on base if needed.
+      // Actually extended client forwards methods.
       await prisma.$disconnect();
     } catch {
       void 0;

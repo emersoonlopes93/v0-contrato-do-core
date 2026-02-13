@@ -86,3 +86,15 @@ export type DeliveryRoutesServiceContract = {
   ): Promise<DeliveryRouteDTO>;
   removeRoute(tenantId: string, routeId: string): Promise<void>;
 };
+
+export type DeliveryRoutesListResponse = DeliveryRouteDTO[];
+
+export type DeliveryRoutesUpsertRequest = {
+  route: DeliveryRouteDTO;
+};
+
+export type DeliveryRoutesUpsertResponse = DeliveryRouteDTO;
+
+export type DeliveryRoutesDeleteResponse = {
+  removed: boolean;
+};

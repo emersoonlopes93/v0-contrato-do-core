@@ -1,4 +1,8 @@
-import type { LogisticsPerformanceData, LogisticsPerformanceMetrics } from '../types';
+import type { LogisticsPerformanceData, LogisticsPerformanceMetrics, OperationalEfficiencyData } from '../types';
+
+type NumericField<T> = {
+  [K in keyof T]-?: T[K] extends number ? K : never;
+}[keyof T];
 
 export class PerformanceAnalyzer {
   async analyzeDriverPerformance(
@@ -28,15 +32,7 @@ export class PerformanceAnalyzer {
   }
 
   async analyzeOperationalEfficiency(
-    operationalData: Array<{
-      date: Date;
-      totalDeliveries: number;
-      totalDrivers: number;
-      averageDeliveryTime: number;
-      fuelConsumption: number;
-      customerSatisfaction: number;
-      operationalCost: number;
-    }>
+    operationalData: OperationalEfficiencyData[]
   ): Promise<{
     efficiencyScore: number;
     utilizationRate: number;
@@ -82,6 +78,7 @@ export class PerformanceAnalyzer {
     if (data.length === 0) return 0;
 
     const latest = data[data.length - 1];
+    if (!latest) return 0;
     const weights = {
       onTimeRate: 0.4,
       averageDelay: 0.3,
@@ -120,8 +117,9 @@ export class PerformanceAnalyzer {
   }
 
   private identifyStrengths(data: LogisticsPerformanceData[]): string[] {
-    const strengths = [];
+    const strengths: string[] = [];
     const latest = data[data.length - 1];
+    if (!latest) return strengths;
 
     if (latest.onTimeRate >= 0.9) {
       strengths.push('Excelente pontualidade nas entregas');
@@ -142,8 +140,9 @@ export class PerformanceAnalyzer {
   }
 
   private identifyWeaknesses(data: LogisticsPerformanceData[]): string[] {
-    const weaknesses = [];
+    const weaknesses: string[] = [];
     const latest = data[data.length - 1];
+    if (!latest) return weaknesses;
 
     if (latest.onTimeRate < 0.8) {
       weaknesses.push('Taxa de pontualidade abaixo da meta');
@@ -208,16 +207,17 @@ export class PerformanceAnalyzer {
     const regionalData: Record<string, LogisticsPerformanceData[]> = {};
 
     data.forEach(day => {
-      if (!regionalData[day.region]) {
-        regionalData[day.region] = [];
-      }
-      regionalData[day.region].push(day);
+      const regionKey = day.region;
+      const bucket = regionalData[regionKey] ?? [];
+      bucket.push(day);
+      regionalData[regionKey] = bucket;
     });
 
     const performance: Record<string, { score: number; deliveries: number; averageDelay: number; }> = {};
 
     Object.keys(regionalData).forEach(region => {
       const regionData = regionalData[region];
+      if (!regionData || regionData.length === 0) return;
       const avgDelay = regionData.reduce((sum, d) => sum + d.averageDelay, 0) / regionData.length;
       const avgOnTime = regionData.reduce((sum, d) => sum + d.onTimeRate, 0) / regionData.length;
       const totalDeliveries = regionData.reduce((sum, d) => sum + d.deliveries, 0);
@@ -249,55 +249,73 @@ export class PerformanceAnalyzer {
     };
   }
 
-  private calculateEfficiencyScore(data: LogisticsPerformanceData[]): number {
+  private calculateEfficiencyScore(data: OperationalEfficiencyData[]): number {
     if (data.length === 0) return 0;
 
     const latest = data[data.length - 1];
     if (!latest) return 0;
     
-    // Usar apenas propriedades disponíveis na interface
-    const efficiencyScore = (latest.deliveries * latest.onTimeRate) * 10;
-    return Math.round(efficiencyScore);
+    const deliveriesPerDriver = latest.totalDrivers > 0
+      ? latest.totalDeliveries / latest.totalDrivers
+      : latest.totalDeliveries;
+    const efficiencyScore = Math.min(
+      100,
+      (deliveriesPerDriver * 10) + Math.min(100, latest.customerSatisfaction)
+    );
+    return Math.round(Math.max(0, efficiencyScore));
   }
 
-  private calculateUtilizationRate(data: LogisticsPerformanceData[]): number {
+  private calculateUtilizationRate(data: OperationalEfficiencyData[]): number {
     if (data.length === 0) return 0;
 
     const latest = data[data.length - 1];
     if (!latest) return 0;
     
-    // Usar apenas propriedades disponíveis - simular utilização baseada em deliveries
-    const utilizationRate = Math.min(100, (latest.deliveries / 20) * 100);
+    const deliveriesPerDriver = latest.totalDrivers > 0
+      ? latest.totalDeliveries / latest.totalDrivers
+      : latest.totalDeliveries;
+    const utilizationRate = Math.min(100, (deliveriesPerDriver / 15) * 100);
     return Math.round(utilizationRate);
   }
 
-  private calculateCostEfficiency(data: LogisticsPerformanceData[]): number {
+  private calculateCostEfficiency(data: OperationalEfficiencyData[]): number {
     if (data.length === 0) return 0;
 
     const latest = data[data.length - 1];
     if (!latest) return 0;
     
-    // Simular eficiência de custo baseada em distance e deliveries
-    const costEfficiency = Math.max(0, Math.min(100, (latest.deliveries / (latest.totalDistance || 1)) * 50));
+    const costPerDelivery = latest.totalDeliveries > 0
+      ? latest.operationalCost / latest.totalDeliveries
+      : latest.operationalCost;
+    const costEfficiency = Math.max(0, Math.min(100, 100 - (costPerDelivery * 2)));
     return Math.round(costEfficiency);
   }
 
-  private calculateQualityScore(data: LogisticsPerformanceData[]): number {
+  private calculateQualityScore(data: OperationalEfficiencyData[]): number {
     if (data.length === 0) return 0;
 
     const latest = data[data.length - 1];
     if (!latest) return 0;
     
-    // Simular qualidade baseada em onTimeRate
-    const qualityScore = latest.onTimeRate * 100;
+    const qualityScore = Math.min(100, Math.max(0, latest.customerSatisfaction));
     return Math.round(qualityScore);
   }
 
-  private calculateTrendDirection(recent: LogisticsPerformanceData[], older: LogisticsPerformanceData[], field: keyof LogisticsPerformanceData): 'up' | 'stable' | 'down' {
+  private calculateTrendDirection<T, K extends NumericField<T>>(
+    recent: T[],
+    older: T[],
+    field: K
+  ): 'up' | 'stable' | 'down' {
     if (recent.length === 0 || older.length === 0) return 'stable';
 
-    const recentAvg = recent.reduce((sum, d) => sum + d[field], 0) / recent.length;
-    const olderAvg = older.reduce((sum, d) => sum + d[field], 0) / older.length;
+    const recentAvg = recent.reduce((sum, d) => {
+      const value = d[field];
+      return typeof value === 'number' ? sum + value : sum;
+    }, 0) / recent.length;
+    const olderAvg = older.reduce((sum, d) => {
+      const value = d[field];
+      return typeof value === 'number' ? sum + value : sum;
+    }, 0) / older.length;
 
     const difference = (recentAvg - olderAvg) / olderAvg;
     
@@ -306,8 +324,11 @@ export class PerformanceAnalyzer {
     return 'stable';
   }
 
-  private generateOperationalInsights(data: LogisticsPerformanceData[], trends: Record<string, string>): string[] {
-    const insights = [];
+  private generateOperationalInsights(
+    data: OperationalEfficiencyData[],
+    trends: { deliveries: 'up' | 'stable' | 'down'; costs: 'up' | 'stable' | 'down'; satisfaction: 'up' | 'stable' | 'down' }
+  ): string[] {
+    const insights: string[] = [];
     const latest = data[data.length - 1];
     if (!latest) return insights;
 
@@ -317,16 +338,23 @@ export class PerformanceAnalyzer {
       insights.push('Redução no volume de entregas requer atenção');
     }
 
-    if (latest.onTimeRate >= 0.9) {
-      insights.push('Excelente pontualidade nas entregas');
-    } else if (latest.onTimeRate < 0.7) {
-      insights.push('Taxa de pontualidade abaixo da meta');
+    if (trends.costs === 'up') {
+      insights.push('Custos operacionais em alta');
+    }
+
+    if (latest.customerSatisfaction >= 85) {
+      insights.push('Satisfação do cliente acima do esperado');
+    } else if (latest.customerSatisfaction < 70) {
+      insights.push('Satisfação do cliente abaixo da meta');
     }
 
     return insights;
   }
 
-  private generateOperationalRecommendations(insights: string[], trends: Record<string, string>): string[] {
+  private generateOperationalRecommendations(
+    insights: string[],
+    trends: { deliveries: 'up' | 'stable' | 'down'; costs: 'up' | 'stable' | 'down'; satisfaction: 'up' | 'stable' | 'down' }
+  ): string[] {
     const recommendations = [];
 
     if (trends.deliveries === 'down') {
@@ -334,9 +362,13 @@ export class PerformanceAnalyzer {
       recommendations.push('Desenvolver estratégias de recuperação');
     }
 
-    if (insights.includes('Taxa de pontualidade abaixo da meta')) {
+    if (insights.includes('Satisfação do cliente abaixo da meta')) {
       recommendations.push('Coletar feedback dos clientes');
       recommendations.push('Revisar processos de entrega');
+    }
+
+    if (trends.costs === 'up') {
+      recommendations.push('Revisar custos operacionais e otimizar recursos');
     }
 
     return recommendations;

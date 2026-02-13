@@ -72,7 +72,9 @@ export class TenantContextResolver {
    */
   private extractTenantIdFromToken(token: string): string | null {
     try {
-      const decoded = JSON.parse(atob(token.split('.')[1]));
+      const payload = token.split('.')[1];
+      if (!payload) return null;
+      const decoded = JSON.parse(atob(payload));
       return decoded.tenantId || null;
     } catch {
       return null;

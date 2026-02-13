@@ -65,7 +65,13 @@ export async function tenantGlobalLogin(req: Request, res: Response) {
       return;
     }
 
-    const tenantId = matches[0].tenant_id;
+    const firstMatch = matches[0];
+    if (!firstMatch) {
+      res.status = 401;
+      res.body = { error: 'Invalid credentials' };
+      return;
+    }
+    const tenantId = firstMatch.tenant_id;
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },

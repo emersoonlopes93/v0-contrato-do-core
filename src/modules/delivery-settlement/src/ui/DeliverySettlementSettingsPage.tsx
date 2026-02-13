@@ -3,7 +3,7 @@ import type { DeliverySettlementSettingsDTO, DeliverySettlementSettingsCreateReq
 import { deliverySettlementProvider } from '../providers/deliverySettlementProvider';
 
 export function DeliverySettlementSettingsPage() {
-  const [settings, setSettings] = useState<DeliverySettlementSettingsDTO | null>(null);
+  const [, setSettings] = useState<DeliverySettlementSettingsDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +38,7 @@ export function DeliverySettlementSettingsPage() {
         });
       }
     } catch (err) {
+      void err;
       setError('Erro ao carregar configurações');
     } finally {
       setLoading(false);
@@ -54,6 +55,7 @@ export function DeliverySettlementSettingsPage() {
       await deliverySettlementProvider.upsertSettings(tenantId, formData);
       await loadSettings();
     } catch (err) {
+      void err;
       setError('Erro ao salvar configurações');
     } finally {
       setSaving(false);

@@ -8,6 +8,7 @@
 import { AuthGuards, type GuardContext } from '../../core/auth/guards';
 import { asModuleId } from '@/core/types';
 import { AuthRepository } from '@/src/adapters/prisma/repositories/auth-repository';
+import { runWithTenant } from '@/src/core/context/async-context';
 
 export interface Request {
   headers: Record<string, string>;
@@ -124,7 +125,10 @@ export const requireTenantAuth: Middleware = async (req, res, next) => {
       activeModules: result.token.activeModules.map((m) => m.toString()),
     };
     
-    await next();
+    // Wrap next execution in tenant context
+    await runWithTenant(result.tenantId, async () => {
+      await next();
+    });
   } catch (error) {
     res.status = 401;
     res.body = {
@@ -179,7 +183,18 @@ export function requireModule(moduleId: string): Middleware {
         activeModules: result.token.activeModules.map((m) => m.toString()),
       };
       
-      await next();
+      // Ensure context is applied if requireTenantAuth wasn't called or failed to wrap?
+      // Since middleware chain is sequential, if requireTenantAuth was called, we are already inside runWithTenant.
+      // But if requireModule is called standalone (unlikely but possible), we should wrap it.
+      // However, wrapping inside wrapping might be redundant but safe with AsyncLocalStorage.
+      // The issue is if we wrap here, we might be nesting contexts.
+      // AsyncLocalStorage handles nesting fine (inner context overrides outer).
+      // Since tenantId should be same, it's fine.
+      
+      await runWithTenant(result.tenantId, async () => {
+        await next();
+      });
+
     } catch (error) {
       res.status = 403;
       res.body = {
@@ -197,23 +212,24 @@ export function requirePermission(permission: string): Middleware {
   return async (req, res, next) => {
     try {
       const context = buildGuardContext(req);
-      const result = await guards.requireTenantUser(context);
-      const permissions = await authRepo.getTenantUserPermissions(result.token.userId, result.tenantId);
-
-      if (!permissions.includes(permission)) {
-        throw new Error(`Permission denied: ${permission} required`);
-      }
+      const result = await guards.requirePermission(
+        context,
+        permission,
+      );
       
       // Update request auth
       (req as AuthenticatedRequest).auth = {
         userId: result.token.userId,
         tenantId: result.tenantId,
         role: result.token.role,
-        permissions,
+        permissions: result.token.permissions,
         activeModules: result.token.activeModules.map((m) => m.toString()),
       };
-      
-      await next();
+
+      await runWithTenant(result.tenantId, async () => {
+        await next();
+      });
+
     } catch (error) {
       res.status = 403;
       res.body = {
@@ -224,32 +240,15 @@ export function requirePermission(permission: string): Middleware {
   };
 }
 
-/**
- * Error handler middleware
- */
-export const errorHandler: Middleware = async (req, res, next) => {
-  try {
-    await next();
-  } catch (error) {
-    console.error('[v0] API Error:', error);
-    
-    res.status = res.status || 500;
-    res.body = {
-      error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : 'An unexpected error occurred',
-    };
-  }
-};
+export function requestLogger(req: Request, res: Response, next: NextFunction): Promise<void> {
+    // console.log(`${req.method} ${req.url}`);
+    return next();
+}
 
-/**
- * Request logger middleware
- */
-export const requestLogger: Middleware = async (req, res, next) => {
-  const start = Date.now();
-  console.log(`[v0] ${req.method} ${req.url} - Start`);
-  
-  await next();
-  
-  const duration = Date.now() - start;
-  console.log(`[v0] ${req.method} ${req.url} - ${res.status} (${duration}ms)`);
-};
+export function errorHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+    return next().catch(err => {
+        console.error(err);
+        res.status = 500;
+        res.body = { error: 'Internal Server Error', message: err.message };
+    });
+}

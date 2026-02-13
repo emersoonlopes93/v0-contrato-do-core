@@ -6,6 +6,7 @@ import { soundNotificationsTenantRoutes } from './sound-notifications.routes';
 import { storeSettingsTenantRoutes } from '@/src/modules/store-settings/src/store-settings.routes';
 import { tenantSettingsTenantRoutes } from '@/src/modules/settings/src/tenant-settings.routes';
 import { deliveryRoutesTenantRoutes } from '@/src/modules/delivery-routes/src/delivery-routes.routes';
+import { deliveryDriversTenantRoutes } from '@/src/modules/delivery-drivers/src/delivery-drivers.routes';
 import { deliveryTrackingTenantRoutes } from '@/src/modules/delivery-tracking/src/delivery-tracking.routes';
 import { deliveryPricingTenantRoutes } from '@/src/modules/delivery-pricing/src/delivery-pricing.routes';
 import { employeesTenantRoutes } from '@/src/modules/employees/src/employees.routes';
@@ -19,6 +20,7 @@ export const tenantRoutes: Route[] = [
   ...menuOnlineTenantRoutes,
   ...soundNotificationsTenantRoutes,
   ...deliveryRoutesTenantRoutes,
+  ...deliveryDriversTenantRoutes,
   ...deliveryTrackingTenantRoutes,
   ...deliveryPricingTenantRoutes,
   ...employeesTenantRoutes,

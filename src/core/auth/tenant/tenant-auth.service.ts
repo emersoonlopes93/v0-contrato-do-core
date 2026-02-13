@@ -64,7 +64,7 @@ export class TenantAuthService {
     const activeModules = await this.authRepo.getTenantActiveModules(tenantId);
     
     // Get first role name (simplified - can be enhanced)
-    const primaryRole = userRoles.length > 0 ? userRoles[0].role.name : 'user';
+    const primaryRole = userRoles[0]?.role.name ?? 'user';
 
     // 5. Generate tokens
     const tokenPayload: TenantUserToken = {
@@ -210,7 +210,7 @@ export class TenantAuthService {
     const permissions = await this.authRepo.getTenantUserPermissions(user.id, tenantId);
     const userRoles = await this.authRepo.getTenantUserRoles(user.id, tenantId);
     const activeModules = await this.authRepo.getTenantActiveModules(tenantId);
-    const primaryRole = userRoles.length > 0 ? userRoles[0].role.name : 'user';
+    const primaryRole = userRoles[0]?.role.name ?? 'user';
 
     // 6. Generate new access token
     const tokenPayload: TenantUserToken = {

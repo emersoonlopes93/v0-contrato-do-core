@@ -97,23 +97,29 @@ export class DeliveryHistoryProvider {
     const history = await this.getDeliveryHistory(tenantId, { driverId, startDate });
 
     const totalDeliveries = history.length;
-    const averageDelayMinutes = history.reduce((sum, d) => sum + d.delayMinutes, 0) / totalDeliveries;
+    const averageDelayMinutes = totalDeliveries > 0
+      ? history.reduce((sum, d) => sum + d.delayMinutes, 0) / totalDeliveries
+      : 0;
     const onTimeDeliveries = history.filter(d => d.delayMinutes <= 5).length;
-    const onTimePercentage = (onTimeDeliveries / totalDeliveries) * 100;
-    const averageDistanceKm = history.reduce((sum, d) => sum + d.distanceKm, 0) / totalDeliveries;
+    const onTimePercentage = totalDeliveries > 0 ? (onTimeDeliveries / totalDeliveries) * 100 : 0;
+    const averageDistanceKm = totalDeliveries > 0
+      ? history.reduce((sum, d) => sum + d.distanceKm, 0) / totalDeliveries
+      : 0;
 
     const performanceByRegion: Record<string, { deliveries: number; averageDelay: number }> = {};
     
     history.forEach(delivery => {
-      if (!performanceByRegion[delivery.region]) {
-        performanceByRegion[delivery.region] = { deliveries: 0, averageDelay: 0 };
-      }
-      performanceByRegion[delivery.region].deliveries++;
-      performanceByRegion[delivery.region].averageDelay += delivery.delayMinutes;
+      const regionKey = delivery.region;
+      const current = performanceByRegion[regionKey] ?? { deliveries: 0, averageDelay: 0 };
+      performanceByRegion[regionKey] = {
+        deliveries: current.deliveries + 1,
+        averageDelay: current.averageDelay + delivery.delayMinutes,
+      };
     });
 
     Object.keys(performanceByRegion).forEach(region => {
       const regionData = performanceByRegion[region];
+      if (!regionData || regionData.deliveries === 0) return;
       regionData.averageDelay = regionData.averageDelay / regionData.deliveries;
     });
 
@@ -143,19 +149,22 @@ export class DeliveryHistoryProvider {
     const history = await this.getDeliveryHistory(tenantId, { region, startDate });
 
     const totalDeliveries = history.length;
-    const averageDelayMinutes = history.reduce((sum, d) => sum + d.delayMinutes, 0) / totalDeliveries;
+    const averageDelayMinutes = totalDeliveries > 0
+      ? history.reduce((sum, d) => sum + d.delayMinutes, 0) / totalDeliveries
+      : 0;
 
     const delaysByHour: Record<number, number[]> = {};
     history.forEach(delivery => {
-      if (!delaysByHour[delivery.hourOfDay]) {
-        delaysByHour[delivery.hourOfDay] = [];
-      }
-      delaysByHour[delivery.hourOfDay].push(delivery.delayMinutes);
+      const hourKey = delivery.hourOfDay;
+      const bucket = delaysByHour[hourKey] ?? [];
+      bucket.push(delivery.delayMinutes);
+      delaysByHour[hourKey] = bucket;
     });
 
     const averageDelayByHour: Record<number, number> = {};
     Object.keys(delaysByHour).forEach(hour => {
       const delays = delaysByHour[parseInt(hour)];
+      if (!delays || delays.length === 0) return;
       averageDelayByHour[parseInt(hour)] = delays.reduce((sum, d) => sum + d, 0) / delays.length;
     });
 

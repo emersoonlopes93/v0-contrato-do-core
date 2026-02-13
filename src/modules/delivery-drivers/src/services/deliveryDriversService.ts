@@ -7,54 +7,55 @@ import type {
 } from '@/src/types/delivery-drivers';
 import { appendHistoryEntry, createDriver, listDrivers, listHistory, updateDriver } from '../repositories/deliveryDriversRepository';
 
-export function listDeliveryDrivers(tenantSlug: string): DeliveryDriverDTO[] {
-  return listDrivers(tenantSlug);
+export async function listDeliveryDrivers(tenantSlug: string): Promise<DeliveryDriverDTO[]> {
+  return await listDrivers(tenantSlug);
 }
 
-export function listDeliveryDriverHistory(
+export async function listDeliveryDriverHistory(
   tenantSlug: string,
   driverId: string,
-): DeliveryDriverHistoryEntryDTO[] {
-  return listHistory(tenantSlug).filter((entry) => entry.driverId === driverId);
+): Promise<DeliveryDriverHistoryEntryDTO[]> {
+  const history = await listHistory(tenantSlug);
+  return history.filter((entry) => entry.driverId === driverId);
 }
 
-export function createDeliveryDriver(
+export async function createDeliveryDriver(
   tenantSlug: string,
   input: DeliveryDriverCreateRequest,
-): DeliveryDriverDTO {
-  return createDriver(tenantSlug, {
+): Promise<DeliveryDriverDTO> {
+  return await createDriver(tenantSlug, {
     name: input.name,
     phone: input.phone ?? null,
   });
 }
 
-export function updateDeliveryDriver(
+export async function updateDeliveryDriver(
   tenantSlug: string,
   driverId: string,
   input: DeliveryDriverUpdateRequest,
-): DeliveryDriverDTO {
+): Promise<DeliveryDriverDTO> {
   const payload: Partial<DeliveryDriverDTO> = {};
   if (input.name !== undefined) payload.name = input.name;
   if (input.phone !== undefined) payload.phone = input.phone;
   if (input.status !== undefined) payload.status = input.status;
   if (input.activeOrderId !== undefined) payload.activeOrderId = input.activeOrderId;
-   if (input.latitude !== undefined) payload.latitude = input.latitude;
-   if (input.longitude !== undefined) payload.longitude = input.longitude;
-   if (input.lastLocationAt !== undefined) payload.lastLocationAt = input.lastLocationAt;
-  return updateDriver(tenantSlug, driverId, payload);
+  if (input.latitude !== undefined) payload.latitude = input.latitude;
+  if (input.longitude !== undefined) payload.longitude = input.longitude;
+  if (input.lastLocationAt !== undefined) payload.lastLocationAt = input.lastLocationAt;
+  return await updateDriver(tenantSlug, driverId, payload);
 }
 
-export function assignDeliveryOrder(
+export async function assignDeliveryOrder(
   tenantSlug: string,
   input: DeliveryDriverAssignmentRequest,
-): DeliveryDriverDTO {
+): Promise<DeliveryDriverDTO> {
   const nextStatus = input.orderId ? 'delivering' : undefined;
-  const updated = updateDriver(tenantSlug, input.driverId, {
+  const updated = await updateDriver(tenantSlug, input.driverId, {
     activeOrderId: input.orderId,
     status: nextStatus,
   });
   if (input.orderId) {
-    appendHistoryEntry(tenantSlug, {
+    await appendHistoryEntry(tenantSlug, {
       driverId: updated.id,
       orderId: input.orderId,
       status: 'delivering',
@@ -63,23 +64,23 @@ export function assignDeliveryOrder(
   return updated;
 }
 
-export function syncDriverWithOrderStatus(args: {
+export async function syncDriverWithOrderStatus(args: {
   tenantSlug: string;
   orderId: string;
   status: string;
-}): DeliveryDriverDTO | null {
-  const drivers = listDrivers(args.tenantSlug);
+}): Promise<DeliveryDriverDTO | null> {
+  const drivers = await listDrivers(args.tenantSlug);
   const matched = drivers.find((d) => d.activeOrderId === args.orderId);
   if (!matched) return null;
   const shouldComplete = args.status === 'completed' || args.status === 'cancelled' || args.status === 'canceled';
   if (!shouldComplete) return null;
   const nextStatus = matched.status === 'offline' ? 'offline' : 'available';
-  const updated = updateDriver(args.tenantSlug, matched.id, {
+  const updated = await updateDriver(args.tenantSlug, matched.id, {
     activeOrderId: null,
     status: nextStatus,
     lastDeliveryAt: args.status === 'completed' ? new Date().toISOString() : matched.lastDeliveryAt,
   });
-  appendHistoryEntry(args.tenantSlug, {
+  await appendHistoryEntry(args.tenantSlug, {
     driverId: updated.id,
     orderId: args.orderId,
     status: nextStatus,

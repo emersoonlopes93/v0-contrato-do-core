@@ -33,7 +33,8 @@ export function TenantFooter() {
   const roleLabel = roleLabels[user.role] ?? user.role;
   
   // Pega as iniciais do email
-  const userName = user.email.split('@')[0];
+  const namePart = user.email?.split('@')[0];
+  const userName = namePart && namePart.length > 0 ? namePart : 'Usuário';
   const userInitial = userName.charAt(0).toUpperCase();
 
   return (

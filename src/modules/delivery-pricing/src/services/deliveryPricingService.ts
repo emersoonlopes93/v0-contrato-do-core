@@ -37,6 +37,7 @@ function isTimeValue(value: unknown): value is string {
   if (!isString(value)) return false;
   if (!/^\d{2}:\d{2}$/.test(value)) return false;
   const [h, m] = value.split(':').map((part) => Number(part));
+  if (h === undefined || m === undefined) return false;
   if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
   if (h < 0 || h > 23) return false;
   if (m < 0 || m > 59) return false;

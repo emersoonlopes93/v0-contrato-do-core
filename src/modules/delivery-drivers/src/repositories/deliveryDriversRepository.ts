@@ -1,8 +1,13 @@
 import type {
   DeliveryDriverDTO,
   DeliveryDriverHistoryEntryDTO,
+  DeliveryDriverHistoryAppendRequest,
+  DeliveryDriverHistoryAppendResponse,
   DeliveryDriverStatus,
+  DeliveryDriversHistoryListResponse,
+  DeliveryDriversListResponse,
 } from '@/src/types/delivery-drivers';
+import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 
 const STORAGE_KEY = 'delivery-drivers:drivers';
 const HISTORY_KEY = 'delivery-drivers:history';
@@ -111,40 +116,115 @@ function saveHistory(tenantSlug: string, history: DeliveryDriverHistoryEntryDTO[
   window.localStorage.setItem(historyKey(tenantSlug), JSON.stringify(payload));
 }
 
-export function listDrivers(tenantSlug: string): DeliveryDriverDTO[] {
-  return parseDrivers(window.localStorage.getItem(storageKey(tenantSlug)));
+function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
+  return isRecord(value) && value.success === true && 'data' in value;
 }
 
-export function listHistory(tenantSlug: string): DeliveryDriverHistoryEntryDTO[] {
-  return parseHistory(window.localStorage.getItem(historyKey(tenantSlug)));
+function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
+  return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
 }
 
-export function createDriver(
+async function requestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      'X-Auth-Context': 'tenant_user',
+      'X-Tenant-Slug': tenantSlug,
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  const raw: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    if (isApiErrorResponse(raw)) throw new Error(raw.message);
+    throw new Error('Falha na requisição');
+  }
+
+  if (!isApiSuccessResponse<T>(raw)) throw new Error('Resposta inválida');
+  return raw.data;
+}
+
+function updateLocalDrivers(tenantSlug: string, driver: DeliveryDriverDTO): void {
+  const drivers = parseDrivers(window.localStorage.getItem(storageKey(tenantSlug)));
+  const index = drivers.findIndex((d) => d.id === driver.id);
+  const next = [...drivers];
+  if (index >= 0) {
+    next[index] = driver;
+  } else {
+    next.push(driver);
+  }
+  saveDrivers(tenantSlug, next);
+}
+
+function appendLocalHistory(tenantSlug: string, entry: DeliveryDriverHistoryEntryDTO): void {
+  const history = parseHistory(window.localStorage.getItem(historyKey(tenantSlug)));
+  const next = [entry, ...history].slice(0, 200);
+  saveHistory(tenantSlug, next);
+}
+
+export async function listDrivers(tenantSlug: string): Promise<DeliveryDriverDTO[]> {
+  try {
+    const drivers = await requestJson<DeliveryDriversListResponse>(
+      '/api/v1/tenant/delivery-drivers',
+      tenantSlug,
+    );
+    saveDrivers(tenantSlug, drivers);
+    return drivers;
+  } catch {
+    return parseDrivers(window.localStorage.getItem(storageKey(tenantSlug)));
+  }
+}
+
+export async function listHistory(tenantSlug: string): Promise<DeliveryDriverHistoryEntryDTO[]> {
+  try {
+    const history = await requestJson<DeliveryDriversHistoryListResponse>(
+      '/api/v1/tenant/delivery-drivers/history',
+      tenantSlug,
+    );
+    saveHistory(tenantSlug, history);
+    return history;
+  } catch {
+    return parseHistory(window.localStorage.getItem(historyKey(tenantSlug)));
+  }
+}
+
+export async function createDriver(
   tenantSlug: string,
   input: { name: string; phone: string | null },
-): DeliveryDriverDTO {
-  const now = new Date().toISOString();
-  const drivers = listDrivers(tenantSlug);
-  const driver: DeliveryDriverDTO = {
-    id: generateId(),
-    tenantId: tenantSlug,
-    name: input.name,
-    phone: input.phone,
-    status: 'offline',
-    activeOrderId: null,
-    latitude: null,
-    longitude: null,
-    lastLocationAt: null,
-    lastDeliveryAt: null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const next = [...drivers, driver];
-  saveDrivers(tenantSlug, next);
-  return driver;
+): Promise<DeliveryDriverDTO> {
+  try {
+    const created = await requestJson<DeliveryDriverDTO>(
+      '/api/v1/tenant/delivery-drivers',
+      tenantSlug,
+      { method: 'POST', body: JSON.stringify(input) },
+    );
+    updateLocalDrivers(tenantSlug, created);
+    return created;
+  } catch {
+    const now = new Date().toISOString();
+    const driver: DeliveryDriverDTO = {
+      id: generateId(),
+      tenantId: tenantSlug,
+      name: input.name,
+      phone: input.phone,
+      status: 'offline',
+      activeOrderId: null,
+      latitude: null,
+      longitude: null,
+      lastLocationAt: null,
+      lastDeliveryAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    updateLocalDrivers(tenantSlug, driver);
+    return driver;
+  }
 }
 
-export function updateDriver(
+export async function updateDriver(
   tenantSlug: string,
   driverId: string,
   input: Partial<
@@ -160,35 +240,59 @@ export function updateDriver(
       | 'lastDeliveryAt'
     >
   >,
-): DeliveryDriverDTO {
-  const drivers = listDrivers(tenantSlug);
-  const index = drivers.findIndex((d) => d.id === driverId);
-  if (index < 0) {
-    throw new Error('Entregador não encontrado');
+): Promise<DeliveryDriverDTO> {
+  try {
+    const updated = await requestJson<DeliveryDriverDTO>(
+      `/api/v1/tenant/delivery-drivers/${encodeURIComponent(driverId)}`,
+      tenantSlug,
+      { method: 'PATCH', body: JSON.stringify(input) },
+    );
+    updateLocalDrivers(tenantSlug, updated);
+    return updated;
+  } catch {
+    const drivers = parseDrivers(window.localStorage.getItem(storageKey(tenantSlug)));
+    const index = drivers.findIndex((d) => d.id === driverId);
+    if (index < 0) {
+      throw new Error('Entregador não encontrado');
+    }
+    const current = drivers[index];
+    if (!current) {
+      throw new Error('Entregador não encontrado');
+    }
+    const updated: DeliveryDriverDTO = {
+      ...current,
+      ...input,
+      updatedAt: new Date().toISOString(),
+    };
+    updateLocalDrivers(tenantSlug, updated);
+    return updated;
   }
-  const current = drivers[index];
-  const updated: DeliveryDriverDTO = {
-    ...current,
-    ...input,
-    updatedAt: new Date().toISOString(),
-  };
-  const next = [...drivers];
-  next[index] = updated;
-  saveDrivers(tenantSlug, next);
-  return updated;
 }
 
-export function appendHistoryEntry(
+export async function appendHistoryEntry(
   tenantSlug: string,
   entry: Omit<DeliveryDriverHistoryEntryDTO, 'id' | 'timestamp'>,
-): DeliveryDriverHistoryEntryDTO {
-  const history = listHistory(tenantSlug);
-  const created: DeliveryDriverHistoryEntryDTO = {
-    ...entry,
-    id: generateId(),
-    timestamp: new Date().toISOString(),
+): Promise<DeliveryDriverHistoryEntryDTO> {
+  const payload: DeliveryDriverHistoryAppendRequest = {
+    driverId: entry.driverId,
+    orderId: entry.orderId,
+    status: entry.status,
   };
-  const next = [created, ...history].slice(0, 200);
-  saveHistory(tenantSlug, next);
-  return created;
+  try {
+    const created = await requestJson<DeliveryDriverHistoryAppendResponse>(
+      '/api/v1/tenant/delivery-drivers/history',
+      tenantSlug,
+      { method: 'POST', body: JSON.stringify(payload) },
+    );
+    appendLocalHistory(tenantSlug, created);
+    return created;
+  } catch {
+    const created: DeliveryDriverHistoryEntryDTO = {
+      ...entry,
+      id: generateId(),
+      timestamp: new Date().toISOString(),
+    };
+    appendLocalHistory(tenantSlug, created);
+    return created;
+  }
 }

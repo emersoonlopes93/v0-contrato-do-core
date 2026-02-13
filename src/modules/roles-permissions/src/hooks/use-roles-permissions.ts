@@ -63,7 +63,8 @@ export function useRolesPermissions(tenantId: string): State {
       await service.assignPermission(tenantId, data);
       await loadRoles();
       // Recarregar permissões do role se estiverem sendo exibidas
-      if (rolePermissions.length > 0 && rolePermissions[0].role) {
+      const firstPermission = rolePermissions[0];
+      if (rolePermissions.length > 0 && firstPermission?.role) {
         const currentRole = roles.find(r => r.id === data.roleId);
         if (currentRole) {
           await loadRolePermissions(data.roleId);

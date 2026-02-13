@@ -8,8 +8,6 @@
 import {
   requireTenantAuth,
   requireSaaSAdminAuth,
-  requireModule,
-  requirePermission,
   errorHandler,
   requestLogger,
   type Request,
@@ -23,7 +21,7 @@ import {
   globalEventBus,
 } from '@/src/core';
 import type { IDatabaseAdapter, IRepository } from '@/src/core/db/contracts';
-import { asModuleId, type ModuleId } from '@/src/core/types';
+import { type ModuleId } from '@/src/core/types';
 import type { ModuleContext } from '@/src/core/modules/contracts';
 import ordersModule from '@/src/modules/orders-module/src';
 import menuOnlineModule from '@/src/modules/menu-online/src';
@@ -43,6 +41,7 @@ import clientTrackingModule from '@/src/modules/client-tracking/src';
 import customersCrmModule from '@/src/modules/customers-crm/src';
 import { manifest as employeesManifest } from '@/src/modules/employees/src/manifest';
 import { manifest as rolesPermissionsManifest } from '@/src/modules/roles-permissions/src/manifest';
+import dashboardExecutivoModule from '@/src/modules/dashboard-executivo/src';
 
 // Tenant Controllers
 import * as tenantWhiteLabelController from './tenant/white-label.controller';
@@ -65,6 +64,7 @@ import { paymentsRoutes } from '@/src/modules/payments/src/payments.routes';
 import { financialRoutes } from '@/src/modules/financial/src/financial.routes';
 import { clientTrackingPublicRoutes } from '@/src/modules/client-tracking/src/client-tracking.routes';
 import { customersCrmRoutes } from '@/src/modules/customers-crm/src/customers-crm.routes';
+import { dashboardExecutivoRoutes } from '@/src/modules/dashboard-executivo/src/dashboard.routes';
 
 /**
  * API Routes Configuration
@@ -87,6 +87,7 @@ export const routes: Route[] = [
   ...tenantRoutes,
 
   ...customersCrmRoutes,
+  ...dashboardExecutivoRoutes,
 
   ...checkoutRoutes,
   ...paymentsRoutes,
@@ -314,6 +315,9 @@ void globalModuleRegistry.register(employeesManifest);
 
 void globalModuleRegistry.register(rolesPermissionsManifest);
 
+void globalModuleRegistry.register(dashboardExecutivoModule.manifest);
+void dashboardExecutivoModule.register(moduleContext);
+
 /**
  * Execute middleware chain
  */
@@ -331,7 +335,7 @@ async function executeMiddlewares(
 
     const middleware = middlewares[index];
     index++;
-
+    if (!middleware) return;
     await middleware(req, res, next);
   };
 
@@ -359,7 +363,10 @@ export async function handleRequest(req: Request): Promise<Response> {
       const paramNames = (r.path.match(/:[^/]+/g) || []).map((p) => p.slice(1));
       req.params = {};
       paramNames.forEach((name, i) => {
-        req.params![name] = match[i + 1];
+        const value = match[i + 1];
+        if (typeof value === 'string') {
+          req.params![name] = value;
+        }
       });
       return true;
     }

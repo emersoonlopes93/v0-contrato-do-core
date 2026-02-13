@@ -12,12 +12,14 @@ import { DelayPredictionService } from './delay-prediction.service';
 import { RouteOptimizationService } from './route-optimization.service';
 import { AlertService } from './alert.service';
 import { SettingsService } from './settings.service';
+import { getPrismaClient } from '@/src/adapters/prisma/client';
 
 export class LogisticsAiService implements LogisticsAiServiceContract {
   private delayPredictionService: DelayPredictionService;
   private routeOptimizationService: RouteOptimizationService;
   private alertService: AlertService;
   private settingsService: SettingsService;
+  private prisma = getPrismaClient();
 
   constructor() {
     this.delayPredictionService = new DelayPredictionService();
@@ -26,10 +28,45 @@ export class LogisticsAiService implements LogisticsAiServiceContract {
     this.settingsService = new SettingsService();
   }
 
+  private async validateDataset(tenantId: string): Promise<boolean> {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // Count orders in last 7 days
+    // @ts-expect-error prisma.order might not be typed fully here
+    const recentOrders = await this.prisma.order.count({
+      where: {
+        tenant_id: tenantId,
+        created_at: { gte: sevenDaysAgo }
+      }
+    });
+
+    if (recentOrders < 30) return false;
+
+    // Count completed deliveries
+    // @ts-expect-error prisma.order might not be typed fully here
+    const completedDeliveries = await this.prisma.order.count({
+      where: {
+        tenant_id: tenantId,
+        status: { in: ['completed', 'delivered', 'COMPLETED', 'DELIVERED'] }
+      }
+    });
+
+    if (completedDeliveries < 20) return false;
+
+    return true;
+  }
+
   async predictDelay(tenantId: string, orderId: string): Promise<DelayPrediction | null> {
     const settings = await this.getSettings(tenantId);
     if (!settings?.delayPredictionEnabled) {
       return null;
+    }
+
+    // Dataset Check
+    const isDatasetValid = await this.validateDataset(tenantId);
+    if (!isDatasetValid) {
+      return null; // Unavailable
     }
 
     const prediction = await this.delayPredictionService.predictDelay(tenantId, orderId);
@@ -47,6 +84,12 @@ export class LogisticsAiService implements LogisticsAiServiceContract {
       return [];
     }
 
+    // Dataset Check
+    const isDatasetValid = await this.validateDataset(tenantId);
+    if (!isDatasetValid) {
+      return []; // Unavailable
+    }
+
     const suggestions = await this.routeOptimizationService.generateRouteSuggestions(tenantId, driverId);
     
     const filteredSuggestions = suggestions.slice(0, settings.maxSuggestionsPerDriver);
@@ -62,6 +105,12 @@ export class LogisticsAiService implements LogisticsAiServiceContract {
     const settings = await this.getSettings(tenantId);
     if (!settings?.routeOptimizationEnabled) {
       throw new Error('Route optimization is disabled for this tenant');
+    }
+
+    // Dataset Check
+    const isDatasetValid = await this.validateDataset(tenantId);
+    if (!isDatasetValid) {
+      throw new Error('Logistics AI Unavailable: Insufficient dataset (need 30+ orders/7d and 20+ completed deliveries)');
     }
 
     return this.routeOptimizationService.optimizeRoute(tenantId, request);
@@ -98,21 +147,5 @@ export class LogisticsAiService implements LogisticsAiServiceContract {
       actionUrl: `/orders/${prediction.orderId}`,
       isRead: false,
     });
-  }
-
-  private async createRouteSuggestionAlert(tenantId: string, suggestions: RouteSuggestion[]): Promise<void> {
-    const highPrioritySuggestions = suggestions.filter(s => s.priority === 'high');
-    
-    if (highPrioritySuggestions.length > 0) {
-      await this.createAlert(tenantId, {
-        type: 'route_suggestion',
-        severity: 'warning',
-        title: 'Sugestões de Rota Disponíveis',
-        message: `${highPrioritySuggestions.length} sugestões(ões) de otimização de rota disponíveis para revisão`,
-        actionRequired: true,
-        actionUrl: '/logistics-ai/suggestions',
-        isRead: false,
-      });
-    }
   }
 }

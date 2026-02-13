@@ -165,6 +165,8 @@ export class DriverPerformanceProvider {
     recommendations: string[];
     regionalPerformance: Record<string, { deliveries: number; averageDelay: number; onTimeRate: number }>;
   } {
+    void driverId;
+    void days;
     const baseScore = 70 + Math.random() * 25;
     const totalDeliveries = Math.floor(100 + Math.random() * 50);
     const averageDelay = Math.random() * 10;
@@ -175,7 +177,7 @@ export class DriverPerformanceProvider {
     );
 
     const trends: ('improving' | 'stable' | 'declining')[] = ['improving', 'stable', 'declining'];
-    const performanceTrend = trends[Math.floor(Math.random() * trends.length)];
+    const performanceTrend = trends[Math.floor(Math.random() * trends.length)] ?? 'stable';
 
     const strengths = [];
     const weaknesses = [];

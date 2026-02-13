@@ -93,10 +93,26 @@ function DeliveryTrackingMap(props: MapProps) {
     
     // Verificar se já existe um script do Google Maps
     const existing = document.querySelector('script[data-google-maps="delivery-tracking"]');
-    if (existing) {
-      scriptStatusRef.current = 'ready';
+    if (existing instanceof HTMLScriptElement) {
       const loaded = getGoogleNamespace();
-      if (loaded) setMaps(loaded);
+      if (loaded) {
+        scriptStatusRef.current = 'ready';
+        setMaps(loaded);
+        return;
+      }
+      const handleLoad = () => {
+        scriptStatusRef.current = 'ready';
+        const loadedNow = getGoogleNamespace();
+        if (loadedNow) {
+          setMaps(loadedNow);
+        }
+      };
+      const handleError = () => {
+        scriptStatusRef.current = 'idle';
+        console.error('Falha ao carregar o Google Maps');
+      };
+      existing.addEventListener('load', handleLoad, { once: true });
+      existing.addEventListener('error', handleError, { once: true });
       return;
     }
 
@@ -113,7 +129,8 @@ function DeliveryTrackingMap(props: MapProps) {
     script.src = url.toString();
     
     // Definir callback global para quando o Google Maps carregar
-    (window as any).googleMapsCallback = () => {
+    const googleWindow = window as Window & { googleMapsCallback?: () => void };
+    googleWindow.googleMapsCallback = () => {
       scriptStatusRef.current = 'ready';
       const loaded = getGoogleNamespace();
       if (loaded) {
@@ -121,7 +138,7 @@ function DeliveryTrackingMap(props: MapProps) {
       } else {
         console.error('Google Maps callback executed but namespace not found');
       }
-      delete (window as any).googleMapsCallback;
+      delete googleWindow.googleMapsCallback;
     };
     
     script.onerror = () => {
@@ -313,6 +330,14 @@ function DeliveryTrackingMap(props: MapProps) {
   }, [maps, map, snapshot]);
 
   if (typeof window === 'undefined') return null;
+
+  if (mapConfig && !mapConfig.googleMapsScript) {
+    return (
+      <div className="flex h-[320px] items-center justify-center rounded-lg border text-sm text-muted-foreground md:h-[420px] lg:h-[520px]">
+        Google Maps não configurado.
+      </div>
+    );
+  }
 
   if (!maps) {
     return (
