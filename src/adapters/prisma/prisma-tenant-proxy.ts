@@ -1,5 +1,6 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { getTenantId } from '@/src/core/context/async-context';
+import { isRecord } from '@/src/core/utils/type-guards';
 import { TENANT_TABLES } from './tenant-middleware';
 
 export function withTenantProxy(client: PrismaClient) {
@@ -16,16 +17,12 @@ export function withTenantProxy(client: PrismaClient) {
 
           // Injeta tenant_id em operações de leitura/escrita
           if (operation === 'findMany' || operation === 'findFirst' || operation === 'count') {
-             // @ts-expect-error args.where is possibly undefined
             args.where = { ...args.where, tenant_id: tenantId };
           }
           
           // Transforma findUnique em findFirst para garantir filtro de tenant
           if (operation === 'findUnique') {
-             // @ts-expect-error args.where is possibly undefined
-             const where = { ...args.where, tenant_id: tenantId };
-             // @ts-expect-error query expects findUnique args but we are changing to findFirst logic effectively
-             // Actually, extending findUnique is restrictive. 
+             // Actually, extending findUnique is restrictive.  
              // We'll proceed with the original query but with injected where if possible,
              // or delegate to findFirst if findUnique doesn't support the compound.
              // But simplest for now is attempting to inject. 
@@ -57,47 +54,51 @@ export function withTenantProxy(client: PrismaClient) {
              // if (result && result.tenant_id !== tenantId) return null;
              // return result;
              
-             const result = await query(args);
-             if (result && typeof result === 'object' && 'tenant_id' in result) {
-               if ((result as any).tenant_id !== tenantId) {
-                 return null; // Oculta dado de outro tenant
-               }
-             }
-             return result;
+            const result = await query(args);
+            if (isRecord(result) && 'tenant_id' in result) {
+              const resultTenantId = result.tenant_id;
+              if (typeof resultTenantId === 'string' && resultTenantId !== tenantId) {
+                return null; // Oculta dado de outro tenant
+              }
+            }
+            return result;
           }
 
           if (operation === 'update' || operation === 'delete') {
-             // @ts-expect-error args.where is possibly undefined
             args.where = { ...args.where, tenant_id: tenantId };
           }
 
           if (operation === 'updateMany' || operation === 'deleteMany') {
-             // @ts-expect-error args.where is possibly undefined
             args.where = { ...args.where, tenant_id: tenantId };
           }
 
           if (operation === 'create') {
-            // @ts-expect-error args.data is possibly undefined
-            args.data = { ...args.data, tenant_id: tenantId };
+            if (isRecord(args.data)) {
+              const nextArgs = {
+                ...args,
+                data: { ...args.data, tenant_id: tenantId },
+              } as typeof args;
+              return query(nextArgs);
+            }
           }
 
           if (operation === 'createMany') {
-            // @ts-expect-error args.data is possibly undefined
             if (Array.isArray(args.data)) {
-               // @ts-expect-error args.data is array
-              args.data = args.data.map((item: any) => ({ ...item, tenant_id: tenantId }));
-            } else {
-               // @ts-expect-error args.data is object
+              args.data = args.data.map((item) =>
+                isRecord(item) ? { ...item, tenant_id: tenantId } : item
+              );
+            } else if (isRecord(args.data)) {
               args.data = { ...args.data, tenant_id: tenantId };
             }
           }
           
           if (operation === 'upsert') {
-             // @ts-expect-error args.where is possibly undefined
-             args.where = { ...args.where, tenant_id: tenantId };
-             // @ts-expect-error args.create is possibly undefined
-             args.create = { ...args.create, tenant_id: tenantId };
-             // update part implies finding it first, which is covered by where.
+             const nextArgs = {
+               ...args,
+               where: { ...args.where, tenant_id: tenantId },
+               create: isRecord(args.create) ? { ...args.create, tenant_id: tenantId } : args.create,
+             } as typeof args;
+             return query(nextArgs);
           }
 
           return query(args);

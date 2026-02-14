@@ -65,6 +65,7 @@ import { financialRoutes } from '@/src/modules/financial/src/financial.routes';
 import { clientTrackingPublicRoutes } from '@/src/modules/client-tracking/src/client-tracking.routes';
 import { customersCrmRoutes } from '@/src/modules/customers-crm/src/customers-crm.routes';
 import { dashboardExecutivoRoutes } from '@/src/modules/dashboard-executivo/src/dashboard.routes';
+import { deliverySettlementRoutes } from '@/src/modules/delivery-settlement/src/delivery-settlement.routes';
 
 /**
  * API Routes Configuration
@@ -88,6 +89,7 @@ export const routes: Route[] = [
 
   ...customersCrmRoutes,
   ...dashboardExecutivoRoutes,
+  ...deliverySettlementRoutes,
 
   ...checkoutRoutes,
   ...paymentsRoutes,

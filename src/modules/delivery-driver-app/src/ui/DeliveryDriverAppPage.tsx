@@ -62,8 +62,7 @@ export function DeliveryDriverAppPage() {
       setDriver(null);
       return;
     }
-    const current = getDriverById(tenantSlug, driverId);
-    setDriver(current);
+    getDriverById(tenantSlug, driverId).then(setDriver);
   }, [tenantSlug, driverId]);
 
   React.useEffect(() => {
@@ -97,14 +96,14 @@ export function DeliveryDriverAppPage() {
     await login(email, password);
   };
 
-  const handleAssignDriver = () => {
+  const handleAssignDriver = async () => {
     setError(null);
     const trimmed = driverIdInput.trim();
     if (!trimmed) {
       setError('Informe o ID do entregador');
       return;
     }
-    const current = getDriverById(tenantSlug, trimmed);
+    const current = await getDriverById(tenantSlug, trimmed);
     if (!current) {
       setError('Entregador não encontrado');
       return;
@@ -121,7 +120,7 @@ export function DeliveryDriverAppPage() {
     }
     setActionLoading(true);
     try {
-      const updated = setDriverStatus(tenantSlug, driver.id, {
+      const updated = await setDriverStatus(tenantSlug, driver.id, {
         status: 'delivering',
         activeOrderId: driver.activeOrderId,
       });
@@ -138,7 +137,7 @@ export function DeliveryDriverAppPage() {
     if (!driver) return;
     setActionLoading(true);
     try {
-      const updated = setDriverStatus(tenantSlug, driver.id, {
+      const updated = await setDriverStatus(tenantSlug, driver.id, {
         status: 'available',
         activeOrderId: null,
       });
@@ -156,7 +155,7 @@ export function DeliveryDriverAppPage() {
     if (!driver) return;
     setActionLoading(true);
     try {
-      const updated = setDriverStatus(tenantSlug, driver.id, {
+      const updated = await setDriverStatus(tenantSlug, driver.id, {
         status: 'offline',
         activeOrderId: null,
       });

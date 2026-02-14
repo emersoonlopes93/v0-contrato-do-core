@@ -36,6 +36,7 @@ export type DeliveryDriverUpdateRequest = Partial<{
   latitude: number | null;
   longitude: number | null;
   lastLocationAt: string | null;
+  lastDeliveryAt: string | null;
 }>;
 
 export type DeliveryDriverAssignmentRequest = {

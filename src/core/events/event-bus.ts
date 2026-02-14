@@ -1,4 +1,4 @@
-import type { DomainEvent, EventBus, EventHandler, AuditLogger } from "./contracts";
+import type { AuditLogger } from "./contracts";
 import type { AuditEvent } from "../types";
 import { reliableEventBus } from "./reliable-event-bus";
 import { eventDispatcher } from "./event-dispatcher";
@@ -6,31 +6,31 @@ import { eventDispatcher } from "./event-dispatcher";
 // Start the reliable event dispatcher
 eventDispatcher.start();
 
-class InMemoryEventBus implements EventBus {
-  private handlers: Map<string, Set<EventHandler>> = new Map();
-
-  subscribe(eventType: string, handler: EventHandler): void {
-    if (!this.handlers.has(eventType)) {
-      this.handlers.set(eventType, new Set());
-    }
-    this.handlers.get(eventType)!.add(handler);
-  }
-
-  unsubscribe(eventType: string, handler: EventHandler): void {
-    this.handlers.get(eventType)?.delete(handler);
-  }
-
-  async publish(event: DomainEvent): Promise<void> {
-    const eventHandlers = this.handlers.get(event.type);
-    if (eventHandlers) {
-      await Promise.all(Array.from(eventHandlers).map((h) => h.handle(event)));
-    }
-  }
-
-  async publishMultiple(events: DomainEvent[]): Promise<void> {
-    await Promise.all(events.map((e) => this.publish(e)));
-  }
-}
+// class InMemoryEventBus implements EventBus {
+//   private handlers: Map<string, Set<EventHandler>> = new Map();
+//
+//   subscribe(eventType: string, handler: EventHandler): void {
+//     if (!this.handlers.has(eventType)) {
+//       this.handlers.set(eventType, new Set());
+//     }
+//     this.handlers.get(eventType)!.add(handler);
+//   }
+//
+//   unsubscribe(eventType: string, handler: EventHandler): void {
+//     this.handlers.get(eventType)?.delete(handler);
+//   }
+//
+//   async publish(event: DomainEvent): Promise<void> {
+//     const eventHandlers = this.handlers.get(event.type);
+//     if (eventHandlers) {
+//       await Promise.all(Array.from(eventHandlers).map((h) => h.handle(event)));
+//     }
+//   }
+//
+//   async publishMultiple(events: DomainEvent[]): Promise<void> {
+//     await Promise.all(events.map((e) => this.publish(e)));
+//   }
+// }
 
 class InMemoryAuditLogger implements AuditLogger {
   private events: AuditEvent[] = [];

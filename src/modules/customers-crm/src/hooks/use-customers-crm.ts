@@ -1,14 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { 
+import type {
   CustomersCrmCustomerDetailsDTO,
   CustomersCrmCustomerListItemDTO,
   CustomersCrmUpdateCustomerRequest,
-  CustomersCrmListCustomersResponseDTO 
+  CustomersCrmListCustomersResponseDTO,
 } from '@/src/types/customers-crm';
-import type { ModuleContext } from '@/src/core/modules/contracts';
-import { CustomersCrmService } from '@/src/modules/customers-crm/src/services';
-
-const service = new CustomersCrmService({} as ModuleContext);
+import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
+import { isRecord } from '@/src/core/utils/type-guards';
 
 type State = {
   customers: CustomersCrmCustomerListItemDTO[];
@@ -31,6 +29,36 @@ type State = {
   reload: () => Promise<void>;
 };
 
+function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
+  return isRecord(value) && value.success === true && 'data' in value;
+}
+
+function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
+  return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
+}
+
+async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      'X-Auth-Context': 'tenant_user',
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  const raw: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    if (isApiErrorResponse(raw)) throw new Error(raw.message);
+    throw new Error('Falha na requisição');
+  }
+
+  if (!isApiSuccessResponse<T>(raw)) throw new Error('Resposta inválida');
+  return raw.data;
+}
+
 export function useCustomersCrm(tenantId: string): State {
   const [customers, setCustomers] = useState<CustomersCrmCustomerListItemDTO[]>([]);
   const [customer, setCustomer] = useState<CustomersCrmCustomerDetailsDTO | null>(null);
@@ -52,13 +80,14 @@ export function useCustomersCrm(tenantId: string): State {
     
     try {
       const currentFilters = newFilters || filters;
-      const result: CustomersCrmListCustomersResponseDTO = await service.listCustomers({
-        tenantId,
-        page,
-        pageSize: pagination.pageSize,
-        search: currentFilters.search,
-        segment: currentFilters.segment,
-      });
+      const searchParams = new URLSearchParams();
+      searchParams.set('page', String(page));
+      searchParams.set('pageSize', String(pagination.pageSize));
+      if (currentFilters.search) searchParams.set('search', currentFilters.search);
+      if (currentFilters.segment) searchParams.set('segment', currentFilters.segment);
+      const result = await requestJson<CustomersCrmListCustomersResponseDTO>(
+        `/api/v1/crm/customers?${searchParams.toString()}`,
+      );
       
       setCustomers(result.items);
       setPagination({
@@ -85,7 +114,9 @@ export function useCustomersCrm(tenantId: string): State {
     setError(null);
     
     try {
-      const result = await service.getCustomerDetails({ tenantId, customerId: id });
+      const result = await requestJson<CustomersCrmCustomerDetailsDTO>(
+        `/api/v1/crm/customers/${id}`,
+      );
       setCustomer(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar cliente');
@@ -101,7 +132,10 @@ export function useCustomersCrm(tenantId: string): State {
     setError(null);
     
     try {
-      await service.updateCustomer({ tenantId, customerId: id, input: data });
+      await requestJson<CustomersCrmCustomerDetailsDTO>(`/api/v1/crm/customers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
       await loadCustomers(pagination.page, filters);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao atualizar cliente');

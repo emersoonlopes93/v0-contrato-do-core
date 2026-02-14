@@ -96,7 +96,19 @@ export class EventStoreRepository {
     return events.map(this.mapToStoredEvent);
   }
 
-  private mapToStoredEvent(e: any): StoredEvent {
+  private mapToStoredEvent(e: {
+    id: string;
+    tenant_id: string | null;
+    event_name: string;
+    aggregate_type: string | null;
+    aggregate_id: string | null;
+    payload: Prisma.JsonValue;
+    version: number;
+    occurred_at: Date;
+    processed_at: Date | null;
+    status: string;
+    retries: number;
+  }): StoredEvent {
     return {
       id: e.id,
       tenant_id: e.tenant_id,

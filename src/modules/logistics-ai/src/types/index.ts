@@ -25,6 +25,7 @@ export interface DelayFactor {
 export interface RouteSuggestion {
   id: string;
   tenantId: string;
+  driverId: string;
   type: 'reorder_stops' | 'change_driver' | 'alternative_route';
   priority: 'low' | 'medium' | 'high';
   title: string;

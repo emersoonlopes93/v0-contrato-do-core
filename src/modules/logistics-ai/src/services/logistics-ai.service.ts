@@ -33,7 +33,6 @@ export class LogisticsAiService implements LogisticsAiServiceContract {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     // Count orders in last 7 days
-    // @ts-expect-error prisma.order might not be typed fully here
     const recentOrders = await this.prisma.order.count({
       where: {
         tenant_id: tenantId,
@@ -44,7 +43,6 @@ export class LogisticsAiService implements LogisticsAiServiceContract {
     if (recentOrders < 30) return false;
 
     // Count completed deliveries
-    // @ts-expect-error prisma.order might not be typed fully here
     const completedDeliveries = await this.prisma.order.count({
       where: {
         tenant_id: tenantId,
@@ -130,6 +128,24 @@ export class LogisticsAiService implements LogisticsAiServiceContract {
 
   async logDecision(tenantId: string, log: Omit<AiDecisionLog, 'id' | 'tenantId' | 'createdAt'>): Promise<AiDecisionLog> {
     return this.settingsService.logDecision(tenantId, log);
+  }
+
+  private async createRouteSuggestionAlert(tenantId: string, suggestions: RouteSuggestion[]): Promise<void> {
+    const firstSuggestion = suggestions[0];
+    if (!firstSuggestion) return;
+    const driverId = firstSuggestion.driverId;
+
+    await this.createAlert(tenantId, {
+      type: 'route_suggestion',
+      severity: 'info',
+      title: 'Sugestão de Rota',
+      message: `${suggestions.length} novas sugestões de rota para o motorista ${driverId}.`,
+      entityId: driverId,
+      entityType: 'driver',
+      actionRequired: false,
+      actionUrl: `/logistics/routes?driverId=${driverId}`,
+      isRead: false,
+    });
   }
 
   private async createDelayAlert(tenantId: string, prediction: DelayPrediction): Promise<void> {

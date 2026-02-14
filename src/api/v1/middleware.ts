@@ -7,7 +7,6 @@
 
 import { AuthGuards, type GuardContext } from '../../core/auth/guards';
 import { asModuleId } from '@/core/types';
-import { AuthRepository } from '@/src/adapters/prisma/repositories/auth-repository';
 import { runWithTenant } from '@/src/core/context/async-context';
 
 export interface Request {
@@ -48,7 +47,7 @@ export interface Route {
 }
 
 const guards = new AuthGuards();
-const authRepo = new AuthRepository();
+
 
 /**
  * Extract Bearer token from Authorization header

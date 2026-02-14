@@ -56,12 +56,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<WhiteBrandConfig>(defaultTheme);
   const { accessToken, user } = useSession();
 
-  // Aplicar tema inicial ao montar o componente
-  useEffect(() => {
-    applyThemeToDOM(defaultTheme);
-  }, []);
-
-  // Função para aplicar tema no DOM
   const applyThemeToDOM = (themeConfig: WhiteBrandConfig) => {
     const root = document.documentElement;
     
@@ -115,6 +109,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.style.setProperty('--tenant-secondary', themeConfig.secondaryColor);
     }
   };
+
+  useEffect(() => {
+    applyThemeToDOM(defaultTheme);
+  }, []);
 
   const updateTheme = (newTheme: Partial<WhiteBrandConfig>) => {
     setTheme((prev) => {

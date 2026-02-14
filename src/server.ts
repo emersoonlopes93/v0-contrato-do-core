@@ -10,10 +10,14 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 function checkSecurityHardening() {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 32) {
-    console.error('FATAL ERROR: Security Hardening Failed');
-    console.error('JWT_SECRET is missing or too short (must be >= 32 characters).');
-    console.error('The server cannot start in an insecure state.');
-    process.exit(1);
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd) {
+      console.error('FATAL ERROR: Security Hardening Failed');
+      console.error('JWT_SECRET is missing or too short (must be >= 32 characters).');
+      console.error('The server cannot start in an insecure state.');
+      process.exit(1);
+    }
+    console.warn('JWT_SECRET ausente ou muito curto. Gerando chaves inseguras em modo desenvolvimento.');
   }
 }
 

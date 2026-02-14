@@ -1,4 +1,6 @@
 import { getPrismaClient } from "@/src/adapters/prisma/client";
+import { asUUID } from "@/src/core/types";
+import { isRecord } from "@/src/core/utils/type-guards";
 import { eventStore } from "./event-store.repository";
 import { reliableEventBus } from "./reliable-event-bus";
 import type { DomainEvent, EventHandler } from "./contracts";
@@ -40,7 +42,7 @@ export class EventDispatcher {
     }
   }
 
-  private async processEvent(eventData: any) {
+  private async processEvent(eventData: Awaited<ReturnType<typeof eventStore.getPendingBatch>>[number]) {
     const eventId = eventData.id;
     
     // Check backoff if it's a retry
@@ -62,11 +64,18 @@ export class EventDispatcher {
         return;
       }
 
+      const userIdValue = this.getUserIdFromPayload(eventData.payload);
+      if (!userIdValue) {
+        throw new Error("Event payload missing userId");
+      }
+
+      const tenantIdValue = typeof eventData.tenant_id === "string" ? asUUID(eventData.tenant_id) : undefined;
+
       const domainEvent: DomainEvent = {
         id: eventId,
         type: eventData.event_name,
-        tenantId: eventData.tenant_id,
-        userId: eventData.payload._meta?.userId,
+        tenantId: tenantIdValue,
+        userId: asUUID(userIdValue),
         timestamp: eventData.occurred_at,
         data: eventData.payload,
       };
@@ -101,25 +110,29 @@ export class EventDispatcher {
     }
 
     // Execute with timeout
-    try {
-        await Promise.race([
-            handler.handle(event),
-            new Promise((_, reject) => 
-                setTimeout(() => reject(new Error("Handler timeout")), this.HANDLER_TIMEOUT)
-            )
-        ]);
-        
-        // Record success
-        await prisma.eventConsumer.create({
-            data: {
-                event_id: event.id,
-                consumer_name: consumerName,
-            }
-        });
+    await Promise.race([
+        handler.handle(event),
+        new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Handler timeout")), this.HANDLER_TIMEOUT)
+        )
+    ]);
+    
+    // Record success
+    await prisma.eventConsumer.create({
+        data: {
+            event_id: event.id,
+            consumer_name: consumerName,
+        }
+    });
+  }
 
-    } catch (err) {
-        throw err; // Propagate to mark event as failed (so it retries)
+  private getUserIdFromPayload(payload: Record<string, unknown>): string | null {
+    const meta = payload["_meta"];
+    if (!isRecord(meta)) {
+      return null;
     }
+    const userId = meta["userId"];
+    return typeof userId === "string" ? userId : null;
   }
 }
 

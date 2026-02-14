@@ -32,13 +32,13 @@ export class RouteOptimizationService {
         return suggestions;
       }
 
-      const reorderSuggestion = await this.generateReorderSuggestion(tenantId, currentRoute);
+      const reorderSuggestion = await this.generateReorderSuggestion(tenantId, currentRoute, driverId);
       if (reorderSuggestion) suggestions.push(reorderSuggestion);
 
-      const alternativeRouteSuggestion = await this.generateAlternativeRouteSuggestion(tenantId, currentRoute);
+      const alternativeRouteSuggestion = await this.generateAlternativeRouteSuggestion(tenantId, currentRoute, driverId);
       if (alternativeRouteSuggestion) suggestions.push(alternativeRouteSuggestion);
 
-      const driverChangeSuggestion = await this.generateDriverChangeSuggestion(tenantId, currentRoute);
+      const driverChangeSuggestion = await this.generateDriverChangeSuggestion(tenantId, currentRoute, driverId);
       if (driverChangeSuggestion) suggestions.push(driverChangeSuggestion);
 
       return suggestions.sort((a, b) => {
@@ -129,7 +129,7 @@ export class RouteOptimizationService {
     return null;
   }
 
-  private async generateReorderSuggestion(tenantId: string, currentRoute: { points: RoutePoint[] }): Promise<RouteSuggestion | null> {
+  private async generateReorderSuggestion(tenantId: string, currentRoute: { points: RoutePoint[] }, driverId: string): Promise<RouteSuggestion | null> {
     if (currentRoute.points.length < 3) return null;
 
     const reorderedPoints = this.calculateOptimalOrder(currentRoute.points);
@@ -142,6 +142,7 @@ export class RouteOptimizationService {
     return {
       id: `suggest_reorder_${Date.now()}`,
       tenantId,
+      driverId,
       type: 'reorder_stops',
       priority: improvement > 3 ? 'high' : 'medium',
       title: 'Reordenar Paradas',
@@ -159,13 +160,14 @@ export class RouteOptimizationService {
     };
   }
 
-  private async generateAlternativeRouteSuggestion(tenantId: string, currentRoute: { points: RoutePoint[] }): Promise<RouteSuggestion | null> {
+  private async generateAlternativeRouteSuggestion(tenantId: string, currentRoute: { points: RoutePoint[] }, driverId: string): Promise<RouteSuggestion | null> {
     const trafficConditions = await this.getTrafficConditions(currentRoute.points);
     
     if (trafficConditions.some(condition => condition === 'high')) {
       return {
         id: `suggest_alternative_${Date.now()}`,
         tenantId,
+        driverId,
         type: 'alternative_route',
         priority: 'medium',
         title: 'Rota Alternativa',
@@ -186,7 +188,7 @@ export class RouteOptimizationService {
     return null;
   }
 
-  private async generateDriverChangeSuggestion(tenantId: string, currentRoute: { points: RoutePoint[] }): Promise<RouteSuggestion | null> {
+  private async generateDriverChangeSuggestion(tenantId: string, currentRoute: { points: RoutePoint[] }, driverId: string): Promise<RouteSuggestion | null> {
     const firstPoint = currentRoute.points[0];
     if (!firstPoint) return null;
     
@@ -196,6 +198,7 @@ export class RouteOptimizationService {
       return {
         id: `suggest_driver_change_${Date.now()}`,
         tenantId,
+        driverId,
         type: 'change_driver',
         priority: 'low',
         title: 'Considerar Troca de Entregador',

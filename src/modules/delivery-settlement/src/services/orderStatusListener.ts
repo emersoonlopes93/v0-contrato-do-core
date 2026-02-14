@@ -1,7 +1,9 @@
 import type { OrdersOrderDTO } from '@/src/types/orders';
-import { deliverySettlementProvider } from '../providers/deliverySettlementProvider';
+import { DeliverySettlementService } from './deliverySettlementService';
 
 export class OrderStatusListener {
+  private readonly service = new DeliverySettlementService();
+
   async onOrderStatusChanged(order: OrdersOrderDTO, tenantId: string): Promise<void> {
     const completedStatuses = ['completed', 'delivered'];
     
@@ -15,7 +17,7 @@ export class OrderStatusListener {
     }
 
     try {
-      await deliverySettlementProvider.processOrderSettlement(
+      await this.service.processOrderSettlement(
         tenantId,
         order.id,
         order.distanceKm,
