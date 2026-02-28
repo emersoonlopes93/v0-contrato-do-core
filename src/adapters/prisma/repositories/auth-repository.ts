@@ -178,6 +178,20 @@ export class AuthRepository {
     });
   }
 
+  async listUserRefreshTokens(userId: string) {
+    return this.prisma.refreshToken.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
+    });
+  }
+
+  async revokeRefreshTokenById(id: string) {
+    return this.prisma.refreshToken.update({
+      where: { id },
+      data: { revoked: true },
+    });
+  }
+
   async cleanExpiredRefreshTokens() {
     return this.prisma.refreshToken.deleteMany({
       where: {

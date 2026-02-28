@@ -1,24 +1,27 @@
 'use client';
 
 import React from 'react';
-/**
- * TenantHeader - Header Institucional Premium
- * 
- * HIERARQUIA (de cima para baixo):
- * 1. Nome do SaaS
- * 2. Logo ou Nome do Restaurante (Tenant)
- * 3. Status da Loja: Aberta | Fechada
- * 4. Link: Ver Cardápio Público
- */
 
 const SAAS_NAME = 'Pedidos Online';
 
-export function TenantHeader() {
+type TenantHeaderProps = {
+  collapsed?: boolean;
+};
+
+export function TenantHeader({ collapsed = false }: TenantHeaderProps) {
+  const initials = SAAS_NAME.split(' ')
+    .map((word) => (word.length > 0 ? word[0] : ''))
+    .join('');
+
   return (
     <div className="border-b bg-gradient-to-b from-background to-muted/20">
-      <div className="border-b bg-muted/40 backdrop-blur-sm px-4 py-2.5 hidden md:block">
+      <div
+        className={`border-b bg-muted/40 backdrop-blur-sm hidden md:flex items-center ${
+          collapsed ? 'justify-center px-1.5 py-2' : 'justify-start px-4 py-2.5'
+        }`}
+      >
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-          {SAAS_NAME}
+          {collapsed ? initials : SAAS_NAME}
         </p>
       </div>
     </div>

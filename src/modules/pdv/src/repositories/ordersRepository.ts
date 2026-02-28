@@ -1,5 +1,4 @@
 import type {
-  ApiErrorResponse,
   ApiSuccessResponse,
   OrdersCreateOrderRequest,
   OrdersOrderDTO,
@@ -7,34 +6,26 @@ import type {
 } from '@/src/types/orders';
 
 import { isRecord } from '@/src/core/utils/type-guards';
+import { tenantApi } from '@/src/tenant/lib/tenantApi';
 
 function isApiSuccessResponse<T>(value: unknown): value is ApiSuccessResponse<T> {
   return isRecord(value) && value.success === true && 'data' in value;
 }
 
-function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
-  return isRecord(value) && typeof value.error === 'string' && typeof value.message === 'string';
-}
-
 async function requestJson<T>(url: string, tenantSlug: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    credentials: 'include',
-    headers: {
-      'X-Auth-Context': 'tenant_user',
-      'X-Tenant-Slug': tenantSlug,
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-  });
-
-  const raw: unknown = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    if (isApiErrorResponse(raw)) throw new Error(raw.message);
-    throw new Error('Falha na requisição');
-  }
-
+  const method = init?.method ?? 'GET';
+  const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+  const headers = { ...(init?.headers as Record<string, string> || {}) };
+  const raw =
+    method === 'POST'
+      ? await tenantApi.post<ApiSuccessResponse<T>>(url, body, { tenantSlug, headers })
+      : method === 'PUT'
+      ? await tenantApi.put<ApiSuccessResponse<T>>(url, body, { tenantSlug, headers })
+      : method === 'PATCH'
+      ? await tenantApi.patch<ApiSuccessResponse<T>>(url, body, { tenantSlug, headers })
+      : method === 'DELETE'
+      ? await tenantApi.delete<ApiSuccessResponse<T>>(url, { tenantSlug, headers })
+      : await tenantApi.get<ApiSuccessResponse<T>>(url, { tenantSlug, headers });
   if (!isApiSuccessResponse<T>(raw)) throw new Error('Resposta inválida');
   return raw.data;
 }

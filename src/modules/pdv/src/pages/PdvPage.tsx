@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { PdvProductRow } from '@/src/modules/pdv/src/components/PdvProductRow';
 import { PdvCartItemRow } from '@/src/modules/pdv/src/components/PdvCartItemRow';
 import type { CashierSession } from '@/src/types/cashier';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
 
 function formatCurrency(value: number, currency: string): string {
   try {
@@ -182,7 +183,13 @@ function PdvPageContent() {
                 </div>
                 <div className="space-y-2">
                   <Label>Telefone</Label>
-                  <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} disabled={!pdvEnabled} />
+                  <MaskedInput
+                    type="phone"
+                    value={customerPhone}
+                    onChange={(raw) => setCustomerPhone(typeof raw === 'string' ? raw : String(raw))}
+                    disabled={!pdvEnabled}
+                    placeholder="(11) 98765-4321"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo</Label>

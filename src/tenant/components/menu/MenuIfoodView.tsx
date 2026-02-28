@@ -38,6 +38,7 @@ interface MenuIfoodViewProps {
   onToggleAllProductsInCategory: (categoryId: string, enabled: boolean) => Promise<void>;
   onNewModifierGroup: () => void;
   onReorderCategories: () => void;
+  onNewProductInCategory?: (categoryId: string) => void;
 }
 
 export function MenuIfoodView({
@@ -57,7 +58,8 @@ export function MenuIfoodView({
   onToggleAllProductsInCategory,
   onNewModifierGroup,
   onReorderCategories,
-}: MenuIfoodViewProps) {
+  onNewProductInCategory,
+}: MenuIfoodViewProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'complements'>('products');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -96,19 +98,7 @@ export function MenuIfoodView({
     return filtered;
   }, [products, searchQuery, categoryNameById, activeCategoryId]);
 
-  const productsByCategory = useMemo(() => {
-    const grouped = new Map<string, MenuOnlineProductDTO[]>();
-    
-    filteredProducts.forEach((product) => {
-      const categoryId = product.categoryId;
-      if (!grouped.has(categoryId)) {
-        grouped.set(categoryId, []);
-      }
-      grouped.get(categoryId)!.push(product);
-    });
-
-    return grouped;
-  }, [filteredProducts]);
+  // listado por categoria renderiza diretamente via categories
 
   const categoryStats = useMemo(() => {
     const statsByCategory = new Map<string, { total: number; active: number; inactive: number }>();
@@ -129,9 +119,9 @@ export function MenuIfoodView({
   }, [categories, products]);
 
   useEffect(() => {
-    const categoriesWithProducts = new Set(productsByCategory.keys());
-    setExpandedCategories((prev) => new Set([...prev, ...categoriesWithProducts]));
-  }, [productsByCategory]);
+    // Collapse by default for lazy render
+    setExpandedCategories(new Set());
+  }, [categories.length]);
 
   const handleToggleCategoryExpanded = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -168,12 +158,10 @@ export function MenuIfoodView({
     }
   };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'overview':
+  const renderTabContent = (): React.ReactElement | null => {
+    if (activeTab === 'overview') {
         return (
           <div className="space-y-6">
-            {/* Cards de estatísticas */}
             <div className="grid gap-4 md:grid-cols-3">
               <Card>
                 <CardContent className="p-6">
@@ -192,8 +180,8 @@ export function MenuIfoodView({
             </div>
           </div>
         );
-
-      case 'products':
+    }
+    if (activeTab === 'products') {
         return (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -240,43 +228,37 @@ export function MenuIfoodView({
               </Button>
             </div>
 
-            <div className="space-y-6">
-              {Array.from(productsByCategory.entries())
-                .sort(([categoryIdA], [categoryIdB]) => {
-                  const categoryA = categories.find((category) => category.id === categoryIdA);
-                  const categoryB = categories.find((category) => category.id === categoryIdB);
-                  return (categoryA?.sortOrder ?? 0) - (categoryB?.sortOrder ?? 0);
-                })
-                .map(([categoryId, categoryProducts]) => {
-                  const category = categories.find((categoryItem) => categoryItem.id === categoryId);
-                  if (!category) return null;
+          <div className="space-y-6">
+            {categories
+              .slice()
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((category) => {
+                const categoryProducts = filteredProducts.filter((p) => p.categoryId === category.id);
+                const categoryStatsEntry = categoryStats.get(category.id) || { total: 0, active: 0, inactive: 0 };
+                const isExpanded = expandedCategories.has(category.id);
+                const isCategoryInactive = category.status !== 'active';
 
-                  const categoryStatsEntry = categoryStats.get(categoryId) || { total: 0, active: 0, inactive: 0 };
-                  const isExpanded = expandedCategories.has(categoryId);
-                  const isCategoryInactive = category.status !== 'active';
+                return (
+                  <div key={category.id} className={`space-y-4 ${isCategoryInactive ? 'opacity-50' : ''}`}>
+                    <MenuCategoryHeader
+                      category={category}
+                      isExpanded={isExpanded}
+                      onExpandedChange={() => handleToggleCategoryExpanded(category.id)}
+                      onToggleAllProducts={handleToggleAllProducts}
+                      onEditCategory={onEditCategory}
+                      onDeleteCategory={onDeleteCategory}
+                      onDuplicateCategory={onDuplicateCategory}
+                      productStats={categoryStatsEntry}
+                    />
 
-                  return (
-                    <div
-                      key={categoryId}
-                      className={`
-                        space-y-4
-                        ${isCategoryInactive ? 'opacity-50' : ''}
-                      `}
-                    >
-                      <MenuCategoryHeader
-                        category={category}
-                        isExpanded={isExpanded}
-                        onExpandedChange={() => handleToggleCategoryExpanded(categoryId)}
-                        onToggleAllProducts={handleToggleAllProducts}
-                        onEditCategory={onEditCategory}
-                        onDeleteCategory={onDeleteCategory}
-                        onDuplicateCategory={onDuplicateCategory}
-                        productStats={categoryStatsEntry}
-                      />
-
-                      {isExpanded && (
-                        <div className="space-y-3">
-                          {categoryProducts
+                    {isExpanded && (
+                      <div className="space-y-3">
+                        {categoryProducts.length === 0 ? (
+                          <div className="text-center py-6">
+                            <p className="text-muted-foreground text-sm">Categoria vazia</p>
+                          </div>
+                        ) : (
+                          categoryProducts
                             .sort((a, b) => a.sortOrder - b.sortOrder)
                             .map((product) => (
                               <MenuProductCard
@@ -288,84 +270,95 @@ export function MenuIfoodView({
                                 onDuplicateProduct={onDuplicateProduct}
                                 onOpenModifiers={handleOpenModifiers}
                               />
-                            ))}
+                            ))
+                        )}
+                        <div className="pt-2">
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              onNewProductInCategory
+                                ? onNewProductInCategory(category.id)
+                                : onNewProduct()
+                            }
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Adicionar Produto
+                          </Button>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {filteredProducts.length === 0 && !isLoading && (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">
-                    {searchQuery 
+                    {searchQuery
                       ? 'Nenhum produto encontrado para esta busca'
-                      : 'Nenhum produto cadastrado'
-                    }
+                      : categories.length === 0
+                      ? 'Nenhuma categoria cadastrada'
+                      : 'Nenhum produto cadastrado'}
                   </p>
-                  <Button size="sm" className="mt-4" onClick={onNewProduct}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Criar primeiro produto
-                  </Button>
+                  {categories.length === 0 ? (
+                    <Button size="sm" className="mt-4" onClick={onNewCategory}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Categorias
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="mt-4" onClick={onNewProduct}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar primeiro produto
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
           </div>
         );
-
-      case 'complements':
-        return (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-medium text-foreground">Complementos</h2>
-                <p className="text-xs text-muted-foreground">
-                  Gestão de grupos de modificadores do cardápio.
-                </p>
-              </div>
-              <Button size="sm" onClick={onNewModifierGroup}>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo grupo
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              {modifierGroups.map((group) => (
-                <Card key={group.id}>
-                  <CardContent className="flex items-center justify-between gap-4 p-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none">{group.name}</p>
-                      {group.description && (
-                        <p className="text-xs text-muted-foreground">
-                          {group.description}
-                        </p>
-                      )}
-                      <p className="text-[11px] text-muted-foreground">
-                        Mínimo {group.minSelect} · Máximo {group.maxSelect} ·{' '}
-                        {group.isRequired ? 'Obrigatório' : 'Opcional'}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        {group.status === 'active' ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {modifierGroups.length === 0 && (
-                <div className="text-center py-12 text-sm text-muted-foreground">
-                  Nenhum grupo de complementos cadastrado.
-                </div>
-              )}
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
     }
+    if (activeTab === 'complements') {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-medium text-foreground">Complementos</h2>
+              <p className="text-xs text-muted-foreground">Gestão de grupos de modificadores do cardápio.</p>
+            </div>
+            <Button size="sm" onClick={onNewModifierGroup}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo grupo
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {modifierGroups.map((group) => (
+              <Card key={group.id}>
+                <CardContent className="flex items-center justify-between gap-4 p-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium leading-none">{group.name}</p>
+                    {group.description && <p className="text-xs text-muted-foreground">{group.description}</p>}
+                    <p className="text-[11px] text-muted-foreground">
+                      Mínimo {group.minSelect} · Máximo {group.maxSelect} · {group.isRequired ? 'Obrigatório' : 'Opcional'}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {group.status === 'active' ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {modifierGroups.length === 0 && (
+              <div className="text-center py-12 text-sm text-muted-foreground">Nenhum grupo de complementos cadastrado.</div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -387,36 +380,18 @@ export function MenuIfoodView({
       <BaseModal open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen} size="sm">
         <ModalHeader title="Filtros" />
         <ModalBody>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Filtrar por categoria</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFilterCategoryId('all')}
-                  className={`
-                    rounded-full border px-3 py-1 text-xs font-medium
-                    ${filterCategoryId === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'}
-                  `}
-                >
-                  Todos
-                </button>
-                {categories
-                  .sort((a, b) => a.sortOrder - b.sortOrder)
-                  .map((category) => (
-                    <button
-                      key={category.id}
-                      type="button"
-                      onClick={() => setFilterCategoryId(category.id)}
-                      className={`
-                        rounded-full border px-3 py-1 text-xs font-medium
-                        ${filterCategoryId === category.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'}
-                      `}
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-              </div>
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Filtrar por categoria</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFilterCategoryId('all')}
+                className="px-3 py-1"
+              >
+                Todos
+              </Button>
             </div>
           </div>
         </ModalBody>

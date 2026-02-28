@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Menu } from 'lucide-react';
 
 /**
  * DesktopHeader - Header Premium para Desktop
@@ -24,19 +24,32 @@ type DesktopHeaderProps = {
   actions?: React.ReactNode;
   showBack?: boolean;
   onBack?: () => void;
+  showMenuToggle?: boolean;
+  onToggleMenu?: () => void;
 };
 
 export function DesktopHeader({ 
   title = 'Dashboard', 
   actions, 
   showBack = false,
-  onBack 
+  onBack,
+  showMenuToggle = false,
+  onToggleMenu,
 }: DesktopHeaderProps) {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center justify-between px-6 gap-4">
-        {/* Lado esquerdo: Título e navegação */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
+          {showMenuToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 transition-all duration-200 hover:scale-105"
+              onClick={onToggleMenu}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          )}
           {showBack && (
             <Button
               variant="ghost"

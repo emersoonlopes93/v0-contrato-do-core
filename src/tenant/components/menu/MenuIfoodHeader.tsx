@@ -3,9 +3,7 @@
 import React from 'react';
 import { useTenant } from '@/src/contexts/TenantContext';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Settings, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { useMenuUxMode } from '../../hooks/useMenuUxMode';
+import { Settings, ArrowLeft } from 'lucide-react';
 import './menu-ifood-styles.css';
 
 interface MenuIfoodHeaderProps {
@@ -20,7 +18,6 @@ interface MenuIfoodHeaderProps {
 
 export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHeaderProps) {
   const { tenantSlug } = useTenant();
-  const { setMode, isIfoodMode } = useMenuUxMode();
 
   const tabs = [
     { id: 'overview' as const, label: 'Visão geral', count: stats?.categories ?? 0 },
@@ -28,9 +25,6 @@ export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHead
     { id: 'complements' as const, label: 'Complementos', count: stats?.complements ?? 0 },
   ];
 
-  const handleToggleUxMode = (checked: boolean) => {
-    setMode(checked ? 'ifood' : 'classic');
-  };
 
   const handleBack = () => {
     window.history.back();
@@ -66,17 +60,7 @@ export function MenuIfoodHeader({ stats, activeTab, onTabChange }: MenuIfoodHead
 
         <div className="w-full min-h-[44px] rounded-xl border bg-muted/40 px-3 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <EyeOff className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium truncate">iFood</span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Eye className="h-4 w-4 text-muted-foreground" />
-            <Switch
-              checked={isIfoodMode}
-              onCheckedChange={handleToggleUxMode}
-              aria-label="Modo UX iFood"
-              className="menu-ifood-transition shrink-0 h-6 w-11"
-            />
           </div>
         </div>
 

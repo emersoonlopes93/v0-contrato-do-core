@@ -1,6 +1,7 @@
 import type { ModuleId, TenantId } from "../types/index";
 import type { IDatabaseAdapter } from "../db/contracts";
 import type { EventBus } from "../events/contracts";
+import type { NavigationMeta } from "@/src/tenant/navigation/navigation-taxonomy";
 
 export interface ModuleRegisterPayload {
   id: ModuleId;
@@ -16,6 +17,7 @@ export interface ModuleRegisterPayload {
     icon: string;
     category: string;
   };
+  navigation?: NavigationMeta;
   type?: string;
   scope?: string;
   mobileFirst?: boolean;

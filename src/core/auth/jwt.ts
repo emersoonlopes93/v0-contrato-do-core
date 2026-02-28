@@ -1,17 +1,19 @@
-import jwt from 'jsonwebtoken';
+import jwt, { type Algorithm } from 'jsonwebtoken';
 import type { SaaSAdminToken, TenantUserToken } from './contracts';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = '15m'; // Access token: 15 minutes
-const REFRESH_TOKEN_EXPIRES_IN = '7d'; // Refresh token: 7 days
+const JWT_ALGORITHM: Algorithm = 'HS256';
+const envSecret = process.env.JWT_SECRET;
+if (!envSecret && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET must be set in production');
+}
+const JWT_SECRET = envSecret ?? 'dev-only-secret';
+const JWT_EXPIRES_IN = '15m';
+const REFRESH_TOKEN_EXPIRES_IN = '7d';
 
 export class JWTService {
-  // ==========================================
-  // ACCESS TOKENS
-  // ==========================================
-
   static generateSaaSAdminToken(payload: SaaSAdminToken): string {
     return jwt.sign(payload, JWT_SECRET, {
+      algorithm: JWT_ALGORITHM,
       expiresIn: JWT_EXPIRES_IN,
       issuer: 'saas-core',
       audience: 'saas-admin',
@@ -20,6 +22,7 @@ export class JWTService {
 
   static generateTenantUserToken(payload: TenantUserToken): string {
     return jwt.sign(payload, JWT_SECRET, {
+      algorithm: JWT_ALGORITHM,
       expiresIn: JWT_EXPIRES_IN,
       issuer: 'saas-core',
       audience: 'tenant-user',
@@ -27,33 +30,22 @@ export class JWTService {
     });
   }
 
-  // ==========================================
-  // REFRESH TOKENS
-  // ==========================================
-
   static generateRefreshToken(userId: string, userType: 'saas_admin' | 'tenant_user'): string {
-    return jwt.sign(
-      { userId, userType },
-      JWT_SECRET,
-      {
-        expiresIn: REFRESH_TOKEN_EXPIRES_IN,
-        issuer: 'saas-core',
-        audience: 'refresh',
-      }
-    );
+    return jwt.sign({ userId, userType }, JWT_SECRET, {
+      algorithm: JWT_ALGORITHM,
+      expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+      issuer: 'saas-core',
+      audience: 'refresh',
+    });
   }
-
-  // ==========================================
-  // VERIFICATION
-  // ==========================================
 
   static verifySaaSAdminToken(token: string): SaaSAdminToken {
     try {
       const decoded = jwt.verify(token, JWT_SECRET, {
+        algorithms: [JWT_ALGORITHM],
         issuer: 'saas-core',
         audience: 'saas-admin',
       }) as SaaSAdminToken;
-
       return decoded;
     } catch {
       throw new Error('Invalid or expired SaaS Admin token');
@@ -63,10 +55,10 @@ export class JWTService {
   static verifyTenantUserToken(token: string): TenantUserToken {
     try {
       const decoded = jwt.verify(token, JWT_SECRET, {
+        algorithms: [JWT_ALGORITHM],
         issuer: 'saas-core',
         audience: 'tenant-user',
       }) as TenantUserToken;
-
       return decoded;
     } catch {
       throw new Error('Invalid or expired Tenant User token');
@@ -76,19 +68,15 @@ export class JWTService {
   static verifyRefreshToken(token: string): { userId: string; userType: 'saas_admin' | 'tenant_user' } {
     try {
       const decoded = jwt.verify(token, JWT_SECRET, {
+        algorithms: [JWT_ALGORITHM],
         issuer: 'saas-core',
         audience: 'refresh',
       }) as { userId: string; userType: 'saas_admin' | 'tenant_user' };
-
       return decoded;
     } catch {
       throw new Error('Invalid or expired refresh token');
     }
   }
-
-  // ==========================================
-  // UTILITIES
-  // ==========================================
 
   static decode(token: string): unknown {
     return jwt.decode(token);
@@ -96,7 +84,7 @@ export class JWTService {
 
   static getRefreshTokenExpiration(): Date {
     const now = new Date();
-    now.setDate(now.getDate() + 7); // 7 days
+    now.setDate(now.getDate() + 7);
     return now;
   }
 }

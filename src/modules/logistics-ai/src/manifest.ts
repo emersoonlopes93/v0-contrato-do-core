@@ -29,6 +29,12 @@ export const manifest = {
     icon: 'brain',
     category: 'Logística Avançada',
   },
+  navigation: {
+    category: 'entregas',
+    priority: 15,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

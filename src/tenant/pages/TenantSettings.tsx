@@ -8,11 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
 import { FormFooterSaveBar } from '@/components/form/FormFooterSaveBar';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { TenantSettingsDTO, TenantSettingsUpdateRequest } from '@/src/types/tenant-settings';
+import { Button } from '@/components/ui/button';
+import { registerSettingsSection } from '@/src/tenant/settings/settings-registry';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -260,15 +263,11 @@ function TenantSettingsPageContent() {
   const showIncompleteWarning =
     settings === null ||
     normalizeText(tradeName) === null ||
-    normalizeText(addressCity) === null ||
-    normalizeText(addressState) === null ||
     normalizeText(timezone) === null;
 
   const isDirty =
     (settings !== null &&
       (tradeName !== (settings.tradeName ?? '') ||
-        addressCity !== (settings.addressCity ?? '' ) ||
-        addressState !== (settings.addressState ?? '' ) ||
         timezone !== (settings.timezone ?? '' ) ||
         currency !== (settings.currency ?? '' ) ||
         isOpen !== settings.isOpen ||
@@ -278,8 +277,6 @@ function TenantSettingsPageContent() {
         printingEnabled !== settings.printingEnabled)) ||
     (settings === null &&
       (tradeName !== initialFromSession.tradeName ||
-        addressCity !== initialFromSession.addressCity ||
-        addressState !== initialFromSession.addressState ||
         timezone !== initialFromSession.timezone ||
         isOpen !== initialFromSession.isOpen ||
         currency !== '' ||
@@ -342,7 +339,12 @@ function TenantSettingsPageContent() {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Documento (CPF/CNPJ)</Label>
-                <Input value={document} onChange={(e) => setDocument(e.target.value)} />
+                <MaskedInput
+                  type="document"
+                  value={document}
+                  onChange={(raw) => setDocument(typeof raw === 'string' ? raw : String(raw))}
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                />
               </div>
             </CardContent>
           </Card>
@@ -355,11 +357,21 @@ function TenantSettingsPageContent() {
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Telefone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <MaskedInput
+                  type="phone"
+                  value={phone}
+                  onChange={(raw) => setPhone(typeof raw === 'string' ? raw : String(raw))}
+                  placeholder="(11) 98765-4321"
+                />
               </div>
               <div className="space-y-2">
                 <Label>WhatsApp</Label>
-                <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+                <MaskedInput
+                  type="phone"
+                  value={whatsapp}
+                  onChange={(raw) => setWhatsapp(typeof raw === 'string' ? raw : String(raw))}
+                  placeholder="(11) 98765-4321"
+                />
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Email</Label>
@@ -371,45 +383,18 @@ function TenantSettingsPageContent() {
           <Card>
             <CardHeader>
               <CardTitle>Endereço</CardTitle>
-              <CardDescription>Base para operação, entrega e consistência</CardDescription>
+              <CardDescription>
+                Configuração de endereço foi movida para Store Settings para evitar duplicação.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2">
-                <Label>Rua</Label>
-                <Input value={addressStreet} onChange={(e) => setAddressStreet(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Número</Label>
-                <Input value={addressNumber} onChange={(e) => setAddressNumber(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Complemento</Label>
-                <Input value={addressComplement} onChange={(e) => setAddressComplement(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Bairro</Label>
-                <Input value={addressNeighborhood} onChange={(e) => setAddressNeighborhood(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Cidade</Label>
-                <Input value={addressCity} onChange={(e) => setAddressCity(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Estado</Label>
-                <Input value={addressState} onChange={(e) => setAddressState(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>CEP</Label>
-                <Input value={addressZip} onChange={(e) => setAddressZip(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Latitude</Label>
-                <Input value={latitude} onChange={(e) => setLatitude(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Longitude</Label>
-                <Input value={longitude} onChange={(e) => setLongitude(e.target.value)} />
-              </div>
+            <CardContent>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => (window.location.href = `/tenant/${tenantSlug}/store-settings`)}
+              >
+                Abrir Store Settings
+              </Button>
             </CardContent>
           </Card>
 
@@ -499,3 +484,13 @@ function TenantSettingsPageContent() {
 }
 
 export const TenantSettingsPage = withModuleGuard(TenantSettingsPageContent, 'settings');
+
+registerSettingsSection({
+  id: 'tenant-settings',
+  title: 'Configurações Gerais',
+  description: 'Dados operacionais e status da loja',
+  icon: 'settings',
+  category: 'system',
+  order: 1,
+  component: TenantSettingsPage,
+});

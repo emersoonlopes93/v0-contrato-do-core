@@ -85,10 +85,11 @@ export class EventDispatcher {
       }
 
       await eventStore.markProcessed(eventId);
+      reliableEventBus.metrics.processed++;
 
     } catch (error) {
-      console.error(`Failed to process event ${eventId}:`, error);
       await eventStore.markFailed(eventId);
+      reliableEventBus.metrics.failed++;
     }
   }
 

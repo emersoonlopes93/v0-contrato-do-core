@@ -79,10 +79,16 @@ export function usePdv(tenantSlug: string, options?: PdvOptions): PdvState {
       setError(null);
     }
     try {
-      const [productsData, categoriesData, settingsData] = await Promise.all([
-        fetchPdvProducts(tenantSlug),
-        fetchPdvCategories(tenantSlug),
-        fetchPdvSettings(tenantSlug).catch(() => null),
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Tempo excedido ao carregar cardápio')), 8000),
+      );
+      const [productsData, categoriesData, settingsData] = await Promise.race([
+        Promise.all([
+          fetchPdvProducts(tenantSlug),
+          fetchPdvCategories(tenantSlug),
+          fetchPdvSettings(tenantSlug).catch(() => null),
+        ]),
+        timeout,
       ]);
       if (!isMountedRef.current) return;
       setProducts(productsData);

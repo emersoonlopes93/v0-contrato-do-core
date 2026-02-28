@@ -4,57 +4,92 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
 import {
-  BookOpen,
   Box,
   ChefHat,
-  CreditCard,
-  Headphones,
-  Palette,
+  Link2,
+  Wallet,
+  Folder,
+  Truck,
+  Briefcase,
+  Package,
   ShoppingCart,
   Settings,
-  Store,
-  Wallet,
-  ChevronRight,
+  Users,
 } from 'lucide-react';
 import type { ModuleRegisterPayload } from '@/src/core/modules/contracts';
 import { listTenantUiModules } from '@/src/modules/registry';
+import { cn } from '@/lib/utils';
+import type { NavigationCategory, NavigationMode } from '@/src/tenant/navigation/navigation-taxonomy';
 
 type SidebarItem = {
   label: string;
   href: string;
+  icon: React.ReactNode;
   isActive?: boolean;
-  disabled?: boolean;
+  priority: number;
 };
 
-type SidebarSection = {
-  id: string;
+type SidebarCategory = {
+  id: NavigationCategory;
   label: string;
   icon: React.ReactNode;
   items: SidebarItem[];
+  minPriority: number;
 };
 
-const iconMap = {
-  box: Box,
-  menu: BookOpen,
-  headphones: Headphones,
-  store: Store,
-  wallet: Wallet,
-  palette: Palette,
-  'chef-hat': ChefHat,
-  'shopping-cart': ShoppingCart,
-  'credit-card': CreditCard,
-  settings: Settings,
+const CATEGORY_LABELS: Record<NavigationCategory, string> = {
+  dashboard: 'Dashboard',
+  operacao: 'Operação',
+  cardapio: 'Cardápio',
+  entregas: 'Entregas',
+  financeiro: 'Financeiro',
+  clientes: 'Clientes',
+  pessoas: 'Pessoas',
+  integracoes: 'Integrações',
+  configuracoes: 'Configurações',
+  experiencia: 'Experiência',
 };
 
-function resolveIcon(name: string): React.ReactNode {
-  const Icon = iconMap[name as keyof typeof iconMap] ?? Box;
-  return <Icon className="h-4 w-4" />;
-}
-
-function isRouteActive(href?: string): boolean {
+function isRouteActive(href?: string) {
   if (!href) return false;
   if (typeof window === 'undefined') return false;
   return window.location.pathname.startsWith(href);
+}
+
+function resolveCategoryIcon(category: NavigationCategory) {
+  switch (category) {
+    case 'dashboard':
+      return <Box className="h-4 w-4 text-blue-500 shrink-0" />;
+    case 'operacao':
+      return <Folder className="h-4 w-4 text-orange-500 shrink-0" />;
+    case 'cardapio':
+      return <ChefHat className="h-4 w-4 text-orange-500 shrink-0" />;
+    case 'entregas':
+      return <Truck className="h-4 w-4 text-blue-500 shrink-0" />;
+    case 'financeiro':
+      return <Wallet className="h-4 w-4 text-green-500 shrink-0" />;
+    case 'clientes':
+      return <Briefcase className="h-4 w-4 text-amber-500 shrink-0" />;
+    case 'pessoas':
+      return <Users className="h-4 w-4 text-indigo-500 shrink-0" />;
+    case 'integracoes':
+      return <Link2 className="h-4 w-4 text-purple-500 shrink-0" />;
+    case 'configuracoes':
+      return <Settings className="h-4 w-4 text-slate-500 shrink-0" />;
+    case 'experiencia':
+      return <Package className="h-4 w-4 text-pink-500 shrink-0" />;
+    default:
+      return <Settings className="h-4 w-4 text-gray-400 shrink-0" />;
+  }
+}
+
+function resolveItemIcon(label: string) {
+  switch (label.toLowerCase()) {
+    case 'pdv':
+      return <ShoppingCart className="h-4 w-4 text-indigo-500 shrink-0" />;
+    default:
+      return <Box className="h-4 w-4 text-slate-400 shrink-0" />;
+  }
 }
 
 export function TenantSidebar() {
@@ -62,135 +97,160 @@ export function TenantSidebar() {
   const { isModuleEnabled, hasPermission } = useSession();
   const basePath = `/tenant/${tenantSlug}`;
 
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [modules, setModules] = useState<ModuleRegisterPayload[]>([]);
+  const [mode, setMode] = useState<NavigationMode>('essential');
 
   useEffect(() => {
     listTenantUiModules()
-      .then((data) => setModules(data))
+      .then(setModules)
       .catch(() => setModules([]));
   }, []);
 
-  const sections: SidebarSection[] = useMemo(() => {
-    const grouped = new Map<string, { label: string; iconName: string; items: SidebarItem[] }>();
+  const categories: SidebarCategory[] = useMemo(() => {
+    const map = new Map<NavigationCategory, { items: SidebarItem[]; minPriority: number }>();
+
     modules.forEach((module) => {
       const entry = module.uiEntry;
+      const navigation = module.navigation;
       if (!entry) return;
+      if (!navigation) return;
       if (!isModuleEnabled(module.id)) return;
+      if (!navigation.modes.includes(mode)) return;
+      if (mode === 'essential' && navigation.isAdvanced) return;
 
-      const hasAnyPermission = module.permissions.some((p) => hasPermission(p.id));
+      const hasAnyPermission = module.permissions.some((p) =>
+        hasPermission(p.id)
+      );
       if (!hasAnyPermission) return;
-      const category = entry.category || 'Módulos';
-      if (!grouped.has(category)) {
-        grouped.set(category, { label: category, iconName: entry.icon || 'box', items: [] });
-      }
+
       const href = `${basePath}${entry.tenantBasePath}`;
-      const section = grouped.get(category);
-      if (!section) return;
-      section.items.push({
+      const category = navigation.category;
+      const item: SidebarItem = {
         label: entry.homeLabel,
         href,
+        icon: resolveItemIcon(entry.homeLabel),
         isActive: isRouteActive(href),
-        disabled: false,
-      });
+        priority: navigation.priority,
+      };
+
+      const existing = map.get(category);
+      if (!existing) {
+        map.set(category, { items: [item], minPriority: navigation.priority });
+        return;
+      }
+
+      existing.items.push(item);
+      if (navigation.priority < existing.minPriority) {
+        existing.minPriority = navigation.priority;
+      }
     });
-    return Array.from(grouped.values()).map((section, index) => ({
-      id: `${section.label}-${index}`,
-      label: section.label,
-      icon: resolveIcon(section.iconName),
-      items: section.items.sort((a, b) => a.label.localeCompare(b.label)),
-    }));
-  }, [modules, basePath, isModuleEnabled, hasPermission]);
 
-  const visibleSections = sections.filter((section) => section.items.length > 0);
-
-  const toggleSection = (id: string) => {
-    setOpenSections((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
+    return Array.from(map.entries())
+      .map(([category, data]) => ({
+        id: category,
+        label: CATEGORY_LABELS[category],
+        icon: resolveCategoryIcon(category),
+        items: data.items.sort((a, b) => a.priority - b.priority),
+        minPriority: data.minPriority,
+      }))
+      .sort((a, b) => a.minPriority - b.minPriority);
+  }, [modules, basePath, isModuleEnabled, hasPermission, mode]);
 
   return (
-    <nav className="space-y-1 text-sm">
-      {visibleSections.map((section) => {
-        const hasActiveItem = section.items.some((item) => item.isActive);
-        const isOpen = openSections[section.id] ?? hasActiveItem;
-        const iconClasses = 'bg-muted text-muted-foreground';
-        const containerClasses =
-          hasActiveItem
-            ? 'rounded-lg transition-colors'
-            : 'rounded-lg border border-transparent hover:border-border-soft transition-colors';
-        return (
-          <div key={section.id} className={containerClasses}>
-            <button
-              type="button"
-              onClick={() => toggleSection(section.id)}
-              className="flex w-full min-h-12 items-center justify-between px-3 text-left font-semibold text-foreground hover:bg-muted/40 active:scale-[0.98] transition-colors duration-150"
-            >
-              <span className="flex items-center gap-2">
-                <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-md text-xs font-semibold ${iconClasses}`}
-                >
-                  {section.icon}
-                </span>
-                <span>{section.label}</span>
-              </span>
-              <ChevronRight
-                className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
-                  isOpen ? 'rotate-90' : ''
-                }`}
-              />
-            </button>
-            <div
-              className={`grid overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out ${
-                isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-              }`}
-            >
-              <div className="min-h-0 space-y-1 pb-2">
-                {section.items.map((item) => {
-                  const isActive = item.isActive === true;
-                  const commonClasses =
-                    'flex min-h-12 items-center gap-3 rounded-md px-4 text-sm transition-colors';
+    <aside className="flex h-full w-64 flex-col border-r bg-white">
 
-                  if (item.disabled) {
-                    return (
-                      <div
-                        key={item.href}
-                        className={`${commonClasses} text-muted-foreground opacity-60`}
-                      >
-                        <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
-                        <span>{item.label}</span>
-                      </div>
-                    );
-                  }
+      {/* Header */}
+      <div className="px-5 py-4 border-b">
+        <h2 className="text-sm font-semibold text-slate-700">
+          Painel Admin
+        </h2>
+      </div>
 
-                  return (
-                    <a
-                      key={item.href}
-                      href={item.href}
-                      className={
-                        isActive
-                          ? `${commonClasses} text-primary font-semibold`
-                          : `${commonClasses} text-muted-foreground hover:bg-accent hover:text-accent-foreground`
-                      }
-                    >
-                      <span
-                        className={
-                          isActive
-                            ? 'h-2 w-2 rounded-full bg-primary'
-                            : 'h-2 w-2 rounded-full bg-muted-foreground/40'
-                        }
-                      />
-                      <span>{item.label}</span>
-                    </a>
-                  );
-                })}
+      <div className="px-4 py-3 border-b">
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+          <button
+            type="button"
+            onClick={() => setMode('essential')}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+              mode === 'essential'
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:bg-white/70"
+            )}
+          >
+            Essencial
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('professional')}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs font-semibold transition",
+              mode === 'professional'
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500 hover:bg-white/70"
+            )}
+          >
+            Profissional
+          </button>
+        </div>
+      </div>
+
+      {/* Status */}
+      <div className="px-4 py-4 space-y-3 border-b">
+        <div className="flex items-center justify-center gap-2 rounded-lg bg-green-100 text-green-700 text-xs font-medium py-2">
+          <span className="h-2 w-2 rounded-full bg-green-600" />
+          Loja aberta
+        </div>
+
+        <button className="w-full rounded-lg border text-xs py-2 font-medium text-slate-600 hover:bg-slate-50 transition">
+          VER CARDÁPIO
+        </button>
+      </div>
+
+      {/* Menu */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-2">
+
+        {categories.map((category) => {
+          const hasActiveItem = category.items.some((i) => i.isActive);
+
+          return (
+            <div key={category.id}>
+              {/* Categoria */}
+              <div
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm rounded-md",
+                  hasActiveItem
+                    ? "bg-slate-100 font-medium text-slate-800"
+                    : "text-slate-700"
+                )}
+              >
+                {category.icon}
+                <span>{category.label}</span>
+              </div>
+
+              {/* Subitens */}
+              <div className="ml-9 mt-1 space-y-1">
+                {category.items.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "block rounded-md px-3 py-1.5 text-sm transition",
+                      item.isActive
+                        ? "bg-blue-100 text-blue-700 font-medium"
+                        : "text-slate-600 hover:bg-slate-100"
+                    )}
+                  >
+                    {item.label}
+                  </a>
+                ))}
               </div>
             </div>
-          </div>
-        );
-      })}
-    </nav>
+          );
+        })}
+
+      </div>
+      
+    </aside>
   );
 }

@@ -24,8 +24,11 @@ export const TENANT_TABLES = [
   'Role',
   'UserRole',
   'WhiteBrandConfig',
-  'AuditEvent',
   'TenantSubscription',
+  'AuditEvent',
+  'Customer',
+  'TenantSettings',
+  'TenantFinancialSummary',
   'Category',
   'Product',
   'ProductImage',
@@ -44,6 +47,8 @@ export const TENANT_TABLES = [
   'MenuCustomerBalance',
   'StoreSettings',
   'DeliveryPricingSettings',
+  'DeliverySettlement',
+  'DeliverySettlementSettings',
   'Order',
   'OrderItem',
   'OrderItemModifier',
@@ -51,6 +56,8 @@ export const TENANT_TABLES = [
   'CheckoutOrder',
   'CheckoutOrderItem',
   'Payment',
+  'PublicTrackingToken',
+  'SoundNotificationSettings',
   'DeliveryRoute',
   'DeliveryDriver',
   'DriverPosition',
@@ -72,7 +79,13 @@ export function createTenantMiddleware(
     }
 
     // Aplica filtro automático por tenant_id
-    if (params.action === 'findUnique' || params.action === 'findFirst') {
+    if (params.action === 'findUnique') {
+      params.action = 'findFirst';
+      params.args.where = {
+        ...params.args.where,
+        tenant_id: context.tenantId,
+      };
+    } else if (params.action === 'findFirst') {
       params.args.where = {
         ...params.args.where,
         tenant_id: context.tenantId,

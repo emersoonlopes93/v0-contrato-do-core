@@ -28,4 +28,9 @@ export const manifest = {
     icon: 'menu',
     category: 'Core de Operação do Restaurante',
   },
+  navigation: {
+    category: 'cardapio',
+    priority: 5,
+    modes: ['essential', 'professional'],
+  },
 } satisfies ModuleRegisterPayload;

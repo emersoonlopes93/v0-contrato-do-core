@@ -4,6 +4,15 @@ import { eventStore } from "./event-store.repository";
 class ReliableEventBus implements EventBus {
   private handlers: Map<string, Set<EventHandler>> = new Map();
   private fallbackQueue: DomainEvent[] = [];
+  public metrics = {
+    published: 0,
+    persisted: 0,
+    persistFailed: 0,
+    fallbackQueued: 0,
+    flushed: 0,
+    processed: 0,
+    failed: 0,
+  };
 
   subscribe(eventType: string, handler: EventHandler): void {
     if (!this.handlers.has(eventType)) {
@@ -17,6 +26,7 @@ class ReliableEventBus implements EventBus {
   }
 
   async publish(event: DomainEvent): Promise<void> {
+    this.metrics.published++;
     try {
       await eventStore.append({
         tenant_id: event.tenantId || null,
@@ -34,9 +44,11 @@ class ReliableEventBus implements EventBus {
         version: 1,
         occurred_at: event.timestamp || new Date(),
       });
+      this.metrics.persisted++;
     } catch (error) {
-      console.error("Failed to persist event to EventStore, falling back to memory queue:", error);
+      this.metrics.persistFailed++;
       this.fallbackQueue.push(event);
+      this.metrics.fallbackQueued++;
     }
   }
 
@@ -54,7 +66,7 @@ class ReliableEventBus implements EventBus {
     const eventsToRetry = [...this.fallbackQueue];
     this.fallbackQueue = [];
 
-    console.log(`Flushing ${eventsToRetry.length} events from fallback queue...`);
+    this.metrics.flushed += eventsToRetry.length;
     for (const event of eventsToRetry) {
       await this.publish(event);
     }

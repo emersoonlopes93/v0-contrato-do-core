@@ -33,12 +33,12 @@ export function BaseModal({ open, onOpenChange, size = 'md', children }: BaseMod
         />
         <DialogPrimitive.Content
           className={cn(
-            'fixed left-1/2 top-1/2 z-50 w-full max-h-[90vh] -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-card shadow-lg',
+            'fixed left-1/2 top-1/2 z-50 w-full max-h-[100vh] -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-card shadow-lg',
             'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             sizeClass,
           )}
         >
-          <div className="flex max-h-[90vh] flex-col overflow-hidden">
+          <div className="flex max-h-[100vh] flex-col overflow-hidden">
             {children}
           </div>
         </DialogPrimitive.Content>

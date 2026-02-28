@@ -21,6 +21,11 @@ export const manifest = {
     icon: 'bar-chart-2', // Nome de ícone comum (Lucide)
     category: 'Gestão',
   },
+  navigation: {
+    category: 'dashboard',
+    priority: 0,
+    modes: ['essential', 'professional'],
+  },
   type: 'strategic',
   scope: 'tenant',
   mobileFirst: true,

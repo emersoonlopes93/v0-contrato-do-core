@@ -24,6 +24,11 @@ export const manifest = {
     icon: 'store',
     category: 'Configurações',
   },
+  navigation: {
+    category: 'configuracoes',
+    priority: 50,
+    modes: ['essential', 'professional'],
+  },
   type: 'core',
   scope: 'tenant',
   mobileFirst: true,

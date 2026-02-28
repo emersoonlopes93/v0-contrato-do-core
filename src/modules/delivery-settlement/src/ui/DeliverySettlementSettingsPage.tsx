@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { DeliverySettlementSettingsDTO, DeliverySettlementSettingsCreateRequest } from '@/src/types/delivery-settlement';
 import { deliverySettlementProvider } from '../providers/deliverySettlementProvider';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
 
 export function DeliverySettlementSettingsPage() {
   const [, setSettings] = useState<DeliverySettlementSettingsDTO | null>(null);
@@ -91,14 +92,14 @@ export function DeliverySettlementSettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Porcentagem do Entregador (%)
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
+              <MaskedInput
+                type="percent"
                 value={formData.driverPercentage}
-                onChange={(e) => handleInputChange('driverPercentage', parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(raw) => {
+                  const n = typeof raw === 'number' ? raw : Number(String(raw).replace(',', '.'));
+                  handleInputChange('driverPercentage', n);
+                }}
+                placeholder="0%"
               />
             </div>
 
@@ -106,13 +107,14 @@ export function DeliverySettlementSettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Valor Fixo por KM (R$)
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.driverFixedPerKm}
-                onChange={(e) => handleInputChange('driverFixedPerKm', parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <MaskedInput
+                type="currency"
+                value={Math.round(formData.driverFixedPerKm * 100)}
+                onChange={(raw) => {
+                  const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                  handleInputChange('driverFixedPerKm', Math.round(cents) / 100);
+                }}
+                placeholder="R$ 0,00"
               />
             </div>
 
@@ -120,13 +122,14 @@ export function DeliverySettlementSettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Valor Mínimo do Entregador (R$)
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.driverMinimumAmount}
-                onChange={(e) => handleInputChange('driverMinimumAmount', parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <MaskedInput
+                type="currency"
+                value={Math.round(formData.driverMinimumAmount * 100)}
+                onChange={(raw) => {
+                  const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                  handleInputChange('driverMinimumAmount', Math.round(cents) / 100);
+                }}
+                placeholder="R$ 0,00"
               />
             </div>
 
@@ -134,14 +137,19 @@ export function DeliverySettlementSettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Valor Máximo do Entregador (R$)
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.driverMaximumAmount || ''}
-                onChange={(e) => handleInputChange('driverMaximumAmount', e.target.value ? parseFloat(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Sem limite"
+              <MaskedInput
+                type="currency"
+                value={
+                  formData.driverMaximumAmount == null ? '' : Math.round(formData.driverMaximumAmount * 100)
+                }
+                onChange={(raw) => {
+                  const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                  handleInputChange(
+                    'driverMaximumAmount',
+                    String(cents).length === 0 ? null : Math.round(cents) / 100,
+                  );
+                }}
+                placeholder="R$ 0,00"
               />
             </div>
 
@@ -149,14 +157,14 @@ export function DeliverySettlementSettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Porcentagem da Loja (%)
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
+              <MaskedInput
+                type="percent"
                 value={formData.storePercentage}
-                onChange={(e) => handleInputChange('storePercentage', parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(raw) => {
+                  const n = typeof raw === 'number' ? raw : Number(String(raw).replace(',', '.'));
+                  handleInputChange('storePercentage', n);
+                }}
+                placeholder="0%"
               />
             </div>
 
@@ -164,14 +172,14 @@ export function DeliverySettlementSettingsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Porcentagem da Plataforma (%)
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
+              <MaskedInput
+                type="percent"
                 value={formData.platformPercentage}
-                onChange={(e) => handleInputChange('platformPercentage', parseFloat(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(raw) => {
+                  const n = typeof raw === 'number' ? raw : Number(String(raw).replace(',', '.'));
+                  handleInputChange('platformPercentage', n);
+                }}
+                placeholder="0%"
               />
             </div>
           </div>

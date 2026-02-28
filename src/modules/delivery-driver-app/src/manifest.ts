@@ -12,6 +12,12 @@ export const manifest = {
   requiredPlan: 'basic',
   permissions,
   eventTypes,
+  navigation: {
+    category: 'entregas',
+    priority: 16,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'driver-app',
   scope: 'tenant',
   mobileFirst: true,

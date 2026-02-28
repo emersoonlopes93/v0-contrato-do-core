@@ -24,10 +24,15 @@ export const manifest = {
     icon: 'map',
     category: 'Entregas',
   },
+  navigation: {
+    category: 'entregas',
+    priority: 11,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,
   requiresAuth: true,
   canDisable: true,
 } satisfies ModuleRegisterPayload;
-

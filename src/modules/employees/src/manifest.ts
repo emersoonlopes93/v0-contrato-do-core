@@ -28,6 +28,11 @@ export const manifest = {
     icon: 'users',
     category: 'Administração',
   },
+  navigation: {
+    category: 'pessoas',
+    priority: 30,
+    modes: ['essential', 'professional'],
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

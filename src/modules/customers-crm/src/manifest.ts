@@ -34,6 +34,12 @@ export const manifest: ModuleRegisterPayload = {
     icon: 'users',
     category: 'Operação',
   },
+  navigation: {
+    category: 'clientes',
+    priority: 25,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'operational',
   scope: 'tenant',
   mobileFirst: true,

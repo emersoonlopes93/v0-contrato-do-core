@@ -32,6 +32,11 @@ export const manifest: ModuleRegisterPayload = {
     icon: 'box',
     category: 'Pedidos',
   },
+  navigation: {
+    category: 'operacao',
+    priority: 1,
+    modes: ['essential', 'professional'],
+  },
   type: 'core',
   scope: 'tenant',
   mobileFirst: true,

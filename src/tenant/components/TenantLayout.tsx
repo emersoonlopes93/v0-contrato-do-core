@@ -44,20 +44,27 @@ export function TenantLayout({
   onBack
 }: TenantLayoutProps) {
 
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-x-hidden">
       {/* Mobile: Header com TenantHeader */}
       <div className="md:hidden">
         <TenantHeader />
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden overflow-x-hidden max-w-full">
         {/* Tablet e Desktop: Sidebar Fixa Premium */}
-        <aside className="hidden w-72 border-r bg-background shadow-sm lg:flex lg:flex-col">
+        <aside
+          className={`hidden border-r bg-background/95 backdrop-blur-sm shadow-xl lg:flex lg:flex-col transition-[width] duration-200 ${
+            isSidebarOpen ? 'w-64' : 'w-16'
+          } max-w-[16rem]`}
+        >
+
           {/* Header institucional */}
-          <TenantHeader />
+          <TenantHeader collapsed={!isSidebarOpen} />
           
-          <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
+          <div className="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-muted">
             <TenantSidebar />
           </div>
 
@@ -79,20 +86,25 @@ export function TenantLayout({
               actions={headerActions}
               showBack={showBackButton}
               onBack={onBack}
+              showMenuToggle
+              onToggleMenu={() => setIsSidebarOpen((prev) => !prev)}
             />
           </div>
 
           {/* Content com scroll - Mobile e Tablet com padding bottom para o menu inferior */}
-          <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-muted/5 to-background lg:pb-0 pb-16">
-            <div className="p-4 md:p-6 lg:p-8">
+          <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-muted/5 to-background lg:pb-0 pb-12 pt-2">
+            <div className="p-2 md:p-4 lg:p-6 max-w-full">
               {children}
             </div>
           </main>
+
         </div>
       </div>
 
-      {/* Mobile: Menu Inferior */}
-      <MobileBottomNav />
+      {/* Mobile/Tablet: Menu Inferior */}
+      <div className="lg:hidden">
+        <MobileBottomNav />
+      </div>
     </div>
   );
 }

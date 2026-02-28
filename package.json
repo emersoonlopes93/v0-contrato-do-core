@@ -17,7 +17,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "audit:any": "ts-node scripts/audit-any.ts",
-	"audit:type-safety": "ts-node scripts/audit-type-safety.ts"
+	"audit:type-safety": "ts-node scripts/audit-type-safety.ts",
+    "audit:prisma": "ts-node scripts/audit-prisma-imports.ts",
+    "audit:tenant-schema": "ts-node scripts/audit-tenant-schema.ts",
+    "rls:generate": "ts-node scripts/rls-generate.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.2",

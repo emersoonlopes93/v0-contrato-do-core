@@ -16,6 +16,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
+import { registerSettingsSection } from '@/src/tenant/settings/settings-registry';
 
 type RegionState = {
   id: string;
@@ -123,12 +125,13 @@ function DeliveryPricingPageContent() {
   };
 
   const handleSave = async (): Promise<void> => {
-    const base = toNumber(baseFee);
-    const perKm = toNumber(pricePerKm);
+    const base = toNumber(baseFee) === null ? null : Number(baseFee) / 100;
+    const perKm = toNumber(pricePerKm) === null ? null : Number(pricePerKm) / 100;
     const min = toNumber(minFee);
     const max = toNumber(maxFee);
     const free = freeKm.trim() === '' ? null : toNumber(freeKm);
-    const perMinute = additionalPerMinute.trim() === '' ? null : toNumber(additionalPerMinute);
+    const perMinute =
+      additionalPerMinute.trim() === '' ? null : (toNumber(additionalPerMinute) === null ? null : Number(additionalPerMinute) / 100);
 
     if (base === null || perKm === null || min === null || max === null) {
       toast({ title: 'Campos inválidos', description: 'Preencha os valores obrigatórios', variant: 'destructive' });
@@ -234,11 +237,27 @@ function DeliveryPricingPageContent() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Taxa base</Label>
-                  <Input value={baseFee} onChange={(e) => setBaseFee(e.target.value)} />
+                  <MaskedInput
+                    type="currency"
+                    value={baseFee}
+                    onChange={(raw) => {
+                      const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                      setBaseFee(String(Math.round(cents)));
+                    }}
+                    placeholder="R$ 0,00"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Valor por KM</Label>
-                  <Input value={pricePerKm} onChange={(e) => setPricePerKm(e.target.value)} />
+                  <MaskedInput
+                    type="currency"
+                    value={pricePerKm}
+                    onChange={(raw) => {
+                      const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                      setPricePerKm(String(Math.round(cents)));
+                    }}
+                    placeholder="R$ 0,00"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>KM grátis</Label>
@@ -246,19 +265,39 @@ function DeliveryPricingPageContent() {
                 </div>
                 <div className="space-y-2">
                   <Label>Adicional por tempo (min)</Label>
-                  <Input
+                  <MaskedInput
+                    type="currency"
                     value={additionalPerMinute}
-                    onChange={(e) => setAdditionalPerMinute(e.target.value)}
-                    placeholder="Opcional"
+                    onChange={(raw) => {
+                      const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                      setAdditionalPerMinute(String(Math.round(cents)));
+                    }}
+                    placeholder="R$ 0,00"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Taxa mínima</Label>
-                  <Input value={minFee} onChange={(e) => setMinFee(e.target.value)} />
+                  <MaskedInput
+                    type="currency"
+                    value={minFee}
+                    onChange={(raw) => {
+                      const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                      setMinFee(String(Math.round(cents)));
+                    }}
+                    placeholder="R$ 0,00"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Taxa máxima</Label>
-                  <Input value={maxFee} onChange={(e) => setMaxFee(e.target.value)} />
+                  <MaskedInput
+                    type="currency"
+                    value={maxFee}
+                    onChange={(raw) => {
+                      const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                      setMaxFee(String(Math.round(cents)));
+                    }}
+                    placeholder="R$ 0,00"
+                  />
                 </div>
               </div>
 
@@ -523,3 +562,13 @@ function DeliveryPricingPageContent() {
 }
 
 export const DeliveryPricingPage = withModuleGuard(DeliveryPricingPageContent, 'delivery-pricing');
+
+registerSettingsSection({
+  id: 'delivery-pricing',
+  title: 'Precificação de Entrega',
+  description: 'Regras de taxa por distância e horário',
+  icon: 'calculator',
+  category: 'delivery',
+  order: 1,
+  component: DeliveryPricingPage,
+});

@@ -37,22 +37,7 @@ export class SaaSAdminAuthService {
   async login(request: SaaSAdminLoginRequest): Promise<SaaSAdminLoginResponse> {
     const { email, password } = request;
 
-    // 1. Find user
-    const user = await this.authRepo.findSaaSAdminByEmail(email);
-    if (!user) {
-      throw new Error('Invalid credentials');
-    }
-
-    // 2. Check status
-    if (user.status !== 'active') {
-      throw new Error('User is not active');
-    }
-
-    // 3. Verify password
-    const isPasswordValid = await PasswordService.verify(password, user.password_hash);
-    if (!isPasswordValid) {
-      throw new Error('Invalid credentials');
-    }
+    const user = await this.validateCredentials({ email, password });
 
     // 4. Generate tokens
     const tokenPayload: SaaSAdminToken = {
@@ -72,6 +57,52 @@ export class SaaSAdminAuthService {
       expiresAt: JWTService.getRefreshTokenExpiration(),
     });
 
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    };
+  }
+
+  async validateCredentials(request: SaaSAdminLoginRequest) {
+    const { email, password } = request;
+    const user = await this.authRepo.findSaaSAdminByEmail(email);
+    if (!user) {
+      throw new Error('Invalid credentials');
+    }
+    if (user.status !== 'active') {
+      throw new Error('User is not active');
+    }
+    const isPasswordValid = await PasswordService.verify(password, user.password_hash);
+    if (!isPasswordValid) {
+      throw new Error('Invalid credentials');
+    }
+    return user;
+  }
+
+  async issueTokensForUser(userId: string): Promise<SaaSAdminLoginResponse> {
+    const user = await this.authRepo.findSaaSAdminById(userId);
+    if (!user || user.status !== 'active') {
+      throw new Error('User not found or inactive');
+    }
+    const tokenPayload: SaaSAdminToken = {
+      context: UserContext.SAAS_ADMIN,
+      userId: asUUID(user.id),
+      role: user.role as 'admin' | 'moderator',
+    };
+    const accessToken = JWTService.generateSaaSAdminToken(tokenPayload);
+    const refreshToken = JWTService.generateRefreshToken(user.id, 'saas_admin');
+    await this.authRepo.saveRefreshToken({
+      userId: user.id,
+      userType: 'saas_admin',
+      token: refreshToken,
+      expiresAt: JWTService.getRefreshTokenExpiration(),
+    });
     return {
       accessToken,
       refreshToken,
@@ -148,7 +179,7 @@ export class SaaSAdminAuthService {
   // REFRESH TOKEN
   // ==========================================
 
-  async refreshToken(refreshToken: string): Promise<{ accessToken: string }> {
+  async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     // 1. Verify refresh token
     const decoded = JWTService.verifyRefreshToken(refreshToken);
 
@@ -181,8 +212,15 @@ export class SaaSAdminAuthService {
     };
 
     const accessToken = JWTService.generateSaaSAdminToken(tokenPayload);
-
-    return { accessToken };
+    const nextRefreshToken = JWTService.generateRefreshToken(user.id, 'saas_admin');
+    await this.authRepo.saveRefreshToken({
+      userId: user.id,
+      userType: 'saas_admin',
+      token: nextRefreshToken,
+      expiresAt: JWTService.getRefreshTokenExpiration(),
+    });
+    await this.authRepo.revokeRefreshToken(refreshToken);
+    return { accessToken, refreshToken: nextRefreshToken };
   }
 
   // ==========================================

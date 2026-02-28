@@ -15,7 +15,7 @@ import { OrdersKanbanPage } from '@/src/tenant/pages/OrdersKanban';
 import { OrderDetailsPage } from '@/src/tenant/pages/OrderDetails';
 import { SoundNotificationsSettingsPage } from '@/src/tenant/pages/SoundNotificationsSettings';
 import { StoreSettingsPage } from '@/src/tenant/pages/StoreSettingsPage';
-import { TenantSettingsPage } from '@/src/tenant/pages/TenantSettings';
+import { SettingsHubPage } from '@/src/tenant/pages/SettingsHubPage';
 import { CheckoutPage } from '@/src/tenant/pages/Checkout';
 import { OrderSuccessPage } from '@/src/tenant/pages/OrderSuccess';
 import { PaymentPage } from '@/src/tenant/pages/PaymentPage';
@@ -235,7 +235,7 @@ function TenantRouter() {
       </PlanGuard>
     );
   } else if (restPath === '/settings') {
-    page = <TenantSettingsPage />;
+    page = <SettingsHubPage />;
   } else if (rest[0] === 'orders' && rest.length >= 2) {
     const orderId = rest[1]?.trim() ?? '';
     page = orderId ? (

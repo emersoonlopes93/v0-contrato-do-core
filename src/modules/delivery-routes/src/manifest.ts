@@ -29,6 +29,12 @@ export const manifest = {
     icon: 'settings',
     category: 'Entregas',
   },
+  navigation: {
+    category: 'entregas',
+    priority: 12,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

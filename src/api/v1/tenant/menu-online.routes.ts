@@ -1658,8 +1658,8 @@ async function handleDeleteCombo(req: Request, res: Response): Promise<void> {
       res.body = { error: 'Not Found', message: 'Combo not found' };
       return;
     }
-    res.status = 204;
-    res.body = { success: true };
+    res.status = 200;
+    res.body = { success: true, data: true };
   } catch (error) {
     res.status = 500;
     res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to delete combo' };
@@ -1776,8 +1776,8 @@ async function handleDeleteCoupon(req: Request, res: Response): Promise<void> {
       res.body = { error: 'Not Found', message: 'Coupon not found' };
       return;
     }
-    res.status = 204;
-    res.body = { success: true };
+    res.status = 200;
+    res.body = { success: true, data: true };
   } catch (error) {
     res.status = 500;
     res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to delete coupon' };
@@ -1963,8 +1963,8 @@ async function handleDeleteUpsellSuggestion(req: Request, res: Response): Promis
       res.body = { error: 'Not Found', message: 'Upsell not found' };
       return;
     }
-    res.status = 204;
-    res.body = { success: true };
+    res.status = 200;
+    res.body = { success: true, data: true };
   } catch (error) {
     res.status = 500;
     res.body = { error: 'Internal Server Error', message: error instanceof Error ? error.message : 'Failed to delete upsell' };

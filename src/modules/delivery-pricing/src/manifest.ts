@@ -24,6 +24,12 @@ export const manifest = {
     icon: 'calculator',
     category: 'Logística / Financeiro',
   },
+  navigation: {
+    category: 'entregas',
+    priority: 13,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

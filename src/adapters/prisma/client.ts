@@ -6,6 +6,8 @@
 
 import { PrismaClient } from '@prisma/client';
 import { withTenantProxy } from './prisma-tenant-proxy';
+import { getTenantId } from '@/src/core/context/async-context';
+import { TENANT_TABLES } from './tenant-middleware';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof withTenantProxy> | undefined;
@@ -18,6 +20,46 @@ function createPrismaClient(): ReturnType<typeof withTenantProxy> {
         ? ['query', 'error', 'warn']
         : ['error'],
   });
+  type PrismaMiddleware = (params: { model?: string; action: string; args: any }, next: (params: any) => Promise<any>) => Promise<any>;
+  const middleware: PrismaMiddleware = async (params, next) => {
+    const tenantId = getTenantId();
+    if (!tenantId || !params.model || !TENANT_TABLES.includes(params.model)) {
+      return next(params);
+    }
+    if (params.action === 'findUnique') {
+      params.action = 'findFirst';
+      params.args = {
+        ...params.args,
+        where: { ...(params.args?.where ?? {}), tenant_id: tenantId },
+      };
+    } else if (params.action === 'findFirst' || params.action === 'findMany' || params.action === 'count') {
+      params.args = {
+        ...params.args,
+        where: { ...(params.args?.where ?? {}), tenant_id: tenantId },
+      };
+    } else if (params.action === 'update' || params.action === 'delete' || params.action === 'updateMany' || params.action === 'deleteMany') {
+      params.args = {
+        ...params.args,
+        where: { ...(params.args?.where ?? {}), tenant_id: tenantId },
+      };
+    } else if (params.action === 'create') {
+      const data = params.args?.data ?? {};
+      params.args = { ...params.args, data: { ...data, tenant_id: tenantId } };
+    } else if (params.action === 'createMany') {
+      const data = params.args?.data;
+      if (Array.isArray(data)) {
+        params.args = { ...params.args, data: data.map((d) => ({ ...d, tenant_id: tenantId })) };
+      } else if (data && typeof data === 'object') {
+        params.args = { ...params.args, data: { ...data, tenant_id: tenantId } };
+      }
+    } else if (params.action === 'upsert') {
+      const where = params.args?.where ?? {};
+      const create = params.args?.create ?? {};
+      params.args = { ...params.args, where: { ...where, tenant_id: tenantId }, create: { ...create, tenant_id: tenantId } };
+    }
+    return next(params);
+  };
+  (baseClient as unknown as { $use: (mw: PrismaMiddleware) => void }).$use(middleware);
   return withTenantProxy(baseClient);
 }
 

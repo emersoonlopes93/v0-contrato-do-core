@@ -23,6 +23,12 @@ export const manifest: ModuleRegisterPayload = {
     icon: 'credit-card',
     category: 'Integrações',
   },
+  navigation: {
+    category: 'integracoes',
+    priority: 40,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'integrations',
   scope: 'tenant',
   mobileFirst: true,

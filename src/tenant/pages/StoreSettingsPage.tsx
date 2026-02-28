@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
 import { FormFooterSaveBar } from '@/components/form/FormFooterSaveBar';
 import { toast } from '@/hooks/use-toast';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
@@ -18,6 +19,7 @@ import type {
   StoreSettingsAddress,
   StoreSettingsPaymentMethods,
 } from '@/src/types/store-settings';
+import { registerSettingsSection } from '@/src/tenant/settings/settings-registry';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -486,7 +488,12 @@ function StoreSettingsPageContent() {
               </div>
               <div className="space-y-2">
                 <Label>CEP</Label>
-                <Input value={addressZip} onChange={(e) => setAddressZip(e.target.value)} />
+                <MaskedInput
+                  type="cep"
+                  value={addressZip}
+                  onChange={(raw) => setAddressZip(typeof raw === 'string' ? raw : String(raw))}
+                  placeholder="00000-000"
+                />
               </div>
             </CardContent>
           </Card>
@@ -547,18 +554,26 @@ function StoreSettingsPageContent() {
             <CardContent className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Valor mínimo do pedido</Label>
-                <Input
+                <MaskedInput
+                  type="currency"
                   value={minimumOrder}
-                  onChange={(e) => setMinimumOrder(e.target.value)}
-                  placeholder="Ex.: 0 ou 20"
+                  onChange={(raw) => {
+                    const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                    setMinimumOrder(String(Math.round(cents)));
+                  }}
+                  placeholder="R$ 0,00"
                 />
               </div>
               <div className="space-y-2">
                 <Label>Taxa de entrega</Label>
-                <Input
+                <MaskedInput
+                  type="currency"
                   value={deliveryFee}
-                  onChange={(e) => setDeliveryFee(e.target.value)}
-                  placeholder="Ex.: 0 ou 5"
+                  onChange={(raw) => {
+                    const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                    setDeliveryFee(String(Math.round(cents)));
+                  }}
+                  placeholder="R$ 0,00"
                 />
               </div>
               <div className="space-y-2">
@@ -638,3 +653,13 @@ function StoreSettingsPageContent() {
 }
 
 export const StoreSettingsPage = withModuleGuard(StoreSettingsPageContent, 'store-settings');
+
+registerSettingsSection({
+  id: 'store-settings',
+  title: 'Loja e Operação',
+  description: 'Dados da loja, endereço, operação e pagamentos',
+  icon: 'store',
+  category: 'store',
+  order: 2,
+  component: StoreSettingsPage,
+});

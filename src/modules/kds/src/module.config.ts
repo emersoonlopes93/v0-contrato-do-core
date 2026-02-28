@@ -24,6 +24,11 @@ export const manifest = {
     icon: 'chef-hat',
     category: 'Operação',
   },
+  navigation: {
+    category: 'operacao',
+    priority: 2,
+    modes: ['essential', 'professional'],
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

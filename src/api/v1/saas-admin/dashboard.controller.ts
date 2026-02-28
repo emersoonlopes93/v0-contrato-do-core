@@ -1,5 +1,7 @@
 import type { Request, Response } from '../middleware';
 import { prisma } from '../../../adapters/prisma/client';
+import { globalModuleRegistry } from '../../../core/modules/registry';
+import { asModuleId } from '../../../core/types';
 
 /**
  * GET /api/v1/admin/dashboard
@@ -7,6 +9,16 @@ import { prisma } from '../../../adapters/prisma/client';
  */
 export async function getDashboard(req: Request, res: Response): Promise<void> {
   try {
+    const registeredModules = await globalModuleRegistry.listRegisteredModules();
+    const visibleModuleSlugs = registeredModules
+      .filter(
+        (module) =>
+          module.id !== asModuleId('hello-module') &&
+          module.type !== 'driver-app' &&
+          module.scope !== 'public',
+      )
+      .map((module) => module.id);
+
     const [totalTenants, activeTenants, suspendedTenants, totalUsers, activeModulesDistinct] =
       await Promise.all([
         prisma.tenant.count(),
@@ -15,14 +27,18 @@ export async function getDashboard(req: Request, res: Response): Promise<void> {
         prisma.tenantUser.count(),
         prisma.tenantModule
           .findMany({
-            where: { status: 'active' },
+            where: {
+              status: 'active',
+              module: {
+                slug: { in: visibleModuleSlugs },
+              },
+            },
             distinct: ['module_id'],
             select: { module_id: true },
           })
           .then((rows) => rows.length),
       ]);
 
-    // Recent events: optional table 'auditEvent'
     let recentEvents: Array<{ id: string; action: string; resource: string; timestamp: string }> = [];
     try {
       const events = await prisma.auditEvent.findMany({

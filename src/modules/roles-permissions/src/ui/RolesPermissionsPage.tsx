@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Shield, Users, Key } from 'lucide-react';
+import { registerSettingsSection } from '@/src/tenant/settings/settings-registry';
 
 const PERMISSION_LABELS: Record<Permission, string> = {
   view: 'Visualizar',
@@ -297,3 +298,13 @@ function RolesPermissionsPageContent() {
 }
 
 export const RolesPermissionsPage = withModuleGuard(RolesPermissionsPageContent, 'roles-permissions');
+
+registerSettingsSection({
+  id: 'roles-permissions',
+  title: 'Perfis e Permissões',
+  description: 'Perfis de acesso e permissões por módulo',
+  icon: 'shield',
+  category: 'system',
+  order: 4,
+  component: RolesPermissionsPage,
+});

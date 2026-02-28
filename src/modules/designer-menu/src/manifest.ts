@@ -19,6 +19,12 @@ export const manifest = {
     icon: 'palette',
     category: 'Cardápio',
   },
+  navigation: {
+    category: 'experiencia',
+    priority: 60,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'visual',
   scope: 'public-menu',
   mobileFirst: true,

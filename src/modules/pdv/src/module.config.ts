@@ -24,6 +24,11 @@ export const manifest = {
     icon: 'shopping-cart',
     category: 'Operação',
   },
+  navigation: {
+    category: 'operacao',
+    priority: 3,
+    modes: ['essential', 'professional'],
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

@@ -19,6 +19,8 @@ import {
   Download,
   Sparkles
 } from 'lucide-react';
+import { useTenant } from '@/src/contexts/TenantContext';
+import { useSession } from '@/src/tenant/context/SessionContext';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -36,6 +38,7 @@ const formatPercent = (value: number) => {
 };
 
 type PeriodUi = 'today' | '7d' | '30d' | 'custom';
+type NavMode = 'essential' | 'professional';
 
 type KpiCardProps = {
   title: string;
@@ -129,6 +132,11 @@ export function DashboardExecutivoPage() {
   const [periodUi, setPeriodUi] = useState<PeriodUi>('30d');
   const dataPeriod = periodUi === 'today' ? 'custom' : periodUi;
   const { data, loading, error } = useDashboardExecutivo(dataPeriod);
+  const { tenantSlug } = useTenant();
+  const { isModuleEnabled } = useSession();
+  const basePath = `/tenant/${tenantSlug}`;
+  const searchMode = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('mode') : null;
+  const navMode: NavMode = searchMode === 'professional' ? 'professional' : 'essential';
 
   const periodLabelMap: Record<PeriodUi, string> = {
     today: 'Hoje',
@@ -167,6 +175,7 @@ export function DashboardExecutivoPage() {
   }, [data?.topClientes]);
 
   const taxaRecompraPercent = Math.max(0, Math.min(100, (data?.taxaRecompra ?? 0) * 100));
+  const ticketMedio7d = data && data.pedidos.ultimos7dias > 0 ? data.receita.ultimos7dias / data.pedidos.ultimos7dias : 0;
 
   const insights = useMemo(() => {
     if (!data) return [];
@@ -204,7 +213,6 @@ export function DashboardExecutivoPage() {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="space-y-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        {/* Header Executivo */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Dashboard Executivo</h1>
@@ -229,53 +237,209 @@ export function DashboardExecutivoPage() {
         </div>
 
         <div className="grid gap-6">
-          <div className="order-1">
+          <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-xl border p-4 sm:p-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <a href={`${basePath}/pdv`}>
+                <Button className="w-full h-11">Novo Pedido</Button>
+              </a>
+              <a href={`${basePath}/cashier`}>
+                <Button variant="outline" className="w-full h-11">Abrir Caixa</Button>
+              </a>
+              <a href={`${basePath}${isModuleEnabled('delivery-tracking') ? '/delivery-tracking' : '/delivery-drivers'}`}>
+                <Button variant="outline" className="w-full h-11">Ver Entregas</Button>
+              </a>
+              <a href={`${basePath}/menu-online`}>
+                <Button variant="outline" className="w-full h-11">Editar Cardápio</Button>
+              </a>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <KpiCard
-              title="Receita Total"
-              value={formatCurrency(data.receita.ultimos30dias)}
+              title="Receita Hoje"
+              value={formatCurrency(data.receita.hoje)}
               icon={<DollarSign className="h-5 w-5" />}
-              trendValue={data.receita.crescimentoPercentual}
-              trendLabel="vs período anterior"
-              tooltip="Soma total da receita no período selecionado."
-              sparklineData={receitaSparkline}
+              trendValue={null}
+              trendLabel="sem comparação"
+              tooltip="Receita total acumulada no dia."
+              sparklineData={navMode === 'professional' ? receitaSparkline : undefined}
               valueClassName="font-bold"
             />
-          </div>
-          <div className="order-2">
             <KpiCard
-              title="Pedidos"
-              value={data.pedidos.ultimos30dias.toLocaleString('pt-BR')}
-              icon={<ShoppingBag className="h-5 w-5" />}
-              trendValue={null}
-              trendLabel="vs período anterior"
-              tooltip="Total de pedidos concluídos no período."
-              sparklineData={pedidosSparkline}
-            />
-          </div>
-          <div className="order-3">
-            <KpiCard
-              title="Ticket Médio"
-              value={formatCurrency(data.ticketMedio.ultimos30dias)}
+              title="Receita 7 dias"
+              value={formatCurrency(data.receita.ultimos7dias)}
               icon={<DollarSign className="h-5 w-5" />}
               trendValue={null}
-              trendLabel="vs período anterior"
-              tooltip="Valor médio por pedido no período."
+              trendLabel="sem comparação"
+              tooltip="Receita dos últimos 7 dias."
+              sparklineData={navMode === 'professional' ? receitaSparkline : undefined}
+              valueClassName="font-bold"
             />
+            {navMode === 'professional' && (
+              <>
+                <KpiCard
+                  title="Receita 30 dias"
+                  value={formatCurrency(data.receita.ultimos30dias)}
+                  icon={<DollarSign className="h-5 w-5" />}
+                  trendValue={null}
+                  trendLabel="sem comparação"
+                  tooltip="Receita dos últimos 30 dias."
+                  sparklineData={receitaSparkline}
+                  valueClassName="font-bold"
+                />
+                <KpiCard
+                  title="Crescimento"
+                  value={formatPercent(data.receita.crescimentoPercentual)}
+                  icon={<TrendingUp className="h-5 w-5" />}
+                  trendValue={data.receita.crescimentoPercentual}
+                  trendLabel="vs período anterior"
+                  tooltip="Variação percentual vs 30 dias anteriores."
+                  sparklineData={receitaSparkline}
+                  valueClassName="font-bold"
+                />
+              </>
+            )}
           </div>
-          <div className="order-4">
-            <KpiCard
-              title="Clientes Ativos"
-              value={data.clientesAtivos30d.toLocaleString('pt-BR')}
-              icon={<Users className="h-5 w-5" />}
-              trendValue={null}
-              trendLabel="vs período anterior"
-              tooltip="Clientes únicos com pedidos no período."
-            />
+
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground sm:text-xl">Operação</h2>
+              <p className="text-sm text-muted-foreground sm:text-base">Visão do desempenho operacional.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiCard
+                title="Pedidos Hoje"
+                value={data.pedidos.hoje.toLocaleString('pt-BR')}
+                icon={<ShoppingBag className="h-5 w-5" />}
+                trendValue={null}
+                trendLabel="dia atual"
+                tooltip="Total de pedidos concluídos hoje."
+                sparklineData={pedidosSparkline}
+              />
+              <KpiCard
+                title="Ticket Médio"
+                value={formatCurrency(data.ticketMedio.hoje || data.ticketMedio.ultimos30dias)}
+                icon={<DollarSign className="h-5 w-5" />}
+                trendValue={null}
+                trendLabel="média atual"
+                tooltip="Receita por pedido."
+              />
+              <KpiCard
+                title="Tempo médio de preparo"
+                value="—"
+                icon={<RefreshCcw className="h-5 w-5" />}
+                trendValue={null}
+                trendLabel="indisponível"
+                tooltip="Métrica não disponível."
+              />
+              <KpiCard
+                title="Tempo médio de entrega"
+                value={data.performanceEntrega ? `${Math.round(data.performanceEntrega.tempoMedioReal)} min` : '—'}
+                icon={<RefreshCcw className="h-5 w-5" />}
+                trendValue={null}
+                trendLabel="tempo real"
+                tooltip="Tempo médio de entrega."
+              />
+            </div>
           </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground sm:text-xl">Clientes</h2>
+              <p className="text-sm text-muted-foreground sm:text-base">Base ativa e fidelização.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiCard
+                title="Clientes ativos (30d)"
+                value={data.clientesAtivos30d.toLocaleString('pt-BR')}
+                icon={<Users className="h-5 w-5" />}
+                trendValue={null}
+                trendLabel="últimos 30 dias"
+                tooltip="Clientes com pedidos nos últimos 30 dias."
+              />
+              <KpiCard
+                title="Novos clientes"
+                value="—"
+                icon={<Users className="h-5 w-5" />}
+                trendValue={null}
+                trendLabel="indisponível"
+                tooltip="Métrica não disponível."
+              />
+              <KpiCard
+                title="Recorrência"
+                value={formatPercent(data.taxaRecompra * 100)}
+                icon={<RefreshCcw className="h-5 w-5" />}
+                trendValue={null}
+                trendLabel="30 dias"
+                tooltip="Percentual de clientes com mais de um pedido."
+              />
+              {navMode === 'professional' && (
+                <KpiCard
+                  title="Clientes em risco"
+                  value="—"
+                  icon={<AlertCircle className="h-5 w-5" />}
+                  trendValue={null}
+                  trendLabel="indisponível"
+                  tooltip="Disponível quando houver dados."
+                />
+              )}
+            </div>
+          </div>
+
+          {navMode === 'professional' && (
+            <Card className="rounded-2xl bg-muted/30 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between p-5 pb-3 sm:p-6">
+                <div className="space-y-1">
+                  <CardTitle className="text-base font-semibold sm:text-lg">Alertas & Riscos</CardTitle>
+                  <p className="text-sm text-muted-foreground sm:text-base">Sinais que merecem atenção imediata.</p>
+                </div>
+                <div className="rounded-xl bg-background/80 p-2 text-muted-foreground">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 px-5 pb-6 pt-0 sm:px-6">
+                <div className="space-y-2">
+                  {data.receita.crescimentoPercentual < 0 && (
+                    <div className="flex items-start gap-3 rounded-xl bg-background/80 p-4">
+                      <span className="mt-1 h-2 w-2 rounded-full bg-rose-500" />
+                      <p className="text-sm text-foreground sm:text-base">
+                        Receita caiu {formatPercent(Math.abs(data.receita.crescimentoPercentual))} vs período anterior.
+                      </p>
+                    </div>
+                  )}
+                  {data.ticketMedio.hoje > 0 && data.ticketMedio.ultimos30dias > 0 && data.ticketMedio.hoje < data.ticketMedio.ultimos30dias && (
+                    <div className="flex items-start gap-3 rounded-xl bg-background/80 p-4">
+                      <span className="mt-1 h-2 w-2 rounded-full bg-rose-500" />
+                      <p className="text-sm text-foreground sm:text-base">
+                        Ticket médio de hoje abaixo da média de 30 dias.
+                      </p>
+                    </div>
+                  )}
+                  {ticketMedio7d > 0 && data.ticketMedio.ultimos30dias > 0 && ticketMedio7d < data.ticketMedio.ultimos30dias && (
+                    <div className="flex items-start gap-3 rounded-xl bg-background/80 p-4">
+                      <span className="mt-1 h-2 w-2 rounded-full bg-amber-500" />
+                      <p className="text-sm text-foreground sm:text-base">
+                        Ticket médio de 7 dias abaixo da média de 30 dias.
+                      </p>
+                    </div>
+                  )}
+                  {data.performanceEntrega && data.performanceEntrega.tempoMedioReal > 40 && (
+                    <div className="flex items-start gap-3 rounded-xl bg-background/80 p-4">
+                      <span className="mt-1 h-2 w-2 rounded-full bg-amber-500" />
+                      <p className="text-sm text-foreground sm:text-base">
+                        Tempo médio de entrega acima de 40 min.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card className="order-5 rounded-2xl bg-muted/30 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between p-5 pb-3 sm:p-6">
               <div className="space-y-1">
                 <CardTitle className="text-base font-semibold sm:text-lg">Insights Estratégicos</CardTitle>
+                <p className="text-sm text-muted-foreground sm:text-base">Sugestões claras para decisões rápidas.</p>
                 <p className="text-sm text-muted-foreground sm:text-base">Sugestões claras para decisões rápidas.</p>
               </div>
               <div className="rounded-xl bg-background/80 p-2 text-muted-foreground">

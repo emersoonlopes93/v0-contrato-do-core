@@ -178,7 +178,7 @@ export class TenantAuthService {
   // REFRESH TOKEN
   // ==========================================
 
-  async refreshToken(refreshToken: string): Promise<{ accessToken: string }> {
+  async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     // 1. Verify refresh token
     const decoded = JWTService.verifyRefreshToken(refreshToken);
 
@@ -223,8 +223,16 @@ export class TenantAuthService {
     };
 
     const accessToken = JWTService.generateTenantUserToken(tokenPayload);
-
-    return { accessToken };
+    const nextRefreshToken = JWTService.generateRefreshToken(user.id, 'tenant_user');
+    await this.authRepo.saveRefreshToken({
+      userId: user.id,
+      userType: 'tenant_user',
+      tenantId,
+      token: nextRefreshToken,
+      expiresAt: JWTService.getRefreshTokenExpiration(),
+    });
+    await this.authRepo.revokeRefreshToken(refreshToken);
+    return { accessToken, refreshToken: nextRefreshToken };
   }
 
   // ==========================================

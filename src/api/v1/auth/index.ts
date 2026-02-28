@@ -20,6 +20,12 @@ export const authRoutes: Route[] = [
   },
   {
     method: 'POST',
+    path: '/api/v1/auth/saas-admin/mfa/verify',
+    middlewares: [requestLogger, errorHandler],
+    handler: saasAuthController.saasAdminMfaVerify,
+  },
+  {
+    method: 'POST',
     path: '/api/v1/auth/saas-admin/refresh',
     middlewares: [requestLogger, errorHandler],
     handler: saasAuthController.saasAdminRefresh,

@@ -29,6 +29,11 @@ export const manifest = {
     icon: 'box',
     category: 'Entregas',
   },
+  navigation: {
+    category: 'entregas',
+    priority: 10,
+    modes: ['essential', 'professional'],
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

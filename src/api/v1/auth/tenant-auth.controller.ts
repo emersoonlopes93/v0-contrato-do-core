@@ -9,6 +9,9 @@ import { Request, Response } from '../middleware';
 import { TenantAuthService } from '../../../core/auth/tenant/tenant-auth.service';
 import type { TenantUserLoginRequest } from '@/core/auth';
 import { getPrismaClient } from '../../../adapters/prisma/client';
+import { logLoginFailure, logLoginSuccess } from '../security/security-metrics';
+import { getLoginKey, isLoginRateLimited, recordLoginFailure, recordLoginSuccess } from '../security/login-rate-limit';
+import { isLockedOut, recordFailure as recordLockFailure, recordSuccess as recordLockSuccess } from '../security/lockout';
 
 const tenantAuth = new TenantAuthService();
 const prisma = getPrismaClient();
@@ -54,6 +57,20 @@ export async function tenantLogin(req: Request, res: Response) {
   }
 
   const { email, password } = body;
+  const forwarded = req.headers['x-forwarded-for'];
+  const real = req.headers['x-real-ip'];
+  const ip = typeof forwarded === 'string' && forwarded.trim() !== '' ? forwarded.split(',')[0]!.trim() : typeof real === 'string' && real.trim() !== '' ? real.trim() : 'unknown';
+  const rateKey = getLoginKey(ip, email);
+  if (await isLockedOut(ip, email)) {
+    res.status = 423;
+    res.body = { error: 'Locked', message: 'Account temporarily locked due to repeated failures' };
+    return;
+  }
+  if (await isLoginRateLimited(rateKey)) {
+    res.status = 429;
+    res.body = { error: 'Too Many Requests', message: 'Too many login attempts. Please try again later.' };
+    return;
+  }
 
   try {
     const rawSlug = req.headers['x-tenant-slug'];
@@ -92,6 +109,9 @@ export async function tenantLogin(req: Request, res: Response) {
       password,
     });
 
+    await recordLoginSuccess(rateKey);
+    await recordLockSuccess(ip, email);
+    logLoginSuccess('tenant', ip, email);
     res.status = 200;
     res.headers = {
       'Set-Cookie': [
@@ -108,6 +128,9 @@ export async function tenantLogin(req: Request, res: Response) {
       email: result.user.email,
     };
   } catch (error: unknown) {
+    await recordLoginFailure(rateKey);
+    await recordLockFailure(ip, email);
+    logLoginFailure('tenant', ip, email);
     res.status = 401;
     res.body = {
       error:
@@ -145,7 +168,10 @@ export async function tenantRefresh(req: Request, res: Response) {
     const result = await tenantAuth.refreshToken(refreshToken);
     res.status = 200;
     res.headers = {
-      'Set-Cookie': [buildDevCookie('tenant_auth_token', result.accessToken)],
+      'Set-Cookie': [
+        buildDevCookie('tenant_auth_token', result.accessToken),
+        buildDevCookie('tenant_refresh_token', result.refreshToken),
+      ],
     };
     res.body = { ok: true };
   } catch (error: unknown) {

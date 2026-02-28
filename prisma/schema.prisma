@@ -69,6 +69,7 @@ model Tenant {
   name             String
   slug             String               @unique
   status           String               @default("active")
+  account_status   String               @default("ok")
   onboarded        Boolean              @default(false)
   onboarded_at     DateTime?
   created_at       DateTime             @default(now())
@@ -116,6 +117,7 @@ model Tenant {
   deliveryDrivers           DeliveryDriver[]
   driverPositions           DriverPosition[]
   driverStatusHistory       DriverStatusHistory[]
+  invoices                  Invoice[]
 
   @@index([slug])
   @@index([status])
@@ -354,7 +356,7 @@ model UserRole {
   tenant      Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   user        TenantUser @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@unique([user_id, role_id])
+  @@unique([tenant_id, user_id, role_id])
   @@index([user_id])
   @@index([tenant_id])
   @@index([role_id])
@@ -416,6 +418,24 @@ model RefreshToken {
   @@index([expires_at])
   @@index([revoked])
   @@map("refresh_tokens")
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  amount        Float
+  currency      String   @default("BRL")
+  status        String   @default("pending")
+  due_date      DateTime
+  paid_at       DateTime?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([status])
+  @@index([due_date])
+  @@map("invoices")
 }
 
 model Category {
@@ -1065,7 +1085,7 @@ model Payment {
   tenant Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   order  CheckoutOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
 
-  @@unique([provider, external_id])
+  @@unique([tenant_id, provider, external_id])
   @@index([tenant_id])
   @@index([order_id])
   @@index([status])

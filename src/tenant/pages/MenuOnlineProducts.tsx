@@ -4,22 +4,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { withModuleGuard } from '@/src/tenant/components/ModuleGuard';
 import { useSession } from '@/src/tenant/context/SessionContext';
 import { useTenant } from '@/src/contexts/TenantContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { BaseModal } from '@/components/modal/BaseModal';
 import { ModalHeader } from '@/components/modal/ModalHeader';
 import { ModalBody } from '@/components/modal/ModalBody';
 import { ModalFooter } from '@/components/modal/ModalFooter';
-import { GripVertical, Pencil, Trash2, Search, Plus, Filter, Eye, EyeOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useMenuUxMode } from '../hooks/useMenuUxMode';
 import { MenuIfoodView } from '../components/menu/MenuIfoodView';
 import { MenuUxFallback } from '../components/menu/MenuUxFallback';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
 import type {
   ApiErrorResponse,
   ApiSuccessResponse,
@@ -33,22 +30,9 @@ import type {
   MenuOnlineUpdateCategoryRequest,
   MenuOnlineUpdateProductRequest,
 } from '@/src/types/menu-online';
+import { GripVertical } from 'lucide-react';
 
-function formatCurrencyInput(value: string): string {
-  // Remove tudo que não é dígito ou vírgula
-  const cleanValue = value.replace(/[^\d,]/g, '');
-  
-  // Garante apenas uma vírgula decimal
-  const parts = cleanValue.split(',');
-  if (parts.length > 2) {
-    const decimal = parts[1];
-    if (decimal) {
-      parts[1] = decimal.slice(0, 2);
-    }
-  }
-  
-  return parts.join(',');
-}
+ 
 
 type DraftImage = { url: string; file?: File | null; progress?: number };
 type DraftPriceVariation = {
@@ -64,7 +48,6 @@ type DraftPriceVariation = {
 function MenuOnlineProductsPageContent() {
   const { tenantSlug } = useTenant();
   useSession();
-  const { isIfoodMode, setMode } = useMenuUxMode();
   const [categories, setCategories] = useState<MenuOnlineCategoryDTO[]>([]);
   const [modifierGroups, setModifierGroups] = useState<MenuOnlineModifierGroupDTO[]>([]);
   const [products, setProducts] = useState<MenuOnlineProductDTO[]>([]);
@@ -75,7 +58,6 @@ function MenuOnlineProductsPageContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [search, setSearch] = useState<string>('');
 
   const [categoryId, setCategoryId] = useState<string>('');
   const [name, setName] = useState<string>('');
@@ -324,6 +306,7 @@ function MenuOnlineProductsPageContent() {
   // Criar novo produto
   const handleNewProduct = () => {
     resetForm();
+    setCategoryId(categories[0]?.id ?? '');
     setIsModalOpen(true);
   };
 
@@ -602,7 +585,7 @@ function MenuOnlineProductsPageContent() {
         categoryId,
         name: name.trim(),
         description: description.trim() || undefined,
-        basePrice: parseFloat(basePrice.replace(',', '.')) || 0,
+        basePrice: Number(basePrice) / 100 || 0,
         sortOrder: parseInt(sortOrder) || 0,
         status,
         modifierGroupIds: selectedModifierGroupIds,
@@ -648,6 +631,11 @@ function MenuOnlineProductsPageContent() {
       }
 
       resetForm();
+      setIsModalOpen(false);
+      toast({
+        title: isEditing ? 'Produto atualizado' : 'Produto criado',
+        description: 'Operação realizada com sucesso.',
+      });
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar produto');
@@ -787,11 +775,10 @@ function MenuOnlineProductsPageContent() {
     }
   };
 
-  // Se estiver no modo iFood, renderizar a nova UX com fallback
-  if (isIfoodMode) {
-    return (
-      <MenuUxFallback onRetry={() => window.location.reload()}>
-        <>
+  // Renderizar a UX iFood com fallback
+  return (
+    <MenuUxFallback onRetry={() => window.location.reload()}>
+      <>
           <MenuIfoodView
             categories={categories}
             products={products}
@@ -800,6 +787,11 @@ function MenuOnlineProductsPageContent() {
             onEditProduct={handleEditProduct}
             onEditCategory={handleEditCategory}
             onNewProduct={handleNewProduct}
+            onNewProductInCategory={(categoryId) => {
+              resetForm();
+              setCategoryId(categoryId);
+              setIsModalOpen(true);
+            }}
             onNewCategory={handleNewCategory}
             onToggleProductStatus={handleToggleStatus}
             onToggleCategoryStatus={async (category) => {
@@ -866,13 +858,15 @@ function MenuOnlineProductsPageContent() {
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="basePrice">Preço base</Label>
-                    <Input
-                      id="basePrice"
-                      value={basePrice}
-                      onChange={(e) => setBasePrice(formatCurrencyInput(e.target.value))}
-                      inputMode="decimal"
-                      className="h-11"
-                    />
+                  <MaskedInput
+                    type="currency"
+                    value={basePrice}
+                    onChange={(raw) => {
+                      const n = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                      setBasePrice(String(n));
+                    }}
+                    placeholder="R$ 0,00"
+                  />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sortOrder">Ordem</Label>
@@ -891,6 +885,56 @@ function MenuOnlineProductsPageContent() {
                     </select>
                   </div>
                 </div>
+
+              <div className="space-y-2">
+                <Label>Imagem do produto</Label>
+                <div className="rounded-lg border p-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const url = typeof reader.result === 'string' ? reader.result : '';
+                        if (url) {
+                          setImages((prev) => [{ url, file, progress: undefined }, ...prev].slice(0, 4));
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  {images.length > 0 && (
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      {images.map((img, index) => (
+                        <div key={`${img.url}-${index}`} className="space-y-2">
+                          <div className="overflow-hidden rounded-md border bg-muted/20">
+                            <img
+                              src={img.url}
+                              alt={`Imagem ${index + 1}`}
+                              className="h-[200px] w-[200px] object-cover"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">#{index + 1}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setImages((prev) => prev.filter((_, i) => i !== index))
+                              }
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
                 {error && (
                   <Alert variant="destructive">
@@ -925,6 +969,100 @@ function MenuOnlineProductsPageContent() {
                 disabled={isSaving || name.trim() === '' || categoryId.trim() === ''}
               >
                 {isSaving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
+              </Button>
+            </ModalFooter>
+          </BaseModal>
+          
+          <BaseModal
+            open={isReorderModalOpen}
+            onOpenChange={(open) => {
+              setIsReorderModalOpen(open);
+            }}
+            size="sm"
+          >
+            <ModalHeader title="Reordenar categorias" />
+            <ModalBody>
+              <div className="space-y-2">
+                {categoryOrder.length === 0 ? (
+                  <div className="text-center text-sm text-muted-foreground py-6">
+                    Nenhuma categoria disponível.
+                  </div>
+                ) : (
+                  categoryOrder.map((category, index) => (
+                    <div
+                      key={category.id}
+                      className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 hover:bg-muted/40 transition-colors"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', String(index));
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const fromIndex = Number(e.dataTransfer.getData('text/plain'));
+                        const toIndex = index;
+                        if (Number.isNaN(fromIndex) || fromIndex === toIndex) return;
+                        setCategoryOrder((prev) => {
+                          const next = [...prev];
+                          const [item] = next.splice(fromIndex, 1);
+                          if (!item) return prev;
+                          next.splice(toIndex, 0, item);
+                          return next;
+                        });
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{category.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8"
+                          disabled={index === 0}
+                          onClick={() => moveCategory(index, 'up')}
+                        >
+                          Subir
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8"
+                          disabled={index === categoryOrder.length - 1}
+                          onClick={() => moveCategory(index, 'down')}
+                        >
+                          Descer
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10"
+                onClick={() => setIsReorderModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                className="h-10"
+                onClick={() => void handleSaveCategoryOrder()}
+                disabled={isSavingCategoryOrder || categoryOrder.length === 0}
+              >
+                {isSavingCategoryOrder ? 'Salvando...' : 'Salvar'}
               </Button>
             </ModalFooter>
           </BaseModal>
@@ -1144,466 +1282,6 @@ function MenuOnlineProductsPageContent() {
         </>
       </MenuUxFallback>
     );
-  }
-
-  // UX Classic (original)
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-bold tracking-tight md:text-2xl">Cardápio</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2">
-            <EyeOff className="h-4 w-4 text-muted-foreground" />
-            <Switch
-              checked={isIfoodMode}
-              onCheckedChange={(checked) => setMode(checked ? 'ifood' : 'classic')}
-              aria-label="Modo UX iFood"
-            />
-            <Eye className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs font-medium">iFood</span>
-          </div>
-          <Button
-            variant="default"
-            className="h-9"
-            onClick={handleNewProduct}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Produto
-          </Button>
-        </div>
-      </div>
-
-      {/* Barra de busca */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar produtos..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled>
-            <Filter className="h-4 w-4 mr-2" />
-            Filtros
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleNewCategory}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Categoria
-          </Button>
-        </div>
-      </div>
-
-      {/* Lista de produtos */}
-      <div className="space-y-4">
-        {categories.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhuma categoria encontrada.</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Crie categorias para organizar seus produtos.
-            </p>
-            <Button className="mt-4" onClick={handleNewCategory}>
-              <Plus className="h-4 w-4 mr-2" />
-              Criar Categoria
-            </Button>
-          </div>
-        ) : (
-          categories
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((category) => {
-              const categoryProducts = products.filter(
-                (product) => product.categoryId === category.id
-              );
-              console.log(`Produtos da categoria ${category.name}:`, categoryProducts);
-              const activeCount = categoryProducts.filter(
-                (product) => product.status === 'active'
-              ).length;
-
-              return (
-                <Card key={category.id} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="flex items-center justify-between p-4 border-b">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold">{category.name}</h3>
-                        <Badge variant="secondary">
-                          {categoryProducts.length} produtos
-                        </Badge>
-                        <Badge
-                          variant={activeCount === categoryProducts.length ? 'default' : 'secondary'}
-                        >
-                          {activeCount} ativos
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditCategory(category)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteCategory(category.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="divide-y">
-                      {categoryProducts.length === 0 ? (
-                        <div className="p-8 text-center">
-                          <p className="text-muted-foreground">
-                            Nenhum produto nesta categoria.
-                          </p>
-                          <Button
-                            className="mt-4"
-                            size="sm"
-                            onClick={handleNewProduct}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Adicionar Produto
-                          </Button>
-                        </div>
-                      ) : (
-                        categoryProducts
-                          .sort((a, b) => a.sortOrder - b.sortOrder)
-                          .map((product) => (
-                            <div
-                              key={product.id}
-                              className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-medium">{product.name}</h4>
-                                    <Badge
-                                      variant={
-                                        product.status === 'active' ? 'default' : 'secondary'
-                                      }
-                                    >
-                                      {product.status === 'active' ? 'Ativo' : 'Inativo'}
-                                    </Badge>
-                                  </div>
-                                  {product.description && (
-                                    <p className="text-sm text-muted-foreground">
-                                      {product.description}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={product.status === 'active'}
-                                  onCheckedChange={() => handleToggleStatus(product)}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditProduct(product)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteProduct(product.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-        )}
-      </div>
-
-      <BaseModal
-        open={isModalOpen}
-        onOpenChange={(open) => {
-          setIsModalOpen(open);
-          if (!open) resetForm();
-        }}
-        size="lg"
-      >
-        <ModalHeader title={editingId ? 'Editar Produto' : 'Novo Produto'} />
-        <ModalBody>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleSave();
-            }}
-            className="space-y-4"
-            id="product-form"
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="categoryId">Categoria</Label>
-                <select
-                  id="categoryId"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {categories.length === 0 ? (
-                    <option value="">Sem categorias</option>
-                  ) : (
-                    categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição (opcional)</Label>
-              <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="h-11" />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="basePrice">Preço base</Label>
-                <Input
-                  id="basePrice"
-                  value={basePrice}
-                  onChange={(e) => setBasePrice(formatCurrencyInput(e.target.value))}
-                  inputMode="decimal"
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sortOrder">Ordem</Label>
-                <Input id="sortOrder" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} inputMode="numeric" className="h-11" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <select
-                  id="status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value === 'inactive' ? 'inactive' : 'active')}
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="active">Ativo</option>
-                  <option value="inactive">Inativo</option>
-                </select>
-              </div>
-            </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {success && !error && (
-              <Alert>
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
-          </form>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10"
-            onClick={() => {
-              setIsModalOpen(false);
-              resetForm();
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            form="product-form"
-            variant="default"
-            className="h-10"
-            disabled={isSaving || name.trim() === '' || categoryId.trim() === ''}
-          >
-            {isSaving ? 'Salvando...' : editingId ? 'Salvar' : 'Criar'}
-          </Button>
-        </ModalFooter>
-      </BaseModal>
-
-      <BaseModal
-        open={isCategoryModalOpen}
-        onOpenChange={(open) => {
-          setIsCategoryModalOpen(open);
-          if (!open) {
-            resetCategoryForm();
-          }
-        }}
-        size="md"
-      >
-        <ModalHeader title={categoryEditingId ? 'Editar Categoria' : 'Nova Categoria'} />
-        <ModalBody>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handleSaveCategory();
-            }}
-            className="space-y-4"
-            id="category-form"
-          >
-            <div className="space-y-2">
-              <Label htmlFor="categoryName">Nome</Label>
-              <Input
-                id="categoryName"
-                value={categoryName}
-                onChange={(event) => setCategoryName(event.target.value)}
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="categoryDescription">Descrição (opcional)</Label>
-              <Input
-                id="categoryDescription"
-                value={categoryDescription}
-                onChange={(event) => setCategoryDescription(event.target.value)}
-                className="h-11"
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="categorySortOrder">Ordem</Label>
-                <Input
-                  id="categorySortOrder"
-                  value={categorySortOrder}
-                  onChange={(event) => setCategorySortOrder(event.target.value)}
-                  inputMode="numeric"
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="categoryStatus">Status</Label>
-                <select
-                  id="categoryStatus"
-                  value={categoryStatus}
-                  onChange={(event) =>
-                    setCategoryStatus(event.target.value === 'inactive' ? 'inactive' : 'active')
-                  }
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="active">Ativa</option>
-                  <option value="inactive">Inativa</option>
-                </select>
-              </div>
-            </div>
-          </form>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10"
-            onClick={() => {
-              setIsCategoryModalOpen(false);
-              resetCategoryForm();
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            form="category-form"
-            variant="default"
-            className="h-10"
-            disabled={isSavingCategory || categoryName.trim() === ''}
-          >
-            {isSavingCategory ? 'Salvando...' : categoryEditingId ? 'Salvar' : 'Criar'}
-          </Button>
-        </ModalFooter>
-      </BaseModal>
-
-      <BaseModal
-        open={isReorderModalOpen}
-        onOpenChange={(open) => {
-          setIsReorderModalOpen(open);
-        }}
-        size="sm"
-      >
-        <ModalHeader title="Reordenar categorias" />
-        <ModalBody>
-          <div className="space-y-2">
-            {categoryOrder.length === 0 ? (
-              <div className="text-center text-sm text-muted-foreground py-6">
-                Nenhuma categoria disponível.
-              </div>
-            ) : (
-              categoryOrder.map((category, index) => (
-                <div key={category.id} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
-                  <span className="text-sm font-medium">{category.name}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8"
-                      disabled={index === 0}
-                      onClick={() => moveCategory(index, 'up')}
-                    >
-                      Subir
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8"
-                      disabled={index === categoryOrder.length - 1}
-                      onClick={() => moveCategory(index, 'down')}
-                    >
-                      Descer
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10"
-            onClick={() => setIsReorderModalOpen(false)}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            variant="default"
-            className="h-10"
-            onClick={() => void handleSaveCategoryOrder()}
-            disabled={isSavingCategoryOrder || categoryOrder.length === 0}
-          >
-            {isSavingCategoryOrder ? 'Salvando...' : 'Salvar'}
-          </Button>
-        </ModalFooter>
-      </BaseModal>
-    </div>
-  );
 }
 
 export const MenuOnlineProductsPage = withModuleGuard(MenuOnlineProductsPageContent, 'menu-online');

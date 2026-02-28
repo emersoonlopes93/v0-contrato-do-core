@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
 import type {
@@ -160,15 +161,25 @@ function MenuOnlinePromotionsPageContent() {
   async function createCombo(): Promise<void> {
     setError('');
     try {
+      const seen = new Set<string>();
       const items = comboItems
-        .filter((item) => item.productId.trim().length > 0)
-        .map((item, idx) => ({
-          productId: item.productId,
-          minQty: item.minQty,
-          maxQty: item.maxQty,
-          sortOrder: idx,
-          status: 'active' as const,
-        }));
+        .filter((item) => {
+          const pid = item.productId.trim();
+          if (pid.length === 0 || seen.has(pid)) return false;
+          seen.add(pid);
+          return true;
+        })
+        .map((item, idx) => {
+          const min = Math.max(1, item.minQty);
+          const max = Math.max(min, item.maxQty);
+          return {
+            productId: item.productId,
+            minQty: min,
+            maxQty: max,
+            sortOrder: idx,
+            status: 'active' as const,
+          };
+        });
 
       const payload: MenuOnlineCreateComboRequest = {
         name: comboName.trim(),
@@ -301,11 +312,27 @@ function MenuOnlinePromotionsPageContent() {
               </div>
               <div className="space-y-2">
                 <Label>Valor</Label>
-                <Input
-                  type="number"
-                  value={couponValue}
-                  onChange={(e) => setCouponValue(Number(e.target.value))}
-                />
+                {couponType === 'percent' ? (
+                  <MaskedInput
+                    type="percent"
+                    value={couponValue}
+                    onChange={(raw) => {
+                      const n = typeof raw === 'number' ? raw : Number(String(raw).replace(',', '.'));
+                      setCouponValue(n);
+                    }}
+                    placeholder="0%"
+                  />
+                ) : (
+                  <MaskedInput
+                    type="currency"
+                    value={couponValue}
+                    onChange={(raw) => {
+                      const n = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                      setCouponValue(Math.round(n) / 100);
+                    }}
+                    placeholder="R$ 0,00"
+                  />
+                )}
               </div>
               <div className="md:col-span-3">
                 <Button type="button" onClick={() => void createCoupon()} disabled={couponCode.trim() === ''}>
@@ -597,4 +624,3 @@ function MenuOnlinePromotionsPageContent() {
 }
 
 export const MenuOnlinePromotionsPage = withModuleGuard(MenuOnlinePromotionsPageContent, 'menu-online');
-

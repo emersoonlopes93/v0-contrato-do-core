@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Edit, Trash2, Users, Mail, UserCheck } from 'lucide-react';
+import { registerSettingsSection } from '@/src/tenant/settings/settings-registry';
 
 const STATUS_LABELS: Record<EmployeeStatus, string> = {
   active: 'Ativo',
@@ -395,3 +396,12 @@ function EmployeesPageWithPermission() {
 
 export const EmployeesPage = withModuleGuard(EmployeesPageWithPermission, 'employees');
 
+registerSettingsSection({
+  id: 'employees',
+  title: 'Usuários e Funcionários',
+  description: 'Gestão de funcionários do tenant',
+  icon: 'users',
+  category: 'system',
+  order: 3,
+  component: EmployeesPage,
+});

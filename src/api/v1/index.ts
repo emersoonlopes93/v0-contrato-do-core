@@ -54,6 +54,19 @@ import * as plansController from './saas-admin/plans.controller';
 import * as modulesController from './saas-admin/modules.controller';
 import * as whiteLabelController from './saas-admin/white-label.controller';
 import * as auditController from './saas-admin/audit.controller';
+import { saasAdminSecurityRoutes } from './saas-admin/security.controller';
+import { saasAdminSessionRoutes } from './saas-admin/sessions.controller';
+import { adminRBACEnforcer } from './security/admin-permissions';
+import { requireStepUpForAction } from './security/stepup.guard';
+import { requireBillingOk } from './security/billing.guard';
+import { throttle } from './security/throttle';
+import { securityHeaders } from './security/security-headers.middleware';
+import { corsRestrictive } from './security/cors.middleware';
+import { requestContext } from './security/request-context.middleware';
+import { sentryErrorHandler } from './sentry/sentry-error.middleware';
+import { denyImpersonationForAction } from './security/impersonation.guard';
+import { metricsRoutes } from './observability/metrics.controller';
+import { healthRoutes } from './observability/health.controller';
 
 // Auth Routes
 import { authRoutes } from './auth';
@@ -109,92 +122,101 @@ export const routes: Route[] = [
   // ==========================================
   // SAAS ADMIN ROUTES
   // ==========================================
+  ...saasAdminSessionRoutes,
+  ...saasAdminSecurityRoutes,
+  ...metricsRoutes,
+  ...healthRoutes,
   {
     method: 'GET',
     path: '/api/v1/admin/dashboard',
     middlewares: [
       requestLogger,
+      sentryErrorHandler,
       errorHandler,
-      requireSaaSAdminAuth
+      requireSaaSAdminAuth,
+      adminRBACEnforcer,
+      securityHeaders,
+      corsRestrictive,
+      requestContext
     ],
     handler: dashboardController.getDashboard,
   },
   {
     method: 'GET',
     path: '/api/v1/admin/tenants',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext, throttle('admin.tenants.create', { windowSec: Number(process.env.THROTTLE_WINDOW_SEC ?? '60'), max: Number(process.env.THROTTLE_MAX ?? '60') })],
     handler: tenantsController.listTenants,
   },
   {
     method: 'POST',
     path: '/api/v1/admin/tenants',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext],
     handler: tenantsController.createTenant,
   },
   {
     method: 'GET',
     path: '/api/v1/admin/tenants/:tenantId',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer],
     handler: tenantsController.getTenant,
   },
   {
     method: 'PATCH',
     path: '/api/v1/admin/tenants/:tenantId/status',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext, throttle('admin.tenants.status', { windowSec: Number(process.env.THROTTLE_WINDOW_SEC ?? '60'), max: Number(process.env.THROTTLE_MAX ?? '120') }), requireStepUpForAction('admin.tenants.status'), denyImpersonationForAction('admin.tenants.status'), requireBillingOk],
     handler: tenantsController.updateTenantStatus,
   },
   {
     method: 'POST',
     path: '/api/v1/admin/tenants/:tenantId/onboard',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer],
     handler: tenantsController.onboardTenant,
   },
   {
     method: 'PATCH',
     path: '/api/v1/admin/tenants/:tenantId/plan',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext, throttle('admin.plans.assign', { windowSec: Number(process.env.THROTTLE_WINDOW_SEC ?? '60'), max: Number(process.env.THROTTLE_MAX ?? '60') }), requireStepUpForAction('admin.plans.assign'), denyImpersonationForAction('admin.plans.assign'), requireBillingOk],
     handler: tenantsController.updateTenantPlan,
   },
   {
     method: 'PATCH',
     path: '/api/v1/admin/tenants/:tenantId/modules',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext, throttle('admin.modules.set', { windowSec: Number(process.env.THROTTLE_WINDOW_SEC ?? '60'), max: Number(process.env.THROTTLE_MAX ?? '120') }), denyImpersonationForAction('admin.modules.set'), requireBillingOk],
     handler: tenantsController.updateTenantModules,
   },
   {
     method: 'POST',
     path: '/api/v1/admin/tenants/:tenantId/users',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, throttle('admin.tenants.user.create', { windowSec: Number(process.env.THROTTLE_WINDOW_SEC ?? '60'), max: Number(process.env.THROTTLE_MAX ?? '60') }), requireStepUpForAction('admin.tenants.user.create')],
     handler: tenantsController.createTenantAdminUser,
   },
   {
     method: 'POST',
     path: '/api/v1/admin/tenants/:tenantId/modules/:moduleId/activate',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext, throttle('admin.modules.activate', { windowSec: Number(process.env.THROTTLE_WINDOW_SEC ?? '60'), max: Number(process.env.THROTTLE_MAX ?? '120') }), requireStepUpForAction('admin.modules.activate'), denyImpersonationForAction('admin.modules.activate'), requireBillingOk],
     handler: tenantsController.activateModule,
   },
   {
     method: 'POST',
     path: '/api/v1/admin/tenants/:tenantId/modules/:moduleId/deactivate',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext, throttle('admin.modules.deactivate', { windowSec: Number(process.env.THROTTLE_WINDOW_SEC ?? '60'), max: Number(process.env.THROTTLE_MAX ?? '120') }), requireStepUpForAction('admin.modules.deactivate'), denyImpersonationForAction('admin.modules.deactivate'), requireBillingOk],
     handler: tenantsController.deactivateModule,
   },
   {
     method: 'GET',
     path: '/api/v1/admin/plans',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext],
     handler: plansController.listPlans,
   },
   {
     method: 'POST',
     path: '/api/v1/admin/plans',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext],
     handler: plansController.createPlan,
   },
   {
     method: 'PATCH',
     path: '/api/v1/admin/plans/:id',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext],
     handler: plansController.updatePlan,
   },
   {
@@ -202,33 +224,38 @@ export const routes: Route[] = [
     path: '/api/v1/admin/modules',
     middlewares: [
       requestLogger,
+      sentryErrorHandler,
       errorHandler,
-      requireSaaSAdminAuth
+      requireSaaSAdminAuth,
+      adminRBACEnforcer,
+      securityHeaders,
+      corsRestrictive,
+      requestContext
     ],
     handler: modulesController.listModules,
   },
   {
     method: 'GET',
     path: '/api/v1/admin/white-label/:tenantId',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext],
     handler: whiteLabelController.getWhiteLabel,
   },
   {
     method: 'PATCH',
     path: '/api/v1/admin/white-label/:tenantId',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext, requireStepUpForAction('admin.whitelabel.update'), denyImpersonationForAction('admin.whitelabel.update')],
     handler: whiteLabelController.updateWhiteLabel,
   },
   {
     method: 'POST',
     path: '/api/v1/admin/white-label/:tenantId/init',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext],
     handler: whiteLabelController.initWhiteLabel,
   },
   {
     method: 'GET',
     path: '/api/v1/admin/audit',
-    middlewares: [requestLogger, errorHandler, requireSaaSAdminAuth],
+    middlewares: [requestLogger, sentryErrorHandler, errorHandler, requireSaaSAdminAuth, adminRBACEnforcer, securityHeaders, corsRestrictive, requestContext],
     handler: auditController.listAuditLogs,
   },
 ];

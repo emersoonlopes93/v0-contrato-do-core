@@ -24,6 +24,11 @@ export const manifest = {
     icon: 'wallet',
     category: 'Operação',
   },
+  navigation: {
+    category: 'operacao',
+    priority: 4,
+    modes: ['essential', 'professional'],
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

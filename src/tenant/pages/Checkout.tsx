@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@/src/types/api';
 import type { CheckoutCreateOrderRequest, CheckoutOrderDTO, CheckoutPaymentMethod } from '@/src/types/checkout';
 import type { TenantSettingsDTO } from '@/src/types/tenant-settings';
@@ -163,7 +164,7 @@ function CheckoutPageContent() {
 
   const deliveryFeeNumber = useMemo(() => {
     const n = Number(deliveryFee);
-    return Number.isNaN(n) ? 0 : n;
+    return Number.isFinite(n) ? n / 100 : 0;
   }, [deliveryFee]);
 
   const derived = useMemo(() => {
@@ -449,7 +450,12 @@ function CheckoutPageContent() {
                   </div>
                   <div className="space-y-2">
                     <Label>Telefone</Label>
-                    <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                    <MaskedInput
+                      type="phone"
+                      value={customerPhone}
+                      onChange={(raw) => setCustomerPhone(typeof raw === 'string' ? raw : String(raw))}
+                      placeholder="(11) 98765-4321"
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -482,7 +488,15 @@ function CheckoutPageContent() {
                   <div className="flex items-center justify-between gap-3">
                     <span>Taxa de entrega</span>
                     <div className="w-32">
-                      <Input value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
+                      <MaskedInput
+                        type="currency"
+                        value={deliveryFee}
+                        onChange={(raw) => {
+                          const cents = typeof raw === 'number' ? raw : Number(String(raw).replace(/\D/g, ''));
+                          setDeliveryFee(String(Math.round(cents)));
+                        }}
+                        placeholder="R$ 0,00"
+                      />
                     </div>
                   </div>
                   <div className="flex items-center justify-between border-t pt-3">

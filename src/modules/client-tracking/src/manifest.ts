@@ -12,6 +12,12 @@ export const manifest = {
   requiredPlan: 'basic',
   permissions,
   eventTypes,
+  navigation: {
+    category: 'experiencia',
+    priority: 70,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'visual',
   scope: 'public',
   mobileFirst: true,

@@ -12,5 +12,9 @@ export const manifest = {
   requiredPlan: 'basic',
   permissions,
   eventTypes,
+  navigation: {
+    category: 'configuracoes',
+    priority: 52,
+    modes: ['essential', 'professional'],
+  },
 } satisfies ModuleRegisterPayload;
-

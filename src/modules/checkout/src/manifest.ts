@@ -21,5 +21,10 @@ export const manifest: ModuleRegisterPayload = {
   permissions,
   eventTypes,
   requiredPlan: 'pro',
+  navigation: {
+    category: 'experiencia',
+    priority: 65,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
 };
-

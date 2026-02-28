@@ -32,6 +32,12 @@ export const manifest: ModuleRegisterPayload = {
     icon: 'headphones',
     category: 'Operação',
   },
+  navigation: {
+    category: 'configuracoes',
+    priority: 55,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,

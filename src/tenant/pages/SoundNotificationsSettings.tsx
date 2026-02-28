@@ -20,6 +20,7 @@ import {
   type SoundNotificationUpsertSettingsRequest,
   type SoundNotificationUserRole,
 } from '@/src/types/sound-notifications';
+import { registerSettingsSection } from '@/src/tenant/settings/settings-registry';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -353,3 +354,13 @@ export const SoundNotificationsSettingsPage = withModuleGuard(
   SoundNotificationsSettingsPageContent,
   'sound-notifications',
 );
+
+registerSettingsSection({
+  id: 'sound-notifications',
+  title: 'Notificações Sonoras',
+  description: 'Alertas de pedidos e eventos em tempo real',
+  icon: 'headphones',
+  category: 'notifications',
+  order: 2,
+  component: SoundNotificationsSettingsPage,
+});

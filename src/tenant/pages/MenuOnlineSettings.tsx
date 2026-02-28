@@ -17,6 +17,7 @@ import type {
   MenuOnlineSettingsDTO,
   MenuOnlineUpdateSettingsRequest,
 } from '@/src/types/menu-online';
+import { registerSettingsSection } from '@/src/tenant/settings/settings-registry';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -233,3 +234,13 @@ function MenuOnlineSettingsPageContent() {
 }
 
 export const MenuOnlineSettingsPage = withModuleGuard(MenuOnlineSettingsPageContent, 'menu-online');
+
+registerSettingsSection({
+  id: 'menu-online-settings',
+  title: 'Cardápio Online',
+  description: 'Preferências do cardápio digital',
+  icon: 'menu',
+  category: 'store',
+  order: 3,
+  component: MenuOnlineSettingsPage,
+});

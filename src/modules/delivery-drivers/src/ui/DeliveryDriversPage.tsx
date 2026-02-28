@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MaskedInput } from '@/src/shared/inputs/MaskedInput';
 
 const STATUS_LABELS: Record<DeliveryDriverStatus, string> = {
   available: 'Disponível',
@@ -189,7 +190,12 @@ function DeliveryDriversPageContent() {
               </div>
               <div className="space-y-2">
                 <Label>Telefone</Label>
-                <Input value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="(DDD) 00000-0000" />
+                <MaskedInput
+                  type="phone"
+                  value={driverPhone}
+                  onChange={(raw) => setDriverPhone(typeof raw === 'string' ? raw : String(raw))}
+                  placeholder="(11) 98765-4321"
+                />
               </div>
               <Button
                 className="w-full"

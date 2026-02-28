@@ -673,6 +673,35 @@ export class MenuOnlineRepository {
   }
 
   async createCombo(tenantId: string, input: MenuOnlineCreateComboRequest): Promise<MenuOnlineComboDTO> {
+    // Normalizar e deduplicar itens por productId para evitar violação de unicidade
+    const uniqueItems = (() => {
+      const seen = new Set<string>();
+      const result: Array<{
+        productId: string;
+        minQty: number;
+        maxQty: number;
+        sortOrder: number;
+        status: 'active' | 'inactive';
+      }> = [];
+      for (const [index, item] of input.items.entries()) {
+        const productId = item.productId;
+        if (!productId || seen.has(productId)) continue;
+        seen.add(productId);
+        const min = item.minQty ?? 1;
+        const max = item.maxQty ?? 1;
+        const normalizedMin = Math.max(1, Math.min(min, max));
+        const normalizedMax = Math.max(normalizedMin, max);
+        result.push({
+          productId,
+          minQty: normalizedMin,
+          maxQty: normalizedMax,
+          sortOrder: item.sortOrder ?? index,
+          status: (item.status ?? 'active') === 'inactive' ? 'inactive' : 'active',
+        });
+      }
+      return result;
+    })();
+
     const row = await this.prisma.menuCombo.create({
       data: {
         tenant_id: tenantId,
@@ -687,17 +716,20 @@ export class MenuOnlineRepository {
       select: { id: true },
     });
 
-    await this.prisma.menuComboItem.createMany({
-      data: input.items.map((item, index) => ({
-        tenant_id: tenantId,
-        combo_id: row.id,
-        product_id: item.productId,
-        min_qty: item.minQty ?? 1,
-        max_qty: item.maxQty ?? 1,
-        sort_order: item.sortOrder ?? index,
-        status: item.status ?? 'active',
-      })),
-    });
+    if (uniqueItems.length > 0) {
+      await this.prisma.menuComboItem.createMany({
+        data: uniqueItems.map((item) => ({
+          tenant_id: tenantId,
+          combo_id: row.id,
+          product_id: item.productId,
+          min_qty: item.minQty,
+          max_qty: item.maxQty,
+          sort_order: item.sortOrder,
+          status: item.status,
+        })),
+        skipDuplicates: true,
+      });
+    }
 
     const created = await this.prisma.menuCombo.findUnique({
       where: { id: row.id },

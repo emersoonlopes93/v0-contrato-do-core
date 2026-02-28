@@ -2,41 +2,30 @@ import type { AuditLogger } from "./contracts";
 import type { AuditEvent } from "../types";
 import { reliableEventBus } from "./reliable-event-bus";
 import { eventDispatcher } from "./event-dispatcher";
+import { getPrismaClient } from "@/src/adapters/prisma/client";
+import { Prisma } from "@prisma/client";
+import { asUUID } from "../types";
 
-// Start the reliable event dispatcher
 eventDispatcher.start();
 
-// class InMemoryEventBus implements EventBus {
-//   private handlers: Map<string, Set<EventHandler>> = new Map();
-//
-//   subscribe(eventType: string, handler: EventHandler): void {
-//     if (!this.handlers.has(eventType)) {
-//       this.handlers.set(eventType, new Set());
-//     }
-//     this.handlers.get(eventType)!.add(handler);
-//   }
-//
-//   unsubscribe(eventType: string, handler: EventHandler): void {
-//     this.handlers.get(eventType)?.delete(handler);
-//   }
-//
-//   async publish(event: DomainEvent): Promise<void> {
-//     const eventHandlers = this.handlers.get(event.type);
-//     if (eventHandlers) {
-//       await Promise.all(Array.from(eventHandlers).map((h) => h.handle(event)));
-//     }
-//   }
-//
-//   async publishMultiple(events: DomainEvent[]): Promise<void> {
-//     await Promise.all(events.map((e) => this.publish(e)));
-//   }
-// }
-
-class InMemoryAuditLogger implements AuditLogger {
-  private events: AuditEvent[] = [];
+class PrismaAuditLogger implements AuditLogger {
+  private prisma = getPrismaClient();
 
   async log(event: AuditEvent): Promise<void> {
-    this.events.push(event);
+    await this.prisma.auditEvent.create({
+      data: {
+        id: event.id,
+        tenant_id: event.tenantId ?? null,
+        user_id: event.userId,
+        action: event.action,
+        resource: event.resource,
+        old_value: (event.oldValue === undefined ? Prisma.JsonNull : (event.oldValue as Prisma.InputJsonValue)),
+        new_value: (event.newValue === undefined ? Prisma.JsonNull : (event.newValue as Prisma.InputJsonValue)),
+        status: event.status,
+        metadata: event.metadata ?? {},
+        timestamp: event.timestamp,
+      },
+    });
   }
 
   async getEvents(
@@ -44,28 +33,52 @@ class InMemoryAuditLogger implements AuditLogger {
     userId?: string,
     limit?: number
   ): Promise<AuditEvent[]> {
-    let filtered = this.events;
+    const rows = await this.prisma.auditEvent.findMany({
+      where: {
+        tenant_id: tenantId ?? undefined,
+        user_id: userId ?? undefined,
+      },
+      orderBy: { timestamp: 'desc' },
+      take: limit ?? 100,
+    });
 
-    if (tenantId) {
-      filtered = filtered.filter((e) => e.tenantId === tenantId);
-    }
-    if (userId) {
-      filtered = filtered.filter((e) => e.userId === userId);
-    }
-
-    return filtered.slice(0, limit || 100);
+    return rows.map((row) => ({
+      id: asUUID(row.id),
+      tenantId: row.tenant_id ? asUUID(row.tenant_id) : undefined,
+      userId: asUUID(row.user_id ?? ''),
+      action: row.action,
+      resource: row.resource,
+      oldValue: row.old_value ?? undefined,
+      newValue: row.new_value ?? undefined,
+      status: row.status as 'success' | 'failure',
+      metadata: (row.metadata ?? undefined) as Record<string, unknown> | undefined,
+      timestamp: row.timestamp,
+    }));
   }
 
   async getEventsByAction(action: string, tenantId?: string): Promise<AuditEvent[]> {
-    let filtered = this.events.filter((e) => e.action === action);
+    const rows = await this.prisma.auditEvent.findMany({
+      where: {
+        action,
+        tenant_id: tenantId ?? undefined,
+      },
+      orderBy: { timestamp: 'desc' },
+    });
 
-    if (tenantId) {
-      filtered = filtered.filter((e) => e.tenantId === tenantId);
-    }
-
-    return filtered;
+    return rows.map((row) => ({
+      id: asUUID(row.id),
+      tenantId: row.tenant_id ? asUUID(row.tenant_id) : undefined,
+      userId: asUUID(row.user_id ?? ''),
+      action: row.action,
+      resource: row.resource,
+      oldValue: row.old_value ?? undefined,
+      newValue: row.new_value ?? undefined,
+      status: row.status as 'success' | 'failure',
+      metadata: (row.metadata ?? undefined) as Record<string, unknown> | undefined,
+      timestamp: row.timestamp,
+    }));
   }
 }
 
 export const globalEventBus = reliableEventBus;
-export const globalAuditLogger = new InMemoryAuditLogger();
+export const globalAuditLogger = new PrismaAuditLogger();

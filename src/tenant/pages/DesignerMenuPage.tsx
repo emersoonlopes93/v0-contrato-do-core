@@ -7,17 +7,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FormFooterSaveBar } from '@/components/form/FormFooterSaveBar';
-import type { 
-  DesignerMenuConfigDTO, 
-  DesignerMenuLayoutMode, 
-  DesignerMenuImageStyle, 
-  SafeColorPalette 
+import type {
+  DesignerMenuConfigDTO,
+  DesignerMenuLayoutMode,
+  DesignerMenuImageStyle,
+  SafeColorPalette,
 } from '@/src/types/designer-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ProductCard } from '@/src/tenant/components/cards/ProductCard';
+import { registerSettingsSection } from '@/src/tenant/settings/settings-registry';
+import { PageTitle } from '@/src/tenant/components/PageTitle';
 
 const STORAGE_KEY_PREFIX = 'designer-menu:';
 const paletteOptions: SafeColorPalette[] = [
@@ -204,12 +206,10 @@ function DesignerMenuPageContent() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Designer do Cardápio</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Personalize o visual do cardápio público sem alterar regras de negócio.
-          </p>
-        </div>
+        <PageTitle
+          title="Designer do Cardápio"
+          description="Personalize o visual do cardápio público sem alterar regras de negócio."
+        />
         <Button
           type="button"
           size="sm"
@@ -648,122 +648,131 @@ function DesignerMenuPageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-2xl border bg-background">
-                <div
-                  className={cn(
-                    'rounded-2xl border-b px-4 py-4',
-                    config.headerVariant === 'solid-primary' && 'bg-primary',
-                  )}
-                  style={{
-                    color: getPaletteValue(
-                      config.headerTextColor,
-                      config.headerVariant === 'solid-primary' ? 'foreground' : 'text',
-                    ),
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-12 w-12 items-center justify-center rounded-xl"
-                      style={{
-                        backgroundColor: getPaletteValue(config.logoBackgroundColor, 'soft'),
-                        color: getPaletteValue(config.logoBackgroundColor, 'text'),
-                      }}
-                    >
-                      <span className="text-xs font-semibold">Logo</span>
+              <div className="flex justify-center">
+                <div className="relative w-full max-w-[380px] aspect-[9/19.5] rounded-[2.5rem] bg-black/95 px-3 py-4 shadow-xl">
+                  <div className="flex h-full w-full flex-col rounded-[2rem] bg-black/95">
+                    <div className="flex items-center justify-center pb-2">
+                      <div className="h-1.5 w-16 rounded-full bg-black/60" />
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-base font-semibold leading-tight">Restaurante Exemplo</div>
-                      <div className="text-xs">Centro · Cidade</div>
-                    </div>
-                  </div>
-
-                  {config.showSearchBar && (
-                    <div className="mt-3">
+                    <div className="flex-1 overflow-hidden rounded-[1.75rem] border border-black/40 bg-background">
                       <div
-                        className="h-10 w-full rounded-full border px-3 text-xs"
+                        className={cn(
+                          'rounded-t-[1.75rem] border-b px-3 py-3',
+                          config.headerVariant === 'solid-primary' && 'bg-primary',
+                        )}
                         style={{
-                          borderColor: getPaletteValue(config.headerButtonColor, 'base'),
+                          color: getPaletteValue(
+                            config.headerTextColor,
+                            config.headerVariant === 'solid-primary' ? 'foreground' : 'text',
+                          ),
                         }}
                       >
-                        Buscar no cardápio
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-11 w-11 items-center justify-center rounded-xl"
+                            style={{
+                              backgroundColor: getPaletteValue(config.logoBackgroundColor, 'soft'),
+                              color: getPaletteValue(config.logoBackgroundColor, 'text'),
+                            }}
+                          >
+                            <span className="text-[11px] font-semibold">Logo</span>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold leading-tight">Restaurante Exemplo</div>
+                            <div className="text-[11px]">Centro · Cidade</div>
+                          </div>
+                        </div>
+
+                        {config.showSearchBar && (
+                          <div className="mt-2">
+                            <div
+                              className="h-9 w-full rounded-full border px-3 text-[11px] flex items-center"
+                              style={{
+                                borderColor: getPaletteValue(config.headerButtonColor, 'base'),
+                              }}
+                            >
+                              Buscar no cardápio
+                            </div>
+                          </div>
+                        )}
+                        <div className="mt-2 flex gap-2 overflow-hidden">
+                          {['Combos', 'Bebidas', 'Sobremesas'].map((label, index) => (
+                            <div
+                              key={label}
+                              className="rounded-full border px-3 py-1 text-[11px] font-semibold"
+                              style={
+                                index === 0
+                                  ? {
+                                      backgroundColor: getPaletteValue(config.headerButtonColor, 'base'),
+                                      color: getPaletteValue(config.headerButtonColor, 'foreground'),
+                                      borderColor: getPaletteValue(config.headerButtonColor, 'base'),
+                                    }
+                                  : {
+                                      backgroundColor: getPaletteValue(config.headerButtonColor, 'soft'),
+                                      color: getPaletteValue(config.headerButtonColor, 'text'),
+                                      borderColor: getPaletteValue(config.headerButtonColor, 'base'),
+                                    }
+                              }
+                            >
+                              {label}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {config.showWelcomeMessage && (
+                        <div className="px-3 pt-3">
+                          <div
+                            className="rounded-xl px-4 py-3 text-center text-sm font-medium"
+                            style={{
+                              backgroundColor: getPaletteValue(config.welcomeBackgroundColor, 'soft'),
+                              color: getPaletteValue(config.welcomeTextColor, 'text'),
+                            }}
+                          >
+                            Bem-vindo ao nosso cardápio!
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="px-3 py-3 space-y-3">
+                        <div
+                          className="flex items-center justify-between gap-2 rounded-xl px-3 py-2"
+                          style={{
+                            backgroundColor: getPaletteValue(config.groupTitleBackgroundColor, 'soft'),
+                            color: getPaletteValue(config.groupTitleBackgroundColor, 'text'),
+                          }}
+                        >
+                          <span className="text-sm font-semibold">Categoria em destaque</span>
+                          <span className="text-xs">4 itens</span>
+                        </div>
+
+                        <div
+                          className={
+                            config.layoutMode === 'list'
+                              ? 'space-y-3'
+                              : config.layoutMode === 'compact'
+                              ? 'grid grid-cols-2 gap-3'
+                              : 'grid grid-cols-1 gap-3 md:grid-cols-2'
+                          }
+                        >
+                          {previewProducts.map((product) => (
+                            <ProductCard
+                              key={product.id}
+                              variant="public"
+                              name={product.name}
+                              description={product.description}
+                              price={product.price}
+                              promoPrice={product.promoPrice}
+                              imageUrl={null}
+                              currency="BRL"
+                              showAddButton={config.showAddButton}
+                              imageStyle={config.imageStyle}
+                              compact={config.layoutMode === 'compact'}
+                            />
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  )}
-                  <div className="mt-3 flex gap-2 overflow-hidden">
-                    {['Combos', 'Bebidas', 'Sobremesas'].map((label, index) => (
-                      <div
-                        key={label}
-                        className="rounded-full border px-3 py-1 text-[11px] font-semibold"
-                        style={
-                          index === 0
-                            ? {
-                                backgroundColor: getPaletteValue(config.headerButtonColor, 'base'),
-                                color: getPaletteValue(config.headerButtonColor, 'foreground'),
-                                borderColor: getPaletteValue(config.headerButtonColor, 'base'),
-                              }
-                            : {
-                                backgroundColor: getPaletteValue(config.headerButtonColor, 'soft'),
-                                color: getPaletteValue(config.headerButtonColor, 'text'),
-                                borderColor: getPaletteValue(config.headerButtonColor, 'base'),
-                              }
-                        }
-                      >
-                        {label}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {config.showWelcomeMessage && (
-                  <div className="px-4 pt-4">
-                    <div
-                      className="rounded-xl px-4 py-3 text-center text-sm font-medium"
-                      style={{
-                        backgroundColor: getPaletteValue(config.welcomeBackgroundColor, 'soft'),
-                        color: getPaletteValue(config.welcomeTextColor, 'text'),
-                      }}
-                    >
-                      Bem-vindo ao nosso cardápio!
-                    </div>
-                  </div>
-                )}
-
-                <div className="px-4 py-4 space-y-4">
-                  <div
-                    className="flex items-center justify-between gap-2 rounded-xl px-3 py-2"
-                    style={{
-                      backgroundColor: getPaletteValue(config.groupTitleBackgroundColor, 'soft'),
-                      color: getPaletteValue(config.groupTitleBackgroundColor, 'text'),
-                    }}
-                  >
-                    <span className="text-sm font-semibold">Categoria em destaque</span>
-                    <span className="text-xs">4 itens</span>
-                  </div>
-
-                  <div
-                    className={
-                      config.layoutMode === 'list'
-                        ? 'space-y-3'
-                        : config.layoutMode === 'compact'
-                        ? 'grid grid-cols-2 gap-3'
-                        : 'grid grid-cols-1 gap-3 md:grid-cols-2'
-                    }
-                  >
-                    {previewProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        variant="public"
-                        name={product.name}
-                        description={product.description}
-                        price={product.price}
-                        promoPrice={product.promoPrice}
-                        imageUrl={null}
-                        currency="BRL"
-                        showAddButton={config.showAddButton}
-                        imageStyle={config.imageStyle}
-                        compact={config.layoutMode === 'compact'}
-                      />
-                    ))}
                   </div>
                 </div>
               </div>
@@ -786,3 +795,13 @@ function DesignerMenuPageContent() {
 }
 
 export const DesignerMenuPage = withModuleGuard(DesignerMenuPageContent, 'designer-menu');
+
+registerSettingsSection({
+  id: 'designer-menu',
+  title: 'Designer do Cardápio',
+  description: 'Personalização visual do cardápio público',
+  icon: 'palette',
+  category: 'design',
+  order: 1,
+  component: DesignerMenuPage,
+});

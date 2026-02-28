@@ -3,7 +3,7 @@
 import { useContext, useState, useEffect, useCallback } from 'react';
 import { SessionContext } from '../context/SessionContext';
 
-export type MenuUxMode = 'classic' | 'ifood';
+export type MenuUxMode = 'ifood';
 
 /**
  * Hook para gerenciar o modo UX do menu cardápio
@@ -12,22 +12,22 @@ export type MenuUxMode = 'classic' | 'ifood';
  */
 export function useMenuUxMode(): {
   mode: MenuUxMode;
-  setMode: (mode: MenuUxMode) => void;
+  setMode: () => void;
   isIfoodMode: boolean;
 } {
   const session = useContext(SessionContext);
   const tenantId = session?.tenantId;
 
   // Estado local para forçar re-renderização
-  const [currentMode, setCurrentMode] = useState<MenuUxMode>('classic');
+  const [currentMode, setCurrentMode] = useState<MenuUxMode>('ifood');
 
-  // Obter modo do localStorage ou usar 'classic' como padrão
+  // Obter modo do localStorage ou usar 'ifood' como padrão
   const getStoredMode = useCallback((): MenuUxMode => {
-    if (typeof window === 'undefined') return 'classic';
+    if (typeof window === 'undefined') return 'ifood';
     
     const storageKey = tenantId ? `menu-ux-mode-${tenantId}` : 'menu-ux-mode';
     const stored = localStorage.getItem(storageKey);
-    return stored === 'ifood' ? 'ifood' : 'classic';
+    return stored === 'ifood' ? 'ifood' : 'ifood';
   }, [tenantId]);
 
   const setStoredMode = useCallback((mode: MenuUxMode) => {
@@ -47,7 +47,7 @@ export function useMenuUxMode(): {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === (tenantId ? `menu-ux-mode-${tenantId}` : 'menu-ux-mode')) {
-        const newMode = e.newValue === 'ifood' ? 'ifood' : 'classic';
+        const newMode: MenuUxMode = 'ifood';
         setCurrentMode(newMode);
       }
     };
@@ -56,7 +56,7 @@ export function useMenuUxMode(): {
     const handleCustomChange = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.type === 'menu-ux-mode-changed') {
-        setCurrentMode(customEvent.detail.mode);
+        setCurrentMode('ifood');
       }
     };
 
@@ -71,12 +71,12 @@ export function useMenuUxMode(): {
 
   const isIfoodMode = currentMode === 'ifood';
 
-  const setMode = (newMode: MenuUxMode) => {
-    setStoredMode(newMode);
-    setCurrentMode(newMode);
+  const setMode = () => {
+    setStoredMode('ifood');
+    setCurrentMode('ifood');
     // Forçar re-renderização em outras abas
     window.dispatchEvent(new CustomEvent('menu-ux-mode-changed', { 
-      detail: { mode: newMode } 
+      detail: { mode: 'ifood' } 
     }));
   };
 

@@ -22,6 +22,12 @@ export const manifest: ModuleRegisterPayload = {
     icon: 'wallet',
     category: 'Financeiro',
   },
+  navigation: {
+    category: 'financeiro',
+    priority: 20,
+    modes: ['professional'],
+    isAdvanced: true,
+  },
   type: 'operations',
   scope: 'tenant',
   mobileFirst: true,
